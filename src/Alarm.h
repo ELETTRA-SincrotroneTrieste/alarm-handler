@@ -183,6 +183,22 @@ public:
 	virtual void read_alarm(Tango::Attribute &attr);
 	virtual bool is_alarm_allowed(Tango::AttReqType type);
 
+//	Dynamic attribute methods
+public:
+
+	/**
+	 *	Attribute AlarmState related methods
+	 *	Description: 
+	 *
+	 *	Data type:	Tango::DevBoolean
+	 *	Attr type:	Scalar
+	 */
+	virtual void read_AlarmState(Tango::Attribute &attr);
+	virtual bool is_AlarmState_allowed(Tango::AttReqType type);
+	void add_AlarmState_dynamic_attribute(string attname);
+	void remove_AlarmState_dynamic_attribute(string attname);
+	Tango::DevBoolean *get_AlarmState_data_ptr(string &name);
+	map<string,Tango::DevBoolean>	   AlarmState_data;
 
 	//--------------------------------------------------------
 	/**
@@ -303,10 +319,10 @@ private:
 	
 	void load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn);
 
-	double eval_formula(tree_parse_info_t tree, string &attr_values);
+	formula_res_t eval_formula(tree_parse_info_t tree, string &attr_values);
 	void find_event_formula(tree_parse_info_t tree, vector<string> &);
 	
-	double eval_expression(iter_t const& i, string &attr_values, int ev_ind=0);			//recursive tree node evaluation	
+	formula_res_t eval_expression(iter_t const& i, string &attr_values, int ev_ind=0);			//recursive tree node evaluation
 	void eval_node_event(iter_t const& i, vector<string> & ev);		//recursive tree node evaluation		
 
 	void prepare_alarm_attr();	//for read attribute alarm and push_change_event

@@ -73,6 +73,23 @@ public:
 
 
 //=========================================
+//	Define classes for dynamic attributes
+//=========================================
+//	Attribute AlarmState class definition
+class AlarmStateAttrib: public Tango::Attr
+{
+public:
+	AlarmStateAttrib(const string &att_name):Attr(att_name.c_str(), 
+			Tango::DEV_BOOLEAN, Tango::READ) {};
+	~AlarmStateAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_AlarmState(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_AlarmState_allowed(ty);}
+};
+
+
+//=========================================
 //	Define classes for commands
 //=========================================
 //	Command Ack class definition

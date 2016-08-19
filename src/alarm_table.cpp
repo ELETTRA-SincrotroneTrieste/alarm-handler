@@ -341,7 +341,7 @@ void alarm_table::stored(vector<alarm_t>& a)
 #endif
 }
 
-bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, int res, string &attr_values, string grp, string msg, string formula)
+bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_t res, string &attr_values, string grp, string msg, string formula)
 {
 	bool ret_changed=false;
 	//Tango::TimeVal now = gettime();
@@ -366,34 +366,37 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, int res, str
 			else
 				found->second.silenced = 0;
 		}
-
+		found->second.quality = res.quality;
+		found->second.ex_reason = res.ex_reason;
+		found->second.ex_desc = res.ex_desc;
+		found->second.ex_origin = res.ex_origin;
 		bool status_time_threshold;
 		if(found->second.time_threshold > 0)		//if enabled time threshold
-			status_time_threshold = (res) && (found->second.counter >= 1) && ((ts.tv_sec - found->second.time_threshold) > found->second.ts_time_threshold.tv_sec);	//formula gives true and time threshold is passed
+			status_time_threshold = ((int)res.value) && (found->second.counter >= 1) && ((ts.tv_sec - found->second.time_threshold) > found->second.ts_time_threshold.tv_sec);	//formula gives true and time threshold is passed
 		else
-			status_time_threshold = res;	
+			status_time_threshold = (int)res.value;
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also time threshold
 		//or
 		// - from S_ALARM to S_NORMAL		
-		if((status_time_threshold && (found->second.stat == S_NORMAL)) || (!res && (found->second.stat == S_ALARM)))
+		if((status_time_threshold && (found->second.stat == S_NORMAL)) || (!(int)res.value && (found->second.stat == S_ALARM)))
 		{
 			ret_changed=true;
 			a.type_log = TYPE_LOG_STATUS;
 			a.name = alm_name;
 			a.time_s = ts.tv_sec;		
 			a.time_us = ts.tv_usec;
-			a.status = res ? S_ALARM : S_NORMAL;
+			a.status = (int)res.value ? S_ALARM : S_NORMAL;
 			//a.level = found->second.lev;
-			if(res)
+			if((int)res.value)
 				found->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
 			a.ack = found->second.ack;
 			a.values = attr_values;
 			//a.grp = found->second.grp2str();
-			//a.msg = res ? found->second.msg : "";
+			//a.msg = (int)res.value ? found->second.msg : "";
 			logloop->log_alarm_db(a);
 			found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
-			if(res)
+			if((int)res.value)
 			{
 				found->second.is_new = 1;		//here set this alarm as new, read attribute set it to 0	//12-06-08: StopNew command set it to 0
 				if(found->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))		//action from S_NORMAL to S_ALARM
@@ -491,7 +494,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, int res, str
 			found->second.stat = S_ALARM;
 			//found->second.ack = NOT_ACK;
 		}
-		if(res) {
+		if((int)res.value) {
 			found->second.counter++;
 		} else {
 			found->second.stat = S_NORMAL;
@@ -611,6 +614,30 @@ bool alarm_table::timer_update()
 				arg.arg_b = i->second.send_arg_a;	
 				cmdloop->list.push_back(arg);
 			}
+			*(i->second.attr_value) = true;
+			try
+			{
+				if(i->second.ex_reason.length() == 0)
+				{
+					timeval now;
+					gettimeofday(&now, NULL);
+					mydev->push_change_event(i->second.attr_name,(Tango::DevBoolean *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					mydev->push_archive_event(i->second.attr_name,(Tango::DevBoolean *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+				}
+				else
+				{
+					Tango::DevErrorList errors(1);
+					errors.length(1);
+					errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+					errors[0].severity = Tango::ERR;
+					errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
+					errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+					Tango::DevFailed except(errors);
+					mydev->push_change_event(i->second.attr_name, &except);
+					mydev->push_archive_event(i->second.attr_name, &except);
+				}
+			} catch(Tango::DevFailed &e)
+			{}
 		}
 		if (status_time_threshold) {
 			i->second.stat = S_ALARM;

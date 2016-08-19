@@ -45,6 +45,11 @@ class event {
 					 device,				/* device name */
 					 attribute;			/* attribute name */
 		value_t value;				/* event value */
+		int quality;
+		//Tango::DevErrorList 	errors;
+		string ex_reason;
+		string ex_desc;
+		string ex_origin;
 		Tango::TimeVal ts;		/* event timestamp */
 		int type,							/* attribute data type */
 				counter,					/* molteplicita' */
@@ -76,6 +81,11 @@ class event {
 typedef struct basic_event_info_s {
 	string ev_name;
 	value_t value;
+	int quality;
+	//Tango::DevErrorList 	errors;
+	string ex_reason;
+	string ex_desc;
+	string ex_origin;
 	int type;
 	Tango::TimeVal ts;
 	string msg;

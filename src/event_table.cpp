@@ -377,10 +377,15 @@ void EventCallBack::push_event(Tango::EventData* ev)
 {
 	string temp_name;	
 	bei_t e;
-	
+	e.ex_reason = string("");
+	e.ex_desc = string("");
+	e.ex_origin = string("");
 	try {
+		//e.errors = ev->errors;
+		e.quality = Tango::ATTR_VALID;
+		//cout << "EVENT="<<ev->attr_name<<" quality="<<e.quality<<endl;
 		if (!ev->err) {
-			
+			e.quality = (int)ev->attr_value->get_quality();
 #if 0//TANGO_VER >= 711
  			string ev_name_str(ev->attr_name);
  			string::size_type pos = ev_name_str.find("tango://");

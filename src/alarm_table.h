@@ -102,6 +102,166 @@ class alarm_table;
 class log_thread;
 class cmd_thread;
 
+
+struct formula_res_t
+{
+	formula_res_t(){value=0;quality=Tango::ATTR_VALID;ex_reason=string("");ex_desc=string("");ex_origin=string("");}
+	double value;
+	int quality;
+	Tango::DevErrorList 	errors;	//TODO: error stack
+	string ex_reason;
+	string ex_desc;
+	string ex_origin;
+	int combine_quality(int quality1, int quality2)
+	{
+		int res;
+		if(quality1 == Tango::ATTR_INVALID ||  quality2 == Tango::ATTR_INVALID)
+			res = Tango::ATTR_INVALID;
+		else if(quality1 == Tango::ATTR_ALARM ||  quality2 == Tango::ATTR_ALARM)
+			res = Tango::ATTR_ALARM;
+		else if(quality1 == Tango::ATTR_WARNING ||  quality2 == Tango::ATTR_WARNING)
+			res = Tango::ATTR_WARNING;
+		else if(quality1 == Tango::ATTR_CHANGING ||  quality2 == Tango::ATTR_CHANGING)
+			res = Tango::ATTR_CHANGING;
+		else
+			res = (quality1 > quality2) ? quality1 : quality2;	//TODO: decide priority in enum AttrQuality { ATTR_VALID, ATTR_INVALID, ATTR_ALARM, ATTR_CHANGING, ATTR_WARNING /*, __max_AttrQuality=0xffffffff */ };
+		return res;
+	}
+	string combine_exception(string ex_1, string ex_2)
+	{
+		if(ex_1.length() > 0)
+			return ex_1;
+		else
+			return ex_2;
+	}
+	formula_res_t operator==(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value == e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator!=(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value != e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator<=(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value <= e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator>=(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value >= e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator<(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value < e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator>(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value > e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator||(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value || e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator&&(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value && e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator+(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value + e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator-(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value - e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator*(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value * e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	formula_res_t operator/(const formula_res_t& e)
+		{
+			formula_res_t res;
+			res.value = value / e.value;
+			res.quality = combine_quality(quality, e.quality);
+			res.ex_reason = combine_exception(ex_reason, e.ex_reason);
+			res.ex_desc = combine_exception(ex_desc, e.ex_desc);
+			res.ex_origin = combine_exception(ex_origin, e.ex_origin);
+			return res;
+		}
+	/*string operator<<(const formula_res_t& e)
+		{
+			stringstream res;
+			res << "value="<<e.value<<" quality="<<e.quality<<" EX reason="<<e.ex_reason<<" desc="<<e.ex_desc<<" origin="<<e.ex_origin;
+			return res.str();
+		}*/
+};
+
 /*
  * store the alarm-name/alarm-formula pair
  */
@@ -109,6 +269,12 @@ class alarm_t {
 	public:
 		string name,
 					 formula;
+		string attr_name;
+		Tango::DevBoolean *attr_value;
+		int quality;
+		string ex_reason;
+		string ex_desc;
+		string ex_origin;
 		Tango::TimeVal ts;
 		string stat,
 					 ack;
@@ -171,6 +337,7 @@ class alarm_table {
 	public:
 		alarm_table() {}
 		~alarm_table() {}
+		void set_dev(Tango::DeviceImpl* devImpl) {mydev=devImpl;}
 
 		//void init(vector<string>& avs);
 		//void init(vector<string>& avs, vector<string> &evn, map< string,vector<string> > &alarm_event);		
@@ -179,7 +346,7 @@ class alarm_table {
 		unsigned int size(void);
 		alarm_container_t& get(void);
 		void stored(vector<alarm_t>& a);
-		bool update(const string& alm_name, Tango::TimeVal ts, int res, string &attr_values, string grp, string msg, string formula);
+		bool update(const string& alm_name, Tango::TimeVal ts, formula_res_t res, string &attr_values, string grp, string msg, string formula);
 		bool timer_update();
 		void erase(alarm_container_t::iterator i);
 		bool exist(string& s);
@@ -203,7 +370,7 @@ class alarm_table {
 	
 	protected:
 	private:
-		
+		Tango::DeviceImpl* mydev;
 		log_thread *logloop;
 		cmd_thread *cmdloop;		
 };

@@ -302,7 +302,7 @@ void Alarm::init_device()
 	alarmedlock = new(ReadersWritersLock);
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
-
+	alarms.set_dev(this);
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::init_device_before
 	
@@ -1088,6 +1088,72 @@ void Alarm::read_alarm(Tango::Attribute &attr)
 
 //--------------------------------------------------------
 /**
+ *	Read attribute AlarmState related method
+ *	Description: 
+ *
+ *	Data type:	Tango::DevBoolean
+ *	Attr type:	Scalar
+ */
+//--------------------------------------------------------
+void Alarm::read_AlarmState(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_AlarmState(Tango::Attribute &attr) entering... " << endl;
+	Tango::DevBoolean	*att_value = get_AlarmState_data_ptr(attr.get_name());
+	/*----- PROTECTED REGION ID(Alarm::read_AlarmState) ENABLED START -----*/
+	string reason("");
+	string desc("");
+	string origin("");
+	int quality = Tango::ATTR_VALID;
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	alarm_container_t::iterator it;
+	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
+	{
+		if(it->second.attr_name == attr.get_name())
+		{
+
+			break;
+		}
+	}
+	if(it != alarms.v_alarm.end())
+	{
+		reason = it->second.ex_reason;
+		desc = it->second.ex_desc;
+		origin = it->second.ex_origin;
+		quality = it->second.quality;
+	}
+	DEBUG_STREAM << "Alarm::read_AlarmState: " << attr.get_name() << " desc=" << desc << endl;
+#ifndef _RW_LOCK
+	alarms.unlock();
+#else
+	alarms.vlock->readerOut();
+#endif
+	if(desc.length() > 0)
+	{
+		Tango::Except::throw_exception(
+				reason,
+				desc,
+				origin, Tango::ERR);
+	}
+	//	Set the attribute value
+	if(quality != Tango::ATTR_VALID)
+	{
+		timeval now;
+		gettimeofday(&now, NULL);
+		attr.set_value_date_quality(att_value, now/*TODO timestamp*/, (Tango::AttrQuality)quality);
+	}
+	else
+	{
+		attr.set_value(att_value);
+	}
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_AlarmState
+}
+//--------------------------------------------------------
+/**
  *	Method      : Alarm::add_dynamic_attributes()
  *	Description : Create the dynamic attributes if any
  *                for specified device.
@@ -1095,9 +1161,34 @@ void Alarm::read_alarm(Tango::Attribute &attr)
 //--------------------------------------------------------
 void Alarm::add_dynamic_attributes()
 {
+	//	Example to add dynamic attribute:
+	//	Copy inside the following protected area to create instance(s) at startup.
+	//	add_AlarmState_dynamic_attribute("MyAlarmStateAttribute");
+	
 	/*----- PROTECTED REGION ID(Alarm::add_dynamic_attributes) ENABLED START -----*/
 	
 	//	Add your own code to create and add dynamic attributes if any
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	if (alarms.v_alarm.empty() == false)
+	{
+		for (alarm_container_t::iterator i = alarms.v_alarm.begin(); \
+			i != alarms.v_alarm.end(); i++)
+		{
+			add_AlarmState_dynamic_attribute(i->second.attr_name);
+			Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+			i->second.attr_value = attr_value;
+		}
+	}
+#ifndef _RW_LOCK
+	alarms.unlock();
+#else
+	alarms.vlock->readerOut();
+#endif
+
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::add_dynamic_attributes
 }
@@ -1427,12 +1518,12 @@ void Alarm::load(Tango::DevString argin)
 	if(alm.to_be_evaluated)							//TODO: remove this evaluation of the formula that is not necessary
 	{
 		DEBUG_STREAM << "Alarm::load(): Evaluating formula=" << alm.formula << endl;
-		try {    	
-    		double res;
+		try {
+			struct formula_res_t res;
     		string attr_values;
     		res = eval_formula(alm.formula_tree, attr_values);
-          	DEBUG_STREAM << "Parsing succeeded of "<< alm.formula << "; result=" << res << endl;
-        	alarms.update(alm.name, gettime(), (int)res, attr_values, alm.grp2str(), alm.msg, alm.formula);		//pass "now" as timestamp in this case
+          	DEBUG_STREAM << "Parsing succeeded of "<< alm.formula << "; result=" << res.value << " quality=" << res.quality << endl;
+        	alarms.update(alm.name, gettime(), res, attr_values, alm.grp2str(), alm.msg, alm.formula);		//pass "now" as timestamp in this case
 
 		} catch(std::out_of_range& e)
 		{
@@ -1839,6 +1930,11 @@ void Alarm::modify(Tango::DevString argin)
 	alarm_t alm;
 	alarm_parse al_gr(alm);    //  Construct Spirit grammar
 	alm.name.clear();
+	alm.attr_name.clear();
+	alm.quality = Tango::ATTR_VALID;
+	alm.ex_reason.clear();
+	alm.ex_desc.clear();
+	alm.ex_origin.clear();
 	alm.formula.clear();
 	alm.msg.clear();
 	alm.lev.clear();
@@ -2130,6 +2226,11 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	DEBUG_STREAM << "Alarm::load_alarm(): Creating Spirit Parser..." << endl;
 	alarm_parse al_gr(alm);    //  Construct Spirit grammar		
 	alm.name.clear();
+	alm.attr_name.clear();
+	alm.quality = Tango::ATTR_VALID;
+	alm.ex_reason.clear();
+	alm.ex_desc.clear();
+	alm.ex_origin.clear();
 	alm.formula.clear();
 	alm.msg.clear();
 	alm.lev.clear();
@@ -2160,6 +2261,19 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	if (alm.formula_tree.full)
 	{
     	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
+    	//replace / with __
+    	if(!alm.name.empty())
+    	{
+    		alm.attr_name = alm.name;
+			size_t start_pos = 0;
+			string from("/");
+			string to("__");
+			while((start_pos = alm.attr_name.find(from, start_pos)) != std::string::npos)
+			{
+				alm.attr_name.replace(start_pos, from.length(), to);
+				start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+			}
+    	}
     	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written uppercase
     	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
     	
@@ -2219,6 +2333,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
     }	
 	alm.ts = gettime();
 	DEBUG_STREAM << "Alarm::load_alarm(): name     = '" << alm.name << "'" << endl;
+	DEBUG_STREAM << "               attr_name     = '" << alm.attr_name << "'" << endl;
 	DEBUG_STREAM << "               formula        = '" << alm.formula << "'" << endl;
 	DEBUG_STREAM << "               time_threshold = '" << alm.time_threshold << "'" << endl;	
 	DEBUG_STREAM << "               msg            = '" << alm.msg << "'" << endl;
@@ -2247,7 +2362,9 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 				(const char*)"", \
 				(const char*)"Alarm::load_alarm()", Tango::ERR);
 	}
-
+	add_AlarmState_dynamic_attribute(alm.attr_name);
+	Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(alm.attr_name);
+	alm.attr_value = attr_value;
 	if (alarms.exist(alm.name)) {
 		ostringstream o;
 		o << "Alarm::load_alarm(): alarm '" << alm.name << "' already exist" << ends;
@@ -2500,8 +2617,10 @@ void Alarm::subscribe_event(alarm_t& a, EventCallBack& ecb, vector<string> &evn)
 void Alarm::do_alarm(bei_t& e)
 {
 	bool changed=true;
+	int num_changed=0;
 	//if (e.name == INTERNAL_ERROR) {
-	if(e.type == TYPE_TANGO_ERR) {	
+	if(e.type == TYPE_TANGO_ERR || e.type == TYPE_GENERIC_ERR)
+	{
 		ostringstream o;
 		o << e.msg << endl;
 		WARN_STREAM << "Alarm::do_alarm(): " <<  o.str() << endl;
@@ -2550,20 +2669,61 @@ void Alarm::do_alarm(bei_t& e)
 		{
 			found_ev->err_counter++;
 			if(found_ev->err_counter >= errThreshold)
-				set_internal_alarm(e.ev_name, gettime(), o.str(), errThreshold);			
+			{
+				set_internal_alarm(e.ev_name, gettime(), o.str(), errThreshold);
+			}
+			if(e.type == TYPE_TANGO_ERR)
+				found_ev->ex_reason = string("Event_ERROR");
+			else
+				found_ev->ex_reason = string("Alarm_ERROR");
+			found_ev->ex_desc = o.str();
+			found_ev->ex_origin = e.ev_name;
+			//LOOP ALARMS IN WHICH THIS EVENT IS USED
+			vector<string>::iterator j = found_ev->m_alarm.begin();
+			while (j != found_ev->m_alarm.end())
+			{
+#ifndef _RW_LOCK
+				alarms.lock();
+#else
+				alarms.vlock->readerIn();
+#endif
+				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
+				if(it != alarms.v_alarm.end())
+				{
+					try
+					{
+						if(e.type == TYPE_TANGO_ERR)
+							it->second.ex_reason = found_ev->ex_reason;
+						else
+							it->second.ex_reason = found_ev->ex_reason;
+						it->second.ex_desc = found_ev->ex_desc;
+						it->second.ex_origin = found_ev->ex_origin;
+						Tango::DevErrorList errors(1);
+						errors.length(1);
+						errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+						errors[0].severity = Tango::ERR;
+						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+						Tango::DevFailed except(errors);
+						DEBUG_STREAM << "PUSHING EXCEPTION FOR " << it->second.attr_name << " " << it->second.ex_desc << "-" << it->second.ex_reason << "-" << it->second.ex_origin << endl;
+						push_change_event(it->second.attr_name, &except);
+						push_archive_event(it->second.attr_name, &except);
+					}catch(Tango::DevFailed &ex)
+					{}
+				}
+#ifndef _RW_LOCK
+          		alarms.unlock();
+#else
+          		alarms.vlock->readerOut();
+#endif
+          		j++;
+			}
 		}
-		return;
-	}
-	else if(e.type == TYPE_GENERIC_ERR) {	
-		ostringstream o;
-		o << e.msg << endl;
-		WARN_STREAM << "Alarm::do_alarm(): " <<  o.str() << endl;
-		set_internal_alarm(e.ev_name, gettime(), o.str());
 		return;
 	}	
 	DEBUG_STREAM << "Alarm::do_alarm(): arrived event=" << e.ev_name << endl;
 	
-	double res;
+	formula_res_t res;
 	vector<event>::iterator found = \
 			find(events->v_event.begin(), events->v_event.end(), e.ev_name);
 	if (found == events->v_event.end())
@@ -2608,6 +2768,11 @@ void Alarm::do_alarm(bei_t& e)
 	if (found != events->v_event.end())
 	{	
 		found->value = e.value;
+		found->quality = e.quality;
+		//found->errors = e.errors;
+		found->ex_reason = e.ex_reason;
+		found->ex_desc = e.ex_desc;
+		found->ex_origin = e.ex_origin;
 		found->valid = true;
 		found->ts = e.ts;
 		found->type = e.type;
@@ -2628,14 +2793,43 @@ void Alarm::do_alarm(bei_t& e)
 				try {   	
     				string attr_values;
     				res = eval_formula(it->second.formula_tree, attr_values);
-          			DEBUG_STREAM << "Alarm::do_alarm(): Evaluation of " << it->second.formula << "; result=" << res << endl;
+          			DEBUG_STREAM << "Alarm::do_alarm(): Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
 #ifndef _RW_LOCK
           			alarms.unlock();
 #else
           			alarms.vlock->readerOut();
 #endif
-          			changed = alarms.update(tmpname, found->ts, (int)res, attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
-				} catch(std::out_of_range& e)
+          			changed = alarms.update(tmpname, found->ts, res, attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
+          			if(changed)
+          				num_changed++;
+          			Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
+          			*attr_value = (it->second.stat == S_ALARM);
+    				try
+    				{	//DevFailed for push events
+    					if(it->second.ex_reason.length() == 0)
+    					{
+    						timeval now;
+    						gettimeofday(&now, NULL);
+    						push_change_event(it->second.attr_name,(Tango::DevBoolean *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
+    						push_archive_event(it->second.attr_name,(Tango::DevBoolean *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
+    					}
+    					else
+    					{
+    						Tango::DevErrorList errors(1);
+    						errors.length(1);
+    						errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+    						errors[0].severity = Tango::ERR;
+    						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+    						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+    						Tango::DevFailed except(errors);
+        					push_change_event(it->second.attr_name, &except);
+        					push_archive_event(it->second.attr_name, &except);
+    					}
+    				} catch(Tango::DevFailed & ex)
+    				{
+    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    				}
+				} catch(std::out_of_range& ex)
 				{
 #ifndef _RW_LOCK
           			alarms.unlock();
@@ -2645,8 +2839,26 @@ void Alarm::do_alarm(bei_t& e)
 					ostringstream o;
 					o << tmpname << ": in formula array index out of range!" << ends;
 					WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
-					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());				
-				} catch(string & e)
+					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
+    				try
+    				{	//DevFailed for push events
+						Tango::DevErrorList errors(1);
+						errors.length(1);
+						it->second.ex_reason = string("OUT_OF_RANGE");
+						it->second.ex_desc = e.ev_name + ": " + o.str();
+						it->second.ex_origin = e.ev_name;
+						errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+						errors[0].severity = Tango::ERR;
+						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+						Tango::DevFailed except(errors);
+    					push_change_event(it->second.attr_name, &except);
+    					push_archive_event(it->second.attr_name, &except);
+    				} catch(Tango::DevFailed & ex)
+    				{
+    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    				}
+				} catch(string & ex)
 				{
 #ifndef _RW_LOCK
           			alarms.unlock();
@@ -2654,9 +2866,27 @@ void Alarm::do_alarm(bei_t& e)
           			alarms.vlock->readerOut();
 #endif
 					ostringstream o;
-					o << tmpname << ": in formula err=" << e << ends;
+					o << tmpname << ": in formula err=" << ex << ends;
 					WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
-					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());				
+					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
+    				try
+    				{	//DevFailed for push events
+						Tango::DevErrorList errors(1);
+						errors.length(1);
+						it->second.ex_reason = string("FORMULA_ERROR");
+						it->second.ex_desc = e.ev_name + ": " + o.str();
+						it->second.ex_origin = e.ev_name;
+						errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+						errors[0].severity = Tango::ERR;
+						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+						Tango::DevFailed except(errors);
+    					push_change_event(it->second.attr_name, &except);
+    					push_archive_event(it->second.attr_name, &except);
+    				} catch(Tango::DevFailed & ex)
+    				{
+    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    				}
 				}
 			}
 			else
@@ -2670,14 +2900,31 @@ void Alarm::do_alarm(bei_t& e)
 				//o << j->first << ": not found formula in alarm table" << ends;
 				o << (*j) << ": not found formula in alarm table" << ends;
 				WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
-				set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());				
+				set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
+				try
+				{	//DevFailed for push events
+					Tango::DevErrorList errors(1);
+					errors.length(1);
+					it->second.ex_reason = string("NOT_FOUND");
+					it->second.ex_desc = e.ev_name + ": " + o.str();
+					it->second.ex_origin = e.ev_name;
+					errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+					errors[0].severity = Tango::ERR;
+					errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+					errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+					Tango::DevFailed except(errors);
+					push_change_event(it->second.attr_name, &except);
+					push_archive_event(it->second.attr_name, &except);
+				} catch(Tango::DevFailed & ex)
+				{
+					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+				}
 			}
 			j++;
 		}
 
-		//TODO: push_change_event HERE!
 		prepare_alarm_attr();
-		if(!changed)
+		if(num_changed==0)
 			return;
 		if(ds_num == 0)
 		{
@@ -2704,7 +2951,19 @@ void Alarm::timer_update()
 		ostringstream o;
 		o << "Error checking time thresholds and updating alarm status=" << e << ends;
 		WARN_STREAM << "Alarm::timer_update(): " << o.str() << endl;
-		set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());				
+		set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
+/*		Tango::DevErrorList errors(1);
+		errors.length(1);
+		it->second.ex_reason = string("INTERNAL_ERROR");
+		it->second.ex_desc = o.str();
+		it->second.ex_origin = string("Alarm::timer_update");
+		errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+		errors[0].severity = Tango::ERR;
+		errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
+		errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+		Tango::DevFailed except(errors);
+		push_change_event(it->second.attr_name, &except);
+		push_archive_event(it->second.attr_name, &except);*/
 	}
 
 	prepare_alarm_attr();
@@ -2805,13 +3064,14 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 		i->second.dp_n = NULL;		
 		/*
 		 * remove this alarm from alarm table
-		 */			
+		 */
+		remove_AlarmState_dynamic_attribute(i->second.attr_name);
+		alarms.erase(i);
 #ifndef _RW_LOCK
 		alarms.unlock();
 #else
 		alarms.vlock->writerOut();
 #endif
-		alarms.erase(i);
 		return true;
 	}
 #ifndef _RW_LOCK
@@ -2949,12 +3209,12 @@ void Alarm::set_internal_alarm(string name, Tango::TimeVal t, string msg, unsign
 //==============================================================
 //------------------- AST evaluation methods -------------------
 //==============================================================
-double Alarm::eval_formula(tree_parse_info_t tree, string &attr_values)
+formula_res_t Alarm::eval_formula(tree_parse_info_t tree, string &attr_values)
 {
     return eval_expression(tree.trees.begin(), attr_values);
 }
 
-double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) //throw (string &), std::out_of_range
+formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) //throw (string &), std::out_of_range
 {
 
     ostringstream err;
@@ -2969,8 +3229,10 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         	throw err.str(); 
         }
         string val_d(i->value.begin(), i->value.end());
-		DEBUG_STREAM << "		node value real = " << val_d << endl;
-        return strtod(val_d.c_str(), 0);
+		formula_res_t res;
+		res.value = strtod(val_d.c_str(), 0);
+		DEBUG_STREAM << "		node value real = " << val_d << "(value="<<res.value<<" quality="<<res.quality<<")" << endl;
+        return res;
     }
     else if (i->value.id() == formula_grammar::val_hID)
     {
@@ -2981,7 +3243,9 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         }        		
         string val_d(i->value.begin(), i->value.end());
 		DEBUG_STREAM << "		node value hex = " << val_d << endl;
-        return strtod(val_d.c_str(), 0);
+		formula_res_t res;
+		res.value = strtod(val_d.c_str(), 0);
+        return res;
     } 
     else if (i->value.id() == formula_grammar::val_stID)
     {
@@ -3025,7 +3289,9 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         double st =  i->value.value();			//get value directly from node saved with access_node_d
 #endif //_ACCESS_NODE_D    	        	        	      	        	        	        	        	        	        	        	        	
 		DEBUG_STREAM << "		node value state : " << val_st << "=" << st << endl;
-        return st;
+		formula_res_t res;
+		res.value = st;
+        return res;
     }       
     else if (i->value.id() == formula_grammar::unary_exprID)
     {
@@ -3035,12 +3301,15 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         	err <<  "in node unary_exprID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
         	throw err.str(); 
         }
+		formula_res_t res;
+		res = eval_expression(i->children.begin(), attr_values);
         if (*i->value.begin() == '+')
-        	return + eval_expression(i->children.begin(), attr_values);
+        	res.value = + res.value;
         if (*i->value.begin() == '-')
-        	return - eval_expression(i->children.begin(), attr_values);
+        	res.value = - res.value;
         if (*i->value.begin() == '!')
-        	return ! eval_expression(i->children.begin(), attr_values);        	        	
+        	res.value = ! res.value;
+        return res;
     }
     else if (i->value.id() == formula_grammar::mult_exprID)
     {
@@ -3093,20 +3362,20 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
     else if (i->value.id() == formula_grammar::event_ID)
     {
 		DEBUG_STREAM << "		node event" << string(i->value.begin(), i->value.end()) << endl;
-		int ind;
+		formula_res_t ind;
 		if(i->children.size() != 2)		
 		{
         	err <<  "in node event_ID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;;
         	throw err.str(); 
-        }		
+        }
 		if((i->children.begin()+1)->value.id() == formula_grammar::indexID)
-			ind = (int)eval_expression(i->children.begin()+1, attr_values);		//array index
+			ind = eval_expression(i->children.begin()+1, attr_values);		//array index
 		else
 		{
         	err <<  "in node event_ID(" << string(i->value.begin(), i->value.end()) << ") children2 is not an index ->" << string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) << ends;;
         	throw err.str(); 
-        }	
-		return eval_expression(i->children.begin(), attr_values ,ind);
+        }
+		return eval_expression(i->children.begin(), attr_values, (int)ind.value);
     }    
     else if (i->value.id() == formula_grammar::nameID)
     {
@@ -3135,8 +3404,14 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
 			ostringstream temp_attr_val;
 			temp_attr_val << it->name << "[" << ev_ind << "]=" <<it->value.at(ev_ind) << ";";
 			attr_values += temp_attr_val.str();
-			DEBUG_STREAM << "		node name -> " << temp_attr_val.str() << endl;
-			return it->value.at(ev_ind);		//throw  std::out_of_range		
+			formula_res_t res;
+			res.quality = it->quality;
+			res.ex_reason = it->ex_reason;
+			res.ex_desc = it->ex_desc;
+			res.ex_origin = it->ex_origin;
+			DEBUG_STREAM << "		node name -> " << temp_attr_val.str() << " quality=" << res.quality << endl;
+			res.value = it->value.at(ev_ind);		//throw  std::out_of_range
+			return 	res;
 		}
 		else
 		{
@@ -3153,7 +3428,9 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         }			
         string val_d(i->value.begin(), i->value.end());
      	DEBUG_STREAM << "		node index = " << val_d << endl;
-        return strtod(val_d.c_str(), 0);
+     	formula_res_t res;
+     	res.value = strtod(val_d.c_str(), 0);
+        return res;
     }   
     else if (i->value.id() == formula_grammar::logical_exprID)
     {
@@ -3187,28 +3464,46 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         	err <<  "in node bitwise_exprID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
         	throw err.str(); 
         }	 		
-        double val_d1=eval_expression(i->children.begin(), attr_values),
-           	val_d2=eval_expression(i->children.begin()+1, attr_values);
+		formula_res_t res_1=eval_expression(i->children.begin(), attr_values),
+           	res_2=eval_expression(i->children.begin()+1, attr_values);
         long val_l1,val_l2;
             
     	string err2("ERROR: non-int value in bitwise operation!");
-    	val_l1 = (long)trunc(val_d1);		//transform to long
-    	val_l2 = (long)trunc(val_d2);		//transform to long
+    	val_l1 = (long)trunc(res_1.value);		//transform to long
+    	val_l2 = (long)trunc(res_2.value);		//transform to long
 
-	    if((val_l1 != val_d1) || (val_l2 != val_d2))	//if different, lost something with truncf
+	    if((val_l1 != res_1.value) || (val_l2 != res_2.value))	//if different, lost something with truncf
     		throw err2;
     		  
         if (*i->value.begin() == '&')
-        {          
-            return (double)(val_l1 & val_l2);
+        {
+        	formula_res_t res;
+        	res.value = (double)(val_l1 & val_l2);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
         }
         else if (*i->value.begin() == '|')
         {      
-            return (double)(val_l1 | val_l2);
+        	formula_res_t res;
+        	res.value = (double)(val_l1 | val_l2);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
         }  
         else if (*i->value.begin() == '^')
-        {         
-            return (double)(val_l1 ^ val_l2);
+        {
+        	formula_res_t res;
+        	res.value = (double)(val_l1 ^ val_l2);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
         }  
         else
         {
@@ -3224,24 +3519,36 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         	err <<  "in node shift_exprID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
         	throw err.str(); 
         }			
-        double val_d1=eval_expression(i->children.begin(), attr_values),
-           	val_d2=eval_expression(i->children.begin()+1, attr_values);
+		formula_res_t res_1=eval_expression(i->children.begin(), attr_values),
+           	res_2=eval_expression(i->children.begin()+1, attr_values);
         long val_l1,val_l2;
             
     	string err2("ERROR: non-int value in bitwise operation!");
-    	val_l1 = (long)trunc(val_d1);		//transform to long
-    	val_l2 = (long)trunc(val_d2);		//transform to long
+    	val_l1 = (long)trunc(res_1.value);		//transform to long
+    	val_l2 = (long)trunc(res_2.value);		//transform to long
 
-	    if((val_l1 != val_d1) || (val_l2 != val_d2))	//if different, lost something with truncf
+	    if((val_l1 != res_1.value) || (val_l2 != res_2.value))	//if different, lost something with truncf
     		throw err2;
     		  
         if (string(i->value.begin(), i->value.end()) == string("<<"))
-        {          
-            return (double)(val_l1 << val_l2);
+        {
+        	formula_res_t res;
+        	res.value = (double)(val_l1 << val_l2);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
         }
         else if (string(i->value.begin(), i->value.end()) == string(">>"))
-        {      
-            return (double)(val_l1 >> val_l2);
+        {
+        	formula_res_t res;
+        	res.value = (double)(val_l1 >> val_l2);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
         }  
         else
         {
@@ -3314,8 +3621,11 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
 		{
         	err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
         	throw err.str(); 
-        }	
-		return fabs(eval_expression(i->children.begin(), attr_values));			//now handled only abs as function
+        }
+		formula_res_t res;
+		res = eval_expression(i->children.begin(), attr_values);
+		res.value = fabs(res.value);
+		return res;			//now handled only abs as function
     }  
     else
     {
@@ -3325,7 +3635,9 @@ double Alarm::eval_expression(iter_t const& i, string &attr_values, int ev_ind) 
         	throw err.str(); 
         }	
     }
-    return 0;
+    formula_res_t res;
+    res.value = 0;
+    return res;
 }
 
 void Alarm::find_event_formula(tree_parse_info_t tree, vector<string> & ev)
