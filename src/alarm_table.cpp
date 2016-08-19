@@ -372,31 +372,31 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		found->second.ex_origin = res.ex_origin;
 		bool status_time_threshold;
 		if(found->second.time_threshold > 0)		//if enabled time threshold
-			status_time_threshold = ((int)res.value) && (found->second.counter >= 1) && ((ts.tv_sec - found->second.time_threshold) > found->second.ts_time_threshold.tv_sec);	//formula gives true and time threshold is passed
+			status_time_threshold = ((int)(res.value)) && (found->second.counter >= 1) && ((ts.tv_sec - found->second.time_threshold) > found->second.ts_time_threshold.tv_sec);	//formula gives true and time threshold is passed
 		else
-			status_time_threshold = (int)res.value;
+			status_time_threshold = (int)(res.value);
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also time threshold
 		//or
 		// - from S_ALARM to S_NORMAL		
-		if((status_time_threshold && (found->second.stat == S_NORMAL)) || (!(int)res.value && (found->second.stat == S_ALARM)))
+		if((status_time_threshold && (found->second.stat == S_NORMAL)) || (!(int)(res.value) && (found->second.stat == S_ALARM)))
 		{
 			ret_changed=true;
 			a.type_log = TYPE_LOG_STATUS;
 			a.name = alm_name;
 			a.time_s = ts.tv_sec;		
 			a.time_us = ts.tv_usec;
-			a.status = (int)res.value ? S_ALARM : S_NORMAL;
+			a.status = (int)(res.value) ? S_ALARM : S_NORMAL;
 			//a.level = found->second.lev;
-			if((int)res.value)
+			if((int)(res.value))
 				found->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
 			a.ack = found->second.ack;
 			a.values = attr_values;
 			//a.grp = found->second.grp2str();
-			//a.msg = (int)res.value ? found->second.msg : "";
+			//a.msg = (int)(res.value) ? found->second.msg : "";
 			logloop->log_alarm_db(a);
 			found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
-			if((int)res.value)
+			if((int)(res.value))
 			{
 				found->second.is_new = 1;		//here set this alarm as new, read attribute set it to 0	//12-06-08: StopNew command set it to 0
 				if(found->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))		//action from S_NORMAL to S_ALARM
@@ -494,7 +494,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			found->second.stat = S_ALARM;
 			//found->second.ack = NOT_ACK;
 		}
-		if((int)res.value) {
+		if((int)(res.value)) {
 			found->second.counter++;
 		} else {
 			found->second.stat = S_NORMAL;
