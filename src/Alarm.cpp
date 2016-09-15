@@ -180,13 +180,11 @@ void Alarm::delete_device()
 	abortflag = true;
 	DEBUG_STREAM << "Alarm::delete_device(): after abortflag=true..." << endl;
 	try {
-		events->unsubscribe();
+		events->unsubscribe_events();
 	} catch (string& err) {
 		ERROR_STREAM << err << endl;
 	}
 	DEBUG_STREAM << "Alarm::delete_device(): events unsubscribed!" << endl;
-	events->free_proxy();
-	DEBUG_STREAM << "Alarm::delete_device(): device proxy deleted!" << endl;
 	/*
 	 * kill alarm thread
 	 */
@@ -290,6 +288,7 @@ void Alarm::init_device()
 	abortflag = false;	
 	instanceCounter++;
 	events = new event_table(this);
+	thread = new SubscribeThread(this);
 	//because of static map<string, unsigned int> grp_str and of exception while subscribing
 	//more than one time the same event in the same executable, control the number of instances
 	if(instanceCounter > 1)		
@@ -313,6 +312,7 @@ void Alarm::init_device()
 	/*----- PROTECTED REGION ID(Alarm::init_device) ENABLED START -----*/
 	
 	//	Initialize device
+	thread->period = subscribeRetryPeriod;
 	
 #ifdef _USE_ELETTRA_DB_RW
 	host_rw = "";
@@ -598,17 +598,39 @@ void Alarm::init_device()
 		
 	alarms.startup_complete = gettime();			//enable actions execution in 10 seconds
 	
-	ecb.init(&evlist);
+	//TODO:ecb.init(&evlist);
 	for(map<string, vector<string> >::iterator al_ev_it=alarm_event.begin(); \
 		al_ev_it!=alarm_event.end(); al_ev_it++)
 	{
 		alarm_container_t::iterator i = alarms.v_alarm.find(al_ev_it->first);
 		if(i != alarms.v_alarm.end())
 		{		
-#if TANGO_VER < 611
+#if 1
 			try {
-				add_event(i->second, al_ev_it->second);
-				subscribe_event(i->second, ecb, al_ev_it->second);
+				//add_event(i->second, al_ev_it->second);
+				//TODO:subscribe_event(i->second, ecb, al_ev_it->second);
+				for (vector<string>::iterator j = al_ev_it->second.begin(); j != al_ev_it->second.end(); j++)
+				{
+					vector<event>::iterator k = \
+							find(events->v_event.begin(), events->v_event.end(), *j);
+					if (k == events->v_event.end())	//if not already present
+					{
+						string name=*j;
+						vector<string> context;//TODO
+						events->add(name, context);
+					}
+				}
+				add_event(i->second, al_ev_it->second);//moved after events->add
+				for (vector<string>::iterator j = al_ev_it->second.begin(); j != al_ev_it->second.end(); j++)
+				{
+					vector<event>::iterator k = \
+							find(events->v_event.begin(), events->v_event.end(), *j);
+					if (k == events->v_event.end())	//if not already present
+					{
+						string name=*j;
+						events->start(name);
+					}
+				}
 			} catch (string& err) {
 				WARN_STREAM << "Alarm::init_device(): " << err << endl;				
 				for(vector<string>::iterator j=al_ev_it->second.begin(); j!=al_ev_it->second.end(); j++)
@@ -646,6 +668,19 @@ void Alarm::init_device()
 		}
 	}
 	
+#if 0
+	//now subscribe all events
+	for (vector<string>::iterator j = evn.begin(); j != evn.end(); j++)
+	{
+		vector<event>::iterator k = \
+				find(events->v_event.begin(), events->v_event.end(), *j);
+		if (k != events->v_event.end())
+		{
+
+		}
+	}
+#endif
+
 
 	/*
 	 * update event table with fresh-subscribed event[s] data
@@ -676,6 +711,10 @@ void Alarm::init_device()
 	
 	updateloop = new update_thread(this);
 	updateloop->start();
+
+	thread->start();
+
+	events->start_all();
 	
   	set_state(Tango::RUNNING);
 	set_status("Alarm server is running");	
@@ -717,6 +756,7 @@ void Alarm::get_device_property()
 	dev_prop.push_back(Tango::DbDatum("DbName"));
 	dev_prop.push_back(Tango::DbDatum("DbPort"));
 	dev_prop.push_back(Tango::DbDatum("InstanceName"));
+	dev_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -829,6 +869,17 @@ void Alarm::get_device_property()
 		}
 		//	And try to extract InstanceName value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  instanceName;
+
+		//	Try to initialize SubscribeRetryPeriod from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  subscribeRetryPeriod;
+		else {
+			//	Try to initialize SubscribeRetryPeriod from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  subscribeRetryPeriod;
+		}
+		//	And try to extract SubscribeRetryPeriod value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  subscribeRetryPeriod;
 
 	}
 
@@ -1377,6 +1428,7 @@ void Alarm::load(Tango::DevString argin)
 				(const char*)err.c_str(), \
 				(const char*)"Alarm::load()", Tango::ERR);
 	}
+#if 0
 	try {
 		add_event(alm, evn);
 	} catch (string& err) {
@@ -1399,11 +1451,83 @@ void Alarm::load(Tango::DevString argin)
 				(const char*)err.c_str(), \
 				(const char*)"Alarm::load()", Tango::ERR);
 	}
+#endif
 	string cmd_name_full = alm.cmd_name_a + string(";") + alm.cmd_name_n;
 	alarms.log_alarm_db(TYPE_LOG_DESC_ADD, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
 			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
+
+
+
+
+	alarm_container_t::iterator i = alarms.v_alarm.find(alm.name);
+	if(i != alarms.v_alarm.end())
+	{
+		try {
+			//add_event(i->second, al_ev_it->second);
+
+			for(vector<string>::iterator j = evn.begin(); j != evn.end(); j++)
+			{
+				vector<event>::iterator k = \
+						find(events->v_event.begin(), events->v_event.end(), *j);
+				if (k == events->v_event.end())	//if not already present
+				{
+					string name=*j;
+					vector<string> context;//TODO
+					events->add(name, context, UPDATE_PROP, false);//throws exception if already present
+				}
+			}
+			add_event(i->second, evn);//moved after events->add
+			for(vector<string>::iterator j = evn.begin(); j != evn.end(); j++)
+			{
+				vector<event>::iterator k = \
+						find(events->v_event.begin(), events->v_event.end(), *j);
+				if (k != events->v_event.end())	//if already present
+				{
+					string name=*j;
+					events->start(name);//throws exception if not found
+				}
+			}
+		} catch (string& err) {
+			WARN_STREAM << "Alarm::"<<__func__<<": string exception=" << err << endl;
+			//TODO: handle error
+#if 0
+			for(vector<string>::iterator j = evn.begin(); j != evn.end(); j++)
+			{
+				DEBUG_STREAM << "Alarm::"<<__func__<<": Removing alarm=" << i->second.name << " from event=" << *j << endl;
+				vector<event>::iterator k = \
+					find(events->v_event.begin(), events->v_event.end(), *j);
+				if (k != events->v_event.end())
+				{
+					k->pop_alarm(i->second.name);		//remove alarm/formula just added to event
+					DEBUG_STREAM << "Alarm::"<<__func__<<": Removed!!!! alarm=" << i->second.name << " from event=" << *j << endl;
+					if(k->m_alarm.empty())
+					{
+						events->v_event.erase(k);	//remove event just added to event_table
+						DEBUG_STREAM << "Alarm::"<<__func__<<": event=" << *j << " no more used, REMOVED!!!" << endl;
+					}
+				}
+			}
+			set_internal_alarm(INTERNAL_ERROR, gettime(), err);
+#endif
+		}
+		catch (Tango::DevFailed &e) {
+			WARN_STREAM << "Alarm::"<<__func__<<": Tango exception=" << e.errors[0].desc << endl;
+		}
+	}
+
+
+
+
+
+
+
+
+#if 0//TODO
+
 	try {
-		subscribe_event(alm, ecb, evn);
+		//TODO:subscribe_event(alm, ecb, evn);
+		vector<string> contexts;//TODO
+		events->add(alm.name, contexts, UPDATE_PROP, false);
 	} catch (string& err) {
 		WARN_STREAM << "Alarm::load(): " << err << endl;
 #ifndef _RW_LOCK
@@ -1427,6 +1551,8 @@ void Alarm::load(Tango::DevString argin)
 				(const char*)"Alarm::load()", Tango::ERR);
 	}
 	
+#endif
+
 	if(alm.cmd_name_a.length() > 0)
 	{
 #ifndef _RW_LOCK
@@ -1921,7 +2047,7 @@ void Alarm::modify(Tango::DevString argin)
 {
 	DEBUG_STREAM << "Alarm::Modify()  - " << device_name << endl;
 	/*----- PROTECTED REGION ID(Alarm::modify) ENABLED START -----*/
-	
+	DEBUG_STREAM << "Alarm::Modify: " << argin << endl;
 	//	Add your own code
 	//------------------------------
 	//1: parse to get alarm name
@@ -2012,7 +2138,7 @@ void Alarm::modify(Tango::DevString argin)
 				(const char*)__func__, Tango::ERR);
     }
 
-
+	DEBUG_STREAM << "Alarm::Modify: parsing ended: alm name=" << alm.name << endl;
 	//------------------------------
 	//2: if alarm already exist and
 	//   formula is not changed
@@ -2172,6 +2298,7 @@ void Alarm::modify(Tango::DevString argin)
 	//3: remove (set active=0 on db)
 	//------------------------------
 	remove((Tango::DevString)alm.name.c_str());
+	DEBUG_STREAM << "Alarm::Modify: removed alm name=" << alm.name << endl;
 	//------------------------------
 	//4: load modified alarm
 	//------------------------------
@@ -2329,7 +2456,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
        	Tango::Except::throw_exception( \
 				(const char*)"Parsing Failed!", \
 				(const char*)o.str().c_str(), \
-				(const char*)"Alarm::load()", Tango::ERR);
+				(const char*)"Alarm::load_alarm()", Tango::ERR);
     }	
 	alm.ts = gettime();
 	DEBUG_STREAM << "Alarm::load_alarm(): name     = '" << alm.name << "'" << endl;
@@ -2375,6 +2502,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 				(const char*)"Alarm::load_alarm()", Tango::ERR);
 	}
 }
+#if 0
 void Alarm::init_alarms(map< string,vector<string> > &alarm_events)
 {
 #ifndef _RW_LOCK
@@ -2415,6 +2543,7 @@ void Alarm::init_alarms(map< string,vector<string> > &alarm_events)
 	alarms.vlock->readerOut();
 #endif
 }
+#endif
 void Alarm::init_events(vector<string> &evn)
 {
 	if (evn.empty() == false) {		
@@ -2426,7 +2555,7 @@ void Alarm::init_events(vector<string> &evn)
 		}
 		vector<string>::iterator j = evn.begin();
 		while (j != evn.end()) {
-			events->push_back(event(*j));
+			//TODOevents->push_back(event(*j));
 			j++;
 		}
 	}  /* if */
@@ -2481,8 +2610,8 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			/*
 			 * new event; add to event table
 			 */
-			event e(*j);
-			events->push_back(e);
+			//event e(*j);
+			//events->push_back(e);
 			/*
 			 * update per-alarm event list
 			 */
@@ -2509,29 +2638,13 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			alarms.vlock->readerOut();
 #endif
 			/*
-			 * now, for the just-added event, subscribe
+			 * now, for the just-added event
 			 */
 			k = find(events->v_event.begin(), events->v_event.end(), *j);
 			if (k != events->v_event.end())
 			{
 				k->push_alarm(a.name);
-				try {
-					k->dp = new Tango::DeviceProxy(k->device);
-				} catch(Tango::DevFailed& e)
-				{
-					TangoSys_MemStream out_stream;
-					out_stream << "Failed to connect device proxy=" << k->device << ends;
-					k->pop_alarm(a.name);		//remove alarm/formula just added to event
-					//events->v_event.pop_back();
-					events->v_event.erase(k);	//remove event just added to event_table
-					throw out_stream.str();
-					/*Tango::Except::re_throw_exception(e,
-						(const char *) "Error writing serial",
-						out_stream.str(),
-						(const char *) "Alarm::add_event()", Tango::ERR);*/
-				}
-				DEBUG_STREAM << "Alarm::add_event(): connected to DeviceProxy: " \
-											 << k->device << endl;
+#if 0
 				//now initialize value of this attribute
 				try {
 					Tango::DeviceAttribute attr_value;
@@ -2567,10 +2680,12 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 					//delete attr_value;					
 					throw out_stream.str();
 				}
+#endif
 			}
 		}
 	} //for (vector<string>::iterator j = evn.begin(); ...
 }
+#if 0
 void Alarm::subscribe_event(alarm_t& a, EventCallBack& ecb, vector<string> &evn) throw(string&)
 {	
 	//now subscribe all events
@@ -2610,6 +2725,7 @@ void Alarm::subscribe_event(alarm_t& a, EventCallBack& ecb, vector<string> &evn)
 		}  // if (k != events->v_event.end())/
 	}  // for 				
 }
+#endif
 /*
  * because called asynchronously by alarm evaluating thread
  * will use an alarm to report errors
@@ -2623,7 +2739,7 @@ void Alarm::do_alarm(bei_t& e)
 	{
 		ostringstream o;
 		o << e.msg << endl;
-		WARN_STREAM << "Alarm::do_alarm(): " <<  o.str() << endl;
+		WARN_STREAM << "Alarm::"<<__func__<<": " <<  o.str() << endl;
 		vector<event>::iterator found_ev = \
 			find(events->v_event.begin(), events->v_event.end(), e.ev_name);
 		if (found_ev == events->v_event.end())
@@ -2640,14 +2756,14 @@ void Alarm::do_alarm(bei_t& e)
 				if(pos_dot < pos_slash && pos_dot != string::npos && pos_colon != string::npos && pos_slash != string::npos)	//dot is in the TANGO_HOST part
 				{
 					string ev_name_str_no_domain = ev_name_str.substr(0,pos_dot) + ev_name_str.substr(pos_colon);
-					DEBUG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without domain: " << ev_name_str_no_domain;
+					//DEBUG_STREAM << "Alarm::"<<__func__<<": event "<< e.ev_name << " not found, trying without domain: " << ev_name_str_no_domain;
 					found_ev = \
 								find(events->v_event.begin(), events->v_event.end(), ev_name_str_no_domain);
 				}
 				if (found_ev == events->v_event.end() && pos_slash != string::npos)
 				{
 					ev_name_str = ev_name_str.substr(pos_slash + 1);//remove FQDN
-					DEBUG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without fqdn: " << ev_name_str;
+					//DEBUG_STREAM << "Alarm::"<<__func__<<": event "<< e.ev_name << " not found, trying without fqdn: " << ev_name_str;
 					found_ev = \
 								find(events->v_event.begin(), events->v_event.end(), ev_name_str);
 				}
@@ -2661,7 +2777,7 @@ void Alarm::do_alarm(bei_t& e)
 				ostringstream o;
 				o <<  "TANGO Error but event '" \
 					<< e.ev_name << "' not found in event table!" << ends;
-				WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
+				WARN_STREAM << "Alarm::"<<__func__<<": " << o.str() << endl;
 				set_internal_alarm(e.ev_name, gettime(), o.str());
 			}
 		}
@@ -2705,7 +2821,7 @@ void Alarm::do_alarm(bei_t& e)
 						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
 						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
 						Tango::DevFailed except(errors);
-						DEBUG_STREAM << "PUSHING EXCEPTION FOR " << it->second.attr_name << " " << it->second.ex_desc << "-" << it->second.ex_reason << "-" << it->second.ex_origin << endl;
+						DEBUG_STREAM << "Alarm::"<<__func__<<": PUSHING EXCEPTION FOR " << it->second.attr_name << " " << it->second.ex_desc << "-" << it->second.ex_reason << "-" << it->second.ex_origin << endl;
 						push_change_event(it->second.attr_name, &except);
 						push_archive_event(it->second.attr_name, &except);
 					}catch(Tango::DevFailed &ex)
@@ -2721,7 +2837,7 @@ void Alarm::do_alarm(bei_t& e)
 		}
 		return;
 	}	
-	DEBUG_STREAM << "Alarm::do_alarm(): arrived event=" << e.ev_name << endl;
+	DEBUG_STREAM << "Alarm::"<<__func__<<": arrived event=" << e.ev_name << endl;
 	
 	formula_res_t res;
 	vector<event>::iterator found = \
@@ -2740,14 +2856,14 @@ void Alarm::do_alarm(bei_t& e)
 			if(pos_dot < pos_slash && pos_dot != string::npos && pos_colon != string::npos && pos_slash != string::npos)	//dot is in the TANGO_HOST part
 			{
 				string ev_name_str_no_domain = ev_name_str.substr(0,pos_dot) + ev_name_str.substr(pos_colon);
-				DEBUG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without domain: " << ev_name_str_no_domain;
+				//DEBUG_STREAM << "Alarm::"<<__func__<<": event "<< e.ev_name << " not found, trying without domain: " << ev_name_str_no_domain;
 				found = \
 							find(events->v_event.begin(), events->v_event.end(), ev_name_str_no_domain);
 			}
 			if (found == events->v_event.end() && pos_slash != string::npos)
 			{
 				ev_name_str = ev_name_str.substr(pos_slash + 1);//remove FQDN
-				DEBUG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without fqdn: " << ev_name_str;
+				//DEBUG_STREAM << "Alarm::"<<__func__<<": event "<< e.ev_name << " not found, trying without fqdn: " << ev_name_str;
 				found = \
 							find(events->v_event.begin(), events->v_event.end(), ev_name_str);
 			}
@@ -2761,7 +2877,7 @@ void Alarm::do_alarm(bei_t& e)
 			ostringstream o;
 			o <<  "event '" \
 				<< e.ev_name << "' not found in event table!" << ends;
-			WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
+			WARN_STREAM << "Alarm::"<<__func__<<": " << o.str() << endl;
 			set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
 		}
 	}
@@ -2793,7 +2909,7 @@ void Alarm::do_alarm(bei_t& e)
 				try {   	
     				string attr_values;
     				res = eval_formula(it->second.formula_tree, attr_values);
-          			DEBUG_STREAM << "Alarm::do_alarm(): Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
+          			DEBUG_STREAM << "Alarm::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
 #ifndef _RW_LOCK
           			alarms.unlock();
 #else
@@ -2827,7 +2943,7 @@ void Alarm::do_alarm(bei_t& e)
     					}
     				} catch(Tango::DevFailed & ex)
     				{
-    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    					WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
     				}
 				} catch(std::out_of_range& ex)
 				{
@@ -2838,7 +2954,7 @@ void Alarm::do_alarm(bei_t& e)
 #endif
 					ostringstream o;
 					o << tmpname << ": in formula array index out of range!" << ends;
-					WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
+					WARN_STREAM << "Alarm::"<<__func__<<": " << o.str() << endl;
 					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
     				try
     				{	//DevFailed for push events
@@ -2856,7 +2972,7 @@ void Alarm::do_alarm(bei_t& e)
     					push_archive_event(it->second.attr_name, &except);
     				} catch(Tango::DevFailed & ex)
     				{
-    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    					WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
     				}
 				} catch(string & ex)
 				{
@@ -2867,7 +2983,7 @@ void Alarm::do_alarm(bei_t& e)
 #endif
 					ostringstream o;
 					o << tmpname << ": in formula err=" << ex << ends;
-					WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
+					WARN_STREAM << "Alarm::"<<__func__<<": " << o.str() << endl;
 					set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
     				try
     				{	//DevFailed for push events
@@ -2885,7 +3001,7 @@ void Alarm::do_alarm(bei_t& e)
     					push_archive_event(it->second.attr_name, &except);
     				} catch(Tango::DevFailed & ex)
     				{
-    					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+    					WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
     				}
 				}
 			}
@@ -2899,7 +3015,7 @@ void Alarm::do_alarm(bei_t& e)
 				ostringstream o;
 				//o << j->first << ": not found formula in alarm table" << ends;
 				o << (*j) << ": not found formula in alarm table" << ends;
-				WARN_STREAM << "Alarm::do_alarm(): " << o.str() << endl;
+				WARN_STREAM << "Alarm::"<<__func__<<": " << o.str() << endl;
 				set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
 				try
 				{	//DevFailed for push events
@@ -2917,7 +3033,7 @@ void Alarm::do_alarm(bei_t& e)
 					push_archive_event(it->second.attr_name, &except);
 				} catch(Tango::DevFailed & ex)
 				{
-					WARN_STREAM << "Alarm::do_alarm(): EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+					WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 				}
 			}
 			j++;
@@ -2991,15 +3107,18 @@ void Alarm::timer_update()
 
 bool Alarm::remove_alarm(string& s) throw(string&)
 {
+	DEBUG_STREAM << "Alarm::"<<__func__<<": entering alm name=" << s << endl;
 #ifndef _RW_LOCK
 	alarms.lock();
 #else
 	alarms.vlock->writerIn();
 #endif
 	alarm_container_t::iterator i = alarms.v_alarm.find(s);
-	if (i != alarms.v_alarm.end()) {	
+	if (i != alarms.v_alarm.end()) {
+		DEBUG_STREAM << "Alarm::"<<__func__<<": found in table alm name=" << s << endl;
 		for (set<string>::iterator j = i->second.s_event.begin(); \
 				 j != i->second.s_event.end(); j++) {
+			DEBUG_STREAM << "Alarm::"<<__func__<<": looping event =" << *j << endl;
 			/*
 		 	 * for each event into the per-alarm event list find
 			 * the event table entry and remove this alarm from
@@ -3008,10 +3127,12 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 			vector<event>::iterator k = \
 					find(events->v_event.begin(), events->v_event.end(), *j);
 			if (k != events->v_event.end()) {
+				DEBUG_STREAM << "Alarm::"<<__func__<<": found event =" << *j << " in vector events, removing from its alarm list name=" << i->second.name << endl;
 				/*
 				 * remove alarm
 				 */			 
 				k->pop_alarm(i->second.name);
+				DEBUG_STREAM << "Alarm::"<<__func__<<": after pop_alarm" << endl;
 				if (k->m_alarm.empty()) {
 					/*
 					 * no more alarms associated to this event, unsubscribe
@@ -3020,7 +3141,8 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 					DEBUG_STREAM << "Alarm::remove_alarm(): removing event '" \
 							 				<< k->name << "' from event table" << endl;
 					try {
-						k->dp->unsubscribe_event(k->eid);
+						events->stop(k->name);
+						events->remove(k->name, false);
 					} catch (...) {
 						ostringstream o;
 						o << "unsubscribe_event() failed for " \
@@ -3034,9 +3156,7 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 						throw o.str();
 						//return false;
 					}
-					delete k->dp;
-					k->dp = NULL;
-					events->v_event.erase(k);
+					//events->v_event.erase(k);
 				}
 			} else {
 				/*
@@ -3055,6 +3175,7 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 				//return false;
 			}
 		}  /* for */
+		events->update_property();
 		//delete proxy for actions
 		if(i->second.dp_a)
 			delete i->second.dp_a;
@@ -3073,6 +3194,10 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 		alarms.vlock->writerOut();
 #endif
 		return true;
+	}
+	else
+	{
+		WARN_STREAM << "Alarm::"<<__func__<<": NOT found in table alm name=" << s << endl;
 	}
 #ifndef _RW_LOCK
 	alarms.unlock();
@@ -3872,6 +3997,96 @@ void Alarm::prepare_alarm_attr()
 		dss[i][len]=0;
 	}
 	dslock->writerOut();
+}
+
+//=============================================================================
+string Alarm::remove_domain(string str)
+{
+	string::size_type	end1 = str.find(".");
+	if (end1 == string::npos)
+	{
+		return str;
+	}
+	else
+	{
+		string::size_type	start = str.find("tango://");
+		if (start == string::npos)
+		{
+			start = 0;
+		}
+		else
+		{
+			start = 8;	//tango:// len
+		}
+		string::size_type	end2 = str.find(":", start);
+		if(end1 > end2)	//'.' not in the tango host part
+			return str;
+		string th = str.substr(0, end1);
+		th += str.substr(end2, str.size()-end2);
+		return th;
+	}
+}
+//=============================================================================
+//=============================================================================
+bool Alarm::compare_without_domain(string str1, string str2)
+{
+	string str1_nd = remove_domain(str1);
+	string str2_nd = remove_domain(str2);
+	return (str1_nd==str2_nd);
+}
+
+//=============================================================================
+//=============================================================================
+void Alarm::put_signal_property()
+{
+	vector<string> prop;
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	alarm_container_t::iterator it;
+	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
+	{
+		prop.push_back(it->first);
+	}
+#ifndef _RW_LOCK
+	alarms.unlock();
+#else
+	alarms.vlock->readerOut();
+#endif
+
+
+	Tango::DbData	data;
+	data.push_back(Tango::DbDatum("AlarmList"));
+	data[0]  <<  prop;
+#ifndef _USE_ELETTRA_DB_RW
+	Tango::Database *db = new Tango::Database();
+#else
+	//save properties using host_rw e port_rw to connect to database
+	Tango::Database *db;
+	if(host_rw != "")
+		db = new Tango::Database(host_rw,port_rw);
+	else
+		db = new Tango::Database();
+	DEBUG_STREAM << __func__<<": connecting to db "<<host_rw<<":"<<port_rw;
+#endif
+	try
+	{
+		DECLARE_TIME_VAR	t0, t1;
+		GET_TIME(t0);
+		db->set_timeout_millis(10000);
+		db->put_device_property(get_name(), data);
+		GET_TIME(t1);
+		DEBUG_STREAM << __func__ << ": saving properties size="<<prop.size()<<" -> " << ELAPSED(t0, t1) << " ms" << endl;
+	}
+	catch(Tango::DevFailed &e)
+	{
+		stringstream o;
+		o << " Error saving properties='" << e.errors[0].desc << "'";
+		WARN_STREAM << __FUNCTION__<< o.str();
+	}
+	delete db;
 }
 
 

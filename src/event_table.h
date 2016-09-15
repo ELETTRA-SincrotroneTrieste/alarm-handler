@@ -29,6 +29,10 @@ using namespace std;
 #define TYPE_TANGO_ERR		-2
 #define TYPE_GENERIC_ERR	-3		
 
+#define		SUB_ERR			-1
+#define		NOTHING		0
+#define		UPDATE_PROP	1
+
 class event;
 class event_list;
 class event_table;
@@ -41,9 +45,9 @@ typedef vector<Tango::DevDouble> value_t;
  */
 class event {
 	public:
-		string name,					/* event name */
-					 device,				/* device name */
-					 attribute;			/* attribute name */
+		string name;					/* event name */
+		string	devname;
+		string	attname;
 		value_t value;				/* event value */
 		int quality;
 		//Tango::DevErrorList 	errors;
@@ -56,10 +60,25 @@ class event {
 				err_counter;					/* molteplicita' errore */				
 		//map<string, string> m_alarm;
 		vector<string> m_alarm;
-		bool valid;
-		
-		Tango::DeviceProxy *dp;
-		unsigned int eid;
+		bool valid;	//TODO: old
+		bool 	first;//TODO: new
+		bool 	first_err;//TODO: new
+		//Tango::DeviceProxy *dp;
+		Tango::AttributeProxy *attr;
+		Tango::DevState			evstate;
+		unsigned int event_id;
+		bool	isZMQ;
+		EventCallBack	*event_cb;
+		bool running;
+		bool paused;
+		bool stopped;
+		uint32_t okev_counter;
+		uint32_t okev_counter_freq;
+		timeval last_okev;
+		uint32_t nokev_counter;
+		uint32_t nokev_counter_freq;
+		timeval last_nokev;
+		timespec last_ev;
 		vector<string> filter;
 		/*
 		 * methods
@@ -74,6 +93,7 @@ class event {
 		bool operator==(const event& e);
 //		bool event::operator==(const string& s);	//TODO: gcc 4 problem??
 		bool operator==(const string& s);
+		ReadersWritersLock *siglock;
 	protected:
 	private:
 };
@@ -114,36 +134,68 @@ class event_list : public omni_mutex {
 /*
  * store all the events
  */
-class event_table : public event , Tango::LogAdapter {
+class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 	public:
-		event_table(Tango::DeviceImpl *s):Tango::LogAdapter(s) {}
+		event_table(Tango::DeviceImpl *s);//:Tango::LogAdapter(s) {mydev = s;}
 		~event_table(void) {}
-		void push_back(event e);
+		//void push_back(event e);
 		void show(void);
 		unsigned int size(void);
+#if 0
 		void init_proxy(void)  throw(vector<string> &);
 		void free_proxy(void);
 		void subscribe(EventCallBack& ecb) throw(vector<string> &);//throw(string&);
 		void unsubscribe(void) throw(string&);
+#endif
+		/**
+		 * Add a new signal.
+		 */
+		void add(string &signame, vector<string> contexts);
+		void add(string &signame, vector<string> contexts, int to_do, bool start);
+		event *get_signal(string signame);
+		void stop(string &signame);
+		void remove(string &signame, bool stop);
+		void subscribe_events();
+		void unsubscribe_events();
+		void start(string &signame);
+		void start_all();
 		void update_events(bei_t& e) throw(string&);
+		void update_property();
+		/**
+		 *	return number of signals to be subscribed
+		 */
+		int nb_sig_to_subscribe();
+		/**
+		 *	build a list of signal to set HDB device property
+		 */
+		void put_signal_property();
+		bool is_initialized();
+		bool get_if_stop();
+		void stop_thread();
 		vector<event> v_event;
-	protected:
+		ReadersWritersLock      veclock;
+		bool	stop_it;
+		bool	initialized;
+		int		action;
 	private:
+		Tango::DeviceImpl *mydev;
 };  /* class event_table */
 
 
 /*
  * event callback
  */
-class EventCallBack : public Tango::CallBack {
+class EventCallBack : public Tango::CallBack, public Tango::LogAdapter
+{
 	public:
-		EventCallBack(void);
+		EventCallBack(Tango::DeviceImpl *s);
 		~EventCallBack(void);
 		void push_event(Tango::EventData* ev);
-		void init(event_list* e);
+		//void init(event_list* e);
 		void extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, int &type);
 	private:
-		event_list* e_ptr;
+		//event_list* e_ptr;
+		Tango::DeviceImpl *mydev;
 };
 
 /*

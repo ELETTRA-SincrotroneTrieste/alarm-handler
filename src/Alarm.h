@@ -49,16 +49,23 @@
 
 #include "alarm_table.h"
 #include "event_table.h"
+#include "SubscribeThread.h"
 
 #define MAX_ALARMS	1024
 
-#define _USE_ELETTRA_DB_RW
+//#define _USE_ELETTRA_DB_RW
 
 //using namespace Tango;
 
 class alarm_thread;
 class log_thread;
 class update_thread;
+
+#	define	DECLARE_TIME_VAR	struct timeval
+#	define	GET_TIME(t)	gettimeofday(&t, NULL);
+#	define	ELAPSED(before, after)	\
+		1000.0*(after.tv_sec-before.tv_sec) + \
+		((double)after.tv_usec-before.tv_usec) / 1000
 
 
 
@@ -84,7 +91,13 @@ class Alarm : public TANGO_BASE_CLASS
 
 //	Add your own data members
 public:
-
+	bool compare_without_domain(string str1, string str2);
+	string remove_domain(string str);
+	//TODO: real attributes
+	Tango::DevLong attr_AttributeStartedNumber_read;
+	Tango::DevLong attr_AttributePausedNumber_read;
+	Tango::DevLong attr_AttributeStoppedNumber_read;
+	Tango::DevLong attr_AttributeNumber_read;
 
 /*----- PROTECTED REGION END -----*/	//	Alarm::Data Members
 
@@ -108,6 +121,8 @@ public:
 	string	dbPort;
 	//	InstanceName:	Name used to associate configured alarm rules to this instance
 	string	instanceName;
+	//	SubscribeRetryPeriod:	retry period in seconds
+	Tango::DevLong	subscribeRetryPeriod;
 
 //	Attribute data members
 public:
@@ -283,6 +298,8 @@ public:
 
 //	Additional Method prototypes
 friend class alarm_thread;
+friend class SubscribeThread;
+friend class event_table;
 
 protected :	
 	
@@ -291,7 +308,7 @@ private:
 	alarm_table alarms;
 	event_table* events;
 //	event_list evlist;				/* producer/consumer events list */		//gcc 4 problem??
-	EventCallBack ecb;				/* callback handles */
+//	EventCallBack ecb;				/* callback handles */
 	alarm_thread *almloop;
 	update_thread *updateloop;
 	vector<alarm_t> alarmed;
@@ -299,6 +316,7 @@ private:
 	vector<alarm_t> internal;
 	ReadersWritersLock *internallock;
 	ReadersWritersLock *dslock;
+	int			period;		//subscribe thread period
 	
 	static int instanceCounter;
 	
@@ -308,10 +326,14 @@ private:
 	char dss[MAX_ALARMS][10124];
 
 	void init_events(vector<string> &evn);
+#if 0
 	void init_alarms(map< string,vector<string> > &alarm_events);
+#endif
 	void add_alarm(alarm_t& a) throw(string&);
 	void add_event(alarm_t& a, vector<string> &evn) throw(string&);
+#if 0
 	void subscribe_event(alarm_t& a, EventCallBack& ecb, vector<string> &evn) throw(string&);
+#endif
 //	void do_alarm(bei_t& e);											//gcc 4 problem??
 	bool remove_alarm(string& s) throw(string&);
 	//void add_to_database(alarm_t& a) throw(string&);
@@ -327,7 +349,10 @@ private:
 
 	void prepare_alarm_attr();	//for read attribute alarm and push_change_event
 
+	SubscribeThread *thread;
+
 public:
+	void put_signal_property();
 	void do_alarm(bei_t& e);											//public instead of protected for gcc 4 problem??
 	void timer_update();												//public instead of protected for gcc 4 problem??
 	event_list evlist;				/* producer/consumer events list */		//public instead of protected for gcc 4 problem??
