@@ -52,18 +52,69 @@ alarm_thread::~alarm_thread()
  */
 void alarm_thread::run(void *)
 {
+	size_t to_be_evaluated = 0;
+	//int period = 5; //seconds
+	int awaken = 0;
+	vector<string> alm_to_be_eval;
 	while (true) {
 		/*
 		 * pop_front() will wait() on condition variable
 		 */
 		try
 		{
-			bei_t e = p_Alarm->evlist.pop_front();
-			//DEBUG_STREAM << "alarm_thread::run(): woken up!!!! " << e.name << endl;
-			if ((e.ev_name == ALARM_THREAD_EXIT) && \
-				(e.value[0] == ALARM_THREAD_EXIT_VALUE))
-				break;
-			p_Alarm->do_alarm(e);
+			if(to_be_evaluated > 0)
+			{
+				bool changed = true;
+				int num_changed = 0;
+				if(alm_to_be_eval.size() > 0)
+				{
+					for(vector<string>::iterator i = alm_to_be_eval.begin(); i != alm_to_be_eval.end(); i++)
+					{
+						changed = p_Alarm->do_alarm_eval(*i, "FORCED_EVAL", gettime());
+						if(changed)
+							num_changed++;
+					}
+#if 0	//TODO
+					prepare_alarm_attr();
+					if(num_changed==0)
+						return;
+					if(ds_num == 0)
+					{
+						//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+						struct timeval now;
+						gettimeofday(&now,NULL);
+						push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+					}
+					else
+						//attr.set_value(ds, ds_num, 0, false);
+						push_change_event("alarm",ds, ds_num, 0, false);
+#endif
+				}
+#if 0
+				alm_to_be_eval = p_Alarm->alarms.to_be_evaluated_list();
+				to_be_evaluated = alm_to_be_eval.size();
+#else
+				to_be_evaluated = 0;
+#endif
+			}
+			bei_t e;
+			{
+				e = p_Alarm->evlist.pop_front();
+				//DEBUG_STREAM << "alarm_thread::run(): woken up!!!! " << e.name << endl;
+				if ((e.ev_name == ALARM_THREAD_EXIT) && \
+					(e.value[0] == ALARM_THREAD_EXIT_VALUE))
+				{
+					break;
+				}
+				else if ((e.ev_name == ALARM_THREAD_TO_BE_EVAL) && \
+					(e.value[0] == ALARM_THREAD_TO_BE_EVAL_VALUE))
+				{
+					alm_to_be_eval = p_Alarm->alarms.to_be_evaluated_list();
+					to_be_evaluated = alm_to_be_eval.size();
+					continue;
+				}
+				p_Alarm->do_alarm(e);
+			}
 		}
 		catch(omni_thread_fatal& ex)
 		{

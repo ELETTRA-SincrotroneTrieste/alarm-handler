@@ -350,6 +350,8 @@ class alarm_table {
 		bool timer_update();
 		void erase(alarm_container_t::iterator i);
 		bool exist(string& s);
+		unsigned int to_be_evaluated_num();
+		vector<string> to_be_evaluated_list();
 		//vector<alarm_t> v_alarm;
 		alarm_container_t v_alarm;
 #ifdef _RW_LOCK

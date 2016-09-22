@@ -301,11 +301,12 @@ friend class alarm_thread;
 friend class SubscribeThread;
 friend class event_table;
 
+	alarm_table alarms;
+
 protected :	
-	
+
 private:
 	vector<alarm_t> stored;		/* property stored alarms (on exit) */
-	alarm_table alarms;
 	event_table* events;
 //	event_list evlist;				/* producer/consumer events list */		//gcc 4 problem??
 //	EventCallBack ecb;				/* callback handles */
@@ -354,6 +355,7 @@ private:
 public:
 	void put_signal_property();
 	void do_alarm(bei_t& e);											//public instead of protected for gcc 4 problem??
+	bool do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts);
 	void timer_update();												//public instead of protected for gcc 4 problem??
 	event_list evlist;				/* producer/consumer events list */		//public instead of protected for gcc 4 problem??
 	bool abortflag;

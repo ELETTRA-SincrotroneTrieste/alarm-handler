@@ -25,11 +25,14 @@
 
 #define ALARM_THREAD_EXIT				"alarm_thread_exit"
 #define ALARM_THREAD_EXIT_VALUE	-100
+#define ALARM_THREAD_TO_BE_EVAL			"to_be_evaluated"
+#define ALARM_THREAD_TO_BE_EVAL_VALUE	-200
 
 class alarm_thread : public omni_thread {
 	public:
 		alarm_thread(Alarm_ns::Alarm *p);
 		~alarm_thread();
+		//int period;
 	protected:
 		void run(void *);
 	private:

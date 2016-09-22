@@ -679,6 +679,50 @@ bool alarm_table::exist(string& s)
 		return false;
 }
 
+unsigned int alarm_table::to_be_evaluated_num()
+{
+	unsigned int ret=0;
+#ifndef _RW_LOCK
+	this->lock();
+#else
+	vlock->readerIn();
+#endif
+	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
+	{
+		if(i->second.to_be_evaluated == true)
+			ret++;
+	}
+
+#ifndef _RW_LOCK
+	this->unlock();
+#else
+	vlock->readerOut();
+#endif
+	return ret;
+}
+
+vector<string> alarm_table::to_be_evaluated_list()
+{
+	vector<string> ret;
+#ifndef _RW_LOCK
+	this->lock();
+#else
+	vlock->readerIn();
+#endif
+	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
+	{
+		if(i->second.to_be_evaluated == true)
+			ret.push_back(i->first);
+	}
+
+#ifndef _RW_LOCK
+	this->unlock();
+#else
+	vlock->readerOut();
+#endif
+	return ret;
+}
+
 #ifdef _RW_LOCK
 void alarm_table::new_rwlock()
 {

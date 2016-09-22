@@ -118,7 +118,7 @@ typedef struct basic_event_info_s {
  */
 class event_list : public omni_mutex {
 	public:
-		event_list(void): full(this), empty(this) {}
+		event_list(void): empty(this) {}
 		~event_list(void) {}
 		void push_back(bei_t& e);
 		const bei_t pop_front(void);
@@ -127,8 +127,7 @@ class event_list : public omni_mutex {
 	protected:
 		list<bei_t> l_event;
 	private:
-		omni_condition full,
-									 empty;
+		omni_condition empty;
 };
 
 /*
@@ -159,7 +158,6 @@ class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 		void unsubscribe_events();
 		void start(string &signame);
 		void start_all();
-		void update_events(bei_t& e) throw(string&);
 		void update_property();
 		/**
 		 *	return number of signals to be subscribed

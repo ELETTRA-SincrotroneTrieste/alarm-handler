@@ -176,12 +176,10 @@ event::event(string& s) : name(s)
 void event::push_alarm(string& n)
 {
 	m_alarm.push_back(n);
-	cout << "event::"<<__func__<< ": event="<<name<<" alm="<< n << " size="<< m_alarm.size() << endl;
 }
 
 void event::pop_alarm(string& n)
 {
-	cout << "event::"<<__func__<< ": event="<<name<<" alm="<< n << " size="<< m_alarm.size() << endl;
 	vector<string>::iterator it = find(m_alarm.begin(), m_alarm.end(), n);
 	if(it != m_alarm.end())
 		m_alarm.erase(it);
@@ -685,6 +683,7 @@ void event_table::unsubscribe_events()
 //=============================================================================
 void event_table::add(string &signame, vector<string> contexts)
 {
+	DEBUG_STREAM << "event_table::"<<__func__<< " entering signame=" << signame << endl;
 	add(signame, contexts, NOTHING, false);
 }
 //=============================================================================
@@ -770,18 +769,7 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 
 		if(found && start)
 		{
-			try
-			{
-				Tango::AttributeInfo	info;
-				if(signal->attr)
-				{
-					info = signal->attr->get_config();
-				}
-			}
-			catch (Tango::DevFailed &e)
-			{
-				INFO_STREAM <<"event_table::"<<__func__<< " ERROR for " << signame << " in get_config err=" << e.errors[0].desc << endl;
-			}
+
 		}
 
 		//DEBUG_STREAM <<"event_table::"<< __func__<< " created proxy to " << signame << endl;
@@ -849,29 +837,6 @@ void event_table::subscribe_events()
 				}
 			}
 			sig->event_cb = new EventCallBack(static_cast<Alarm_ns::Alarm *>(mydev));
-			Tango::AttributeInfo	info;
-			try
-			{
-				sig->siglock->writerOut();
-				sig->siglock->readerIn();
-				info = sig->attr->get_config();
-				sig->siglock->readerOut();
-				sig->siglock->writerIn();
-			}
-			catch (Tango::DevFailed &e)
-			{
-				Tango::Except::print_exception(e);
-				//sig->siglock->writerOut();
-				sig->siglock->readerOut();
-				sig->siglock->writerIn();
-				sig->event_id = SUB_ERR;
-				delete sig->event_cb;
-				sig->ex_reason = e.errors[0].reason;
-				sig->ex_desc = e.errors[0].desc;
-				sig->ex_origin = e.errors[0].origin;
-				sig->siglock->writerOut();
-				continue;
-			}
 			sig->first  = true;
 			sig->first_err  = true;
 			DEBUG_STREAM << "event_table::"<<__func__<<":Subscribing for " << sig->name << " " << (sig->first ? "FIRST" : "NOT FIRST") << endl;
@@ -931,6 +896,7 @@ void event_table::subscribe_events()
 
 void event_table::start(string &signame)
 {
+	DEBUG_STREAM << "event_table::"<<__func__<< " entering signame=" << signame << endl;
 	ReaderLock lock(veclock);
 	vector<string> contexts;
 	for (unsigned int i=0 ; i<v_event.size() ; i++)
@@ -1056,60 +1022,6 @@ void event_table::start_all()
 	}
 }
 
-
-void event_table::update_events(bei_t &e) throw(string&)
-{
-	//LOG_STREAM << "event_table::update_events(bei_t &e): Entering..." << endl ;
-	vector<event>::iterator found = \
-			find(v_event.begin(), v_event.end(), e.ev_name);
-
-	if (found == v_event.end())
-	{
-		//try to remove network domain and FQDN
-		string ev_name_str(e.ev_name);
-		string::size_type pos_slash = ev_name_str.find("tango://");
-		if (pos_slash != string::npos)	//FQDN!!
-		{
-			//first remove network domain if any
-			string::size_type pos_dot = ev_name_str.find(".",8);	//look for first . after tango://
-			string::size_type pos_colon = ev_name_str.find(":",8);	//look for first : after tango://
-			pos_slash = ev_name_str.find('/',8);					//look for first / after tango://
-			if(pos_dot < pos_slash && pos_dot != string::npos && pos_colon != string::npos && pos_slash != string::npos)	//dot is in the TANGO_HOST part
-			{
-				string ev_name_str_no_domain = ev_name_str.substr(0,pos_dot) + ev_name_str.substr(pos_colon);
-				//LOG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without domain: " << ev_name_str_no_domain << endl;
-				found = \
-							find(v_event.begin(), v_event.end(), ev_name_str_no_domain);
-			}
-			if (found == v_event.end() && pos_slash != string::npos)
-			{
-				ev_name_str = ev_name_str.substr(pos_slash + 1);//remove FQDN
-				//LOG_STREAM << __FUNCTION__ << " event "<< e.ev_name << " not found, trying without fqdn: " << ev_name_str << endl;
-				found = \
-							find(v_event.begin(), v_event.end(), ev_name_str);
-			}
-		}
-		if (found == v_event.end())
-		{
-			/*
-			 * shouldn't happen!!!
-			 */
-			ostringstream o;
-			o << "event_table::update_events(): event '" \
-				<< e.ev_name << "' not found! error=" << e.msg << ends;
-				ERROR_STREAM << o.str() << endl;
-			//cerr << o.str() << endl;
-			throw o.str();
-		}
-	}
-
-	if (found != v_event.end())
-	{
-		found->value = e.value;
-		found->ts = e.ts;
-		found->type = e.type;
-	}
-}
 
 //=============================================================================
 //=============================================================================
