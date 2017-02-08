@@ -787,7 +787,91 @@ void alarm_table::log_alarm_db(unsigned int type, Tango::TimeVal ts, string name
 
 void alarm_table::get_alarm_list_db(vector<string> &al_list)
 {
-	logloop->get_alarm_list(al_list);
+	//logloop->get_alarm_list(al_list);
+/*
+ * 			" CONCAT('\t', " << DESC_COL_NAME << ",'\t'," << DESC_COL_FORMULA <<
+				",'\t'," << "IFNULL(" << DESC_COL_TIME_THRESHOLD << ",0)" << ",'\t'," << DESC_COL_LEVEL <<
+				",'\t'," << "IFNULL(" << DESC_COL_SILENT_TIME << ",-1)" <<
+				",'\t'," << DESC_COL_GRP <<	",'\t','\"'," << "IFNULL(" << DESC_COL_MSG << ",'')" <<
+				",'\"','\t'," << "IFNULL(" << DESC_COL_ACTION << ",';')" << ")" <<
+ */
+
+
+	string dev_name(mydev->get_name());
+	vector<string> att_list;
+
+	Tango::DbDevice *db_dev = mydev->get_db_device();
+	db_dev->get_dbase()->get_device_attribute_list(dev_name,att_list);
+	Tango::DbData db_data;
+	vector<string>::iterator it;
+	for(it = att_list.begin(); it!=att_list.end(); it++)
+	{
+		cout << "asking property for ATTNAME=" << *it << endl;
+		db_data.push_back(Tango::DbDatum(*it));
+	}
+
+	db_dev->get_attribute_property(db_data);
+
+	for (size_t i=0;i < db_data.size();/*i++*/)
+	{
+		Tango::DevLong64 nb_prop;
+		string &att_name = db_data[i].name;
+		db_data[i] >> nb_prop;
+		cout << "db_data.size()="<<db_data.size()<<" nb_prop["<<i<<"]=" << nb_prop << endl;
+		i++;
+		string alm_name;
+		string alm_formula;
+		string alm_time_threshold("0");
+		string alm_level;
+		string alm_silence_time("-1");
+		string alm_group;
+		string alm_message;
+		string alm_command(";");
+		for (long k=0;k < nb_prop;k++)
+		{
+			string &prop_name = db_data[i].name;
+			cout << "read property["<<i<<"]: -> att_name=" << att_name << " prop_name="<< prop_name << endl;
+
+			if (prop_name == "name")
+				db_data[i] >> alm_name;
+			else if (prop_name == "formula")
+				db_data[i] >> alm_formula;
+			else if (prop_name == "time_threshold")
+				db_data[i] >> alm_time_threshold;
+			else if (prop_name == "level")
+				db_data[i] >> alm_level;
+			else if (prop_name == "silence_time")
+				db_data[i] >> alm_silence_time;
+			else if (prop_name == "group")
+				db_data[i] >> alm_group;
+			else if (prop_name == "message")
+				db_data[i] >> alm_message;
+			else if (prop_name == "command")
+				db_data[i] >> alm_command;
+			else
+			{
+				cout << "att_name="<<att_name<<" UNKWNOWN prop_name="<<prop_name<<endl;
+				continue;
+			}
+			i++;
+		}
+		stringstream alm;
+		alm << alm_name << "\t" << alm_formula << "\t" << alm_time_threshold << "\t" << alm_level <<
+				"\t" << alm_silence_time << "\t" << alm_group << "\t" << alm_message <<	"\t" << alm_command;
+		al_list.push_back(alm.str());
+		cout << " -> " << alm.str() << endl;
+	}
+
+
+#if 0
+
+	db_dev->get_attribute_property(db_data);
+
+	//Tango::Util *tg = Tango::Util::instance();
+	//tg->get_database()->get_device_attribute_property("id11/motor/1", db_data);
+	Tango::Util::instance()->get_database()->get_device_attribute_property("id11/motor/1", db_data);
+	//mydev->get_device_attr();
+#endif
 }
 
 /* EOF */
