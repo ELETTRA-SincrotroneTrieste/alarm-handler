@@ -785,6 +785,47 @@ void alarm_table::log_alarm_db(unsigned int type, Tango::TimeVal ts, string name
 	logloop->log_alarm_db(a);	
 }
 
+void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
+		string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list)
+{
+	// We want to put properties for attribute "att_name"
+	Tango::DbDatum dbd_att_name(att_name);
+	Tango::DbDatum dbd_name("name");
+	Tango::DbDatum dbd_formula("formula");
+	Tango::DbDatum dbd_time_threshold("time_threshold");
+	Tango::DbDatum dbd_level("level");
+	Tango::DbDatum dbd_silence_time("silence_time");	//TODO: silent_time
+	Tango::DbDatum dbd_group("group");
+	Tango::DbDatum dbd_message("message");
+	Tango::DbDatum dbd_command("command");	//TODO: action
+
+	Tango::DbData db_data;
+	dbd_att_name << 8;                               // Eigth properties for attribute "att_name"
+	dbd_name << name;
+	dbd_formula << formula;
+	dbd_time_threshold << time_threshold;
+	dbd_level << lev;
+	dbd_silence_time << silent_time;
+	dbd_group << grp;
+	dbd_message << msg;
+	dbd_command << action;
+
+	db_data.push_back(dbd_att_name);
+	db_data.push_back(dbd_name);
+	db_data.push_back(dbd_formula);
+	db_data.push_back(dbd_time_threshold);
+	db_data.push_back(dbd_level);
+	db_data.push_back(dbd_silence_time);
+	db_data.push_back(dbd_group);
+	db_data.push_back(dbd_message);
+	db_data.push_back(dbd_command);
+
+	string dev_name(mydev->get_name());
+
+	Tango::DbDevice *db_dev = mydev->get_db_device();
+	db_dev->get_dbase()->put_device_attribute_property(dev_name,db_data);
+}
+
 void alarm_table::get_alarm_list_db(vector<string> &al_list)
 {
 	//logloop->get_alarm_list(al_list);
@@ -806,7 +847,6 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 	vector<string>::iterator it;
 	for(it = att_list.begin(); it!=att_list.end(); it++)
 	{
-		cout << "asking property for ATTNAME=" << *it << endl;
 		db_data.push_back(Tango::DbDatum(*it));
 	}
 
@@ -817,7 +857,6 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		Tango::DevLong64 nb_prop;
 		string &att_name = db_data[i].name;
 		db_data[i] >> nb_prop;
-		cout << "db_data.size()="<<db_data.size()<<" nb_prop["<<i<<"]=" << nb_prop << endl;
 		i++;
 		string alm_name;
 		string alm_formula;
@@ -830,7 +869,6 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		for (long k=0;k < nb_prop;k++)
 		{
 			string &prop_name = db_data[i].name;
-			cout << "read property["<<i<<"]: -> att_name=" << att_name << " prop_name="<< prop_name << endl;
 
 			if (prop_name == "name")
 				db_data[i] >> alm_name;
@@ -857,9 +895,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		}
 		stringstream alm;
 		alm << alm_name << "\t" << alm_formula << "\t" << alm_time_threshold << "\t" << alm_level <<
-				"\t" << alm_silence_time << "\t" << alm_group << "\t" << alm_message <<	"\t" << alm_command;
+				"\t" << alm_silence_time << "\t" << alm_group << "\t\"" << alm_message <<	"\"\t" << alm_command;
 		al_list.push_back(alm.str());
-		cout << " -> " << alm.str() << endl;
 	}
 
 

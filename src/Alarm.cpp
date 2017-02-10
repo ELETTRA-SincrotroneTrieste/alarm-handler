@@ -882,7 +882,7 @@ void Alarm::get_device_property()
 //--------------------------------------------------------
 void Alarm::always_executed_hook()
 {
-	DEBUG_STREAM << "Alarm::always_executed_hook()  " << device_name << endl;
+	//DEBUG_STREAM << "Alarm::always_executed_hook()  " << device_name << endl;
 	/*----- PROTECTED REGION ID(Alarm::always_executed_hook) ENABLED START -----*/
 	
 	//	code always executed before all requests
@@ -1406,6 +1406,9 @@ void Alarm::load(Tango::DevString argin)
 #endif
 	string cmd_name_full = alm.cmd_name_a + string(";") + alm.cmd_name_n;
 	alarms.log_alarm_db(TYPE_LOG_DESC_ADD, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
+			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
+
+	alarms.save_alarm_conf_db(alm.attr_name, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
 			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
 
 
@@ -2759,6 +2762,10 @@ void Alarm::do_alarm(bei_t& e)
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
 
+	}
+	else
+	{
+		DEBUG_STREAM << "Alarm::"<<__func__<<": event=" << e.ev_name << "NOT FOUND IN EVENT TABLE" << endl;
 	}
 }  /* do_alarm() */
 
