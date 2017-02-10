@@ -96,6 +96,7 @@ void alarm_thread::run(void *)
 #else
 				to_be_evaluated = 0;
 #endif
+				usleep(200000);	//TODO
 			}
 			bei_t e;
 			{
