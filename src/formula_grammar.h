@@ -15,6 +15,7 @@
 #ifndef FORMULA_GRAMMAR_H_
 #define FORMULA_GRAMMAR_H_
 
+#include <boost/version.hpp>
 
 //#define BOOST_SPIRIT_NO_TREE_NODE_COLLAPSING  //test trying to have node also if formula of type (ev/ev/ev/ev) 27/02/2008
 
@@ -24,23 +25,25 @@
 #endif
 #endif
 
-#if BOOST_VERSION  < 103600     
+#if BOOST_VERSION  < 103600
 #include <boost/spirit/core.hpp>
 #include <boost/spirit/tree/ast.hpp>
+//for ast parse trees (in tree_formula)
+#include <boost/spirit/symbols/symbols.hpp>				//for symbol table
 using namespace boost::spirit;
 #else
 #include <boost/spirit/include/classic_core.hpp>
 #include <boost/spirit/include/classic_ast.hpp>
-using namespace boost::spirit::classic;	
+//for ast parse trees (in tree_formula)
+#include <boost/spirit/include/classic_symbols.hpp>				//for symbol table
+using namespace boost::spirit::classic;
 #endif
-				//for ast parse trees (in tree_formula)
-//#include <boost/spirit/symbols/symbols.hpp>				//for symbol table
+
 
 using namespace std;  
 
 
 
-#ifdef _ACCESS_NODE_D
 /*typedef char const*                    iterator_t;       
 typedef node_val_data_factory<unsigned int>    factory_t;
 typedef tree_match<iterator_t, factory_t>        parse_tree_match_t;   
@@ -60,7 +63,7 @@ static void Assign_Stat (tree_node_t & node, const iterator_t & begin, const ite
 	node.value.value(stat_tmp);
 }*/
 
-unsigned int stat_tmp;
+static unsigned int stat_tmp;
 struct Save_Stat
 {   
 	void operator () (unsigned int val) const
@@ -77,9 +80,19 @@ struct Assign_Stat
 	}
 };
 
-#endif //_ACCESS_NODE_D
 struct formula_grammar : public grammar<formula_grammar>
 {
+
+	/*formula_t &m_formula;
+
+	symbols<unsigned int> sym_grp;
+
+	formula_grammar(formula_t &f) \
+		: m_formula(f)
+		{
+
+		}*/
+
     static const int val_rID = 1;
     static const int val_hID = 2; 
     static const int val_stID = 3;    
@@ -96,8 +109,16 @@ struct formula_grammar : public grammar<formula_grammar>
     static const int expr_atomID = 14;
     static const int shift_exprID = 15;
     static const int unary_exprID = 16;
+    static const int val_stringID = 17;	//TODO: OK ?
+    static const int func_dualID = 18;
+    static const int logical_expr_parenID = 19;
+    static const int cond_exprID = 20;
+    static const int exprID = 21;
+    static const int nonempty_exprID = 22;
+    static const int val_qualityID = 23;
     
-    symbols<unsigned int> tango_states;           
+    symbols<unsigned int> tango_states;
+    symbols<unsigned int> attr_quality;
     
 	formula_grammar() 
 	{
@@ -115,6 +136,12 @@ struct formula_grammar : public grammar<formula_grammar>
 		tango_states.add("ALARM", (unsigned int)Tango::ALARM);
 		tango_states.add("DISABLE", (unsigned int)Tango::DISABLE);
 		tango_states.add("UNKNOWN", (unsigned int)Tango::UNKNOWN);
+
+		attr_quality.add("ATTR_VALID", (unsigned int)Tango::ATTR_VALID);
+		attr_quality.add("ATTR_INVALID", (unsigned int)Tango::ATTR_INVALID);
+		attr_quality.add("ATTR_ALARM", (unsigned int)Tango::ATTR_ALARM);
+		attr_quality.add("ATTR_CHANGING", (unsigned int)Tango::ATTR_CHANGING);
+		attr_quality.add("ATTR_WARNING", (unsigned int)Tango::ATTR_WARNING);
 	}   
    
     template <typename ScannerT>
@@ -139,7 +166,7 @@ struct formula_grammar : public grammar<formula_grammar>
         definition(formula_grammar const& self)
         {      
             symbol
-            	=	(alnum_p | '.' | '_' | '-' | '+')				//any alpha numeric char plus '.', '_', '-', '+'
+            	=	(alnum_p | '.' | '_' | '-' | '+')				//any alpha numeric char plus '.', '_', '-'
             	;
             //------------------------------ALARM NAME--------------------------------------	
             name
@@ -176,21 +203,45 @@ struct formula_grammar : public grammar<formula_grammar>
 				;
 			val_st
 				=
-#ifndef _ACCESS_NODE_D				
-					token_node_d[self.tango_states]				//match only group defined in sym_grp symbol table				            	   
-#else				
 					//access_node_d[self.tango_states[&Save_Stat]][&Assign_Stat]	//save Tango::state value in node
 					access_node_d[self.tango_states[Save_Stat()]][Assign_Stat()]	//save Tango::state value in node
-#endif //_ACCESS_NODE_D					
+            	;
+			val_quality
+				=
+					//access_node_d[self.tango_states[&Save_Stat]][&Assign_Stat]	//save Tango::state value in node
+					access_node_d[self.attr_quality[Save_Stat()]][Assign_Stat()]	//save Tango::state value in node
+            	;
+            val_string
+#if BOOST_VERSION  < 103600
+            	=	token_node_d[
+#else
+            	=	reduced_node_d[
+#endif
+            	 	    lexeme_d[							//to conserve white spaces
+            				ch_p('\'')
+            				>> (+(anychar_p - '\'')) 		//one ore more char except '"'
+            				>> '\''
+            			]
+            		]
+//            	=	repeat_p(3)[(+symbol) >> ch_p('/')] >> (+symbol)
             	;
 
 			event_
 				=	name
 					>> !(index)
 				;				
-				
-			top = logical_expr
-				;	
+
+			/*top = ternary_if;
+
+			ternary_if
+			   =	logical_expr_paren
+			   	   >> !(root_node_d[str_p("?")] >> logical_expr_paren >> discard_node_d[ch_p(':')] >> logical_expr_paren)
+			    ;*/
+
+			cond_expr = logical_expr >> *(root_node_d[ch_p('?')] >> cond_expr >> discard_node_d[ch_p(':')] >> cond_expr);
+
+			/*top = logical_expr
+				;*/
 
             logical_expr
                 = 	bitwise_expr
@@ -235,36 +286,64 @@ struct formula_grammar : public grammar<formula_grammar>
                 		)
                 ;
             mult_expr
-                = 	expr_atom 
-                	>> *(	(root_node_d[ch_p('*')] >> expr_atom)
-                		| 	(root_node_d[ch_p('/')] >> expr_atom)
+                = 	unary_expr
+                	>> *(	(root_node_d[ch_p('*')] >> unary_expr)
+                		| 	(root_node_d[ch_p('/')] >> unary_expr)
                 		)
                 ;
-            function
-            	=	root_node_d[str_p("abs")] >> (inner_node_d[ch_p('(') >> logical_expr >> ')'])
-            	;
+
             unary_expr
-            	=	(	(root_node_d[ch_p('+')] >> expr_atom)
+            	=	(	expr_atom
+            		 |	function
+            		 |	function_dual
+            		 |	(root_node_d[ch_p('+')] >> expr_atom)
             		 |	(root_node_d[ch_p('-')] >> expr_atom)
             		 |	(root_node_d[ch_p('!')] >> expr_atom)
+            		// |	(root_node_d[ch_p('~')] >> expr_atom)	//TODO
             		)
             	;
-            expr_atom
-                =	//val_h | val_r	              
-					event_
-                	| unary_expr					
-					| val_h | val_r | val_st
-               		| function										     
-                	//| (inner_node_d[ch_p('(') >> logical_expr >> ')'])
-                	| (discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')])
-                	| unary_expr
 
+            function
+            	=	( root_node_d[str_p("abs")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("cos")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("sin")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
+					| root_node_d[str_p("quality")] >> (inner_node_d[ch_p('(') >> name >> ')'])	//TODO: ? not expr_atom ?
+            		)
+            	;
+            function_dual
+        	=	(	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+        		//|	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> discard_node_d[ch_p(',')] >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> ')']))
+        		|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+        		//|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> discard_node_d[ch_p(',')] >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> ')']))
+				|	(root_node_d[str_p("pow")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+        		)
+            	//=	*(	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> logical_expr_paren >> discard_node_d[ch_p(',')] >> logical_expr_paren >> ')']))
+            	//	|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> logical_expr_paren >> discard_node_d[ch_p(',')] >> logical_expr_paren >> ')']))
+            		//|	(root_node_d[str_p("min")] >> (discard_node_d[ch_p('(')] >> logical_expr_paren >> discard_node_d[ch_p(',')] >> logical_expr_paren >> discard_node_d[ch_p(',')]))
+            		//|	(root_node_d[str_p("min")] >> (ch_p('(') >> expr_atom >> ch_p(',') >> expr_atom >> ch_p(',')))
+            		//)
+            	;
+
+            non_empty_expression = cond_expr;
+            top = non_empty_expression | epsilon_p;
+           // top = non_empty_expression;
+
+            expr_atom
+                =	//val_h | val_r
+					event_
+					| val_h | val_r | val_st  | val_quality | val_string
+                	//| (inner_node_d[ch_p('(') >> non_empty_expression >> ')'])
+               		| (discard_node_d[ch_p('(')] >> non_empty_expression >> discard_node_d[ch_p(')')])
+                ;
+            logical_expr_paren
+            	=	(discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')])
+                	| logical_expr
                 ;
         }
         
         rule<ScannerT> top;
         //rule<ScannerT> symbol;
-        rule<typename lexeme_scanner<ScannerT>::type> symbol;					//neede to use lexeme_d in rule name
+        rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<ScannerT, parser_context<>, parser_tag<val_rID> > val_r;
         rule<ScannerT, parser_context<>, parser_tag<val_hID> > val_h;
         rule<ScannerT, parser_context<>, parser_tag<val_stID> > val_st;        
@@ -281,6 +360,13 @@ struct formula_grammar : public grammar<formula_grammar>
         rule<ScannerT, parser_context<>, parser_tag<funcID> > function;
 		rule<ScannerT, parser_context<>, parser_tag<nameID> > name;
 		rule<ScannerT, parser_context<>, parser_tag<indexID> > index;
+		rule<ScannerT, parser_context<>, parser_tag<val_stringID> > val_string;
+		rule<ScannerT, parser_context<>, parser_tag<func_dualID> > function_dual;
+		rule<ScannerT, parser_context<>, parser_tag<logical_expr_parenID> > logical_expr_paren;
+		rule<ScannerT, parser_context<>, parser_tag<cond_exprID> > cond_expr;
+		rule<ScannerT, parser_context<>, parser_tag<nonempty_exprID> > non_empty_expression;
+		rule<ScannerT, parser_context<>, parser_tag<exprID> > expression;
+		rule<ScannerT, parser_context<>, parser_tag<val_qualityID> > val_quality;
 
         rule<ScannerT> const&
         start() const { return top; }      

@@ -390,8 +390,18 @@ void Alarm::init_device()
 	rule_names[formula_grammar::mult_exprID] = "MultE";
 	rule_names[formula_grammar::expr_atomID] = "AtomicE";
 	rule_names[formula_grammar::shift_exprID] = "ShiftE";
-	rule_names[formula_grammar::unary_exprID] = "UnaryE";    	
-	
+	rule_names[formula_grammar::unary_exprID] = "UnaryE";
+	rule_names[formula_grammar::funcID] = "FunctionE";
+	rule_names[formula_grammar::nameID] = "NameE";
+	rule_names[formula_grammar::indexID] = "IndexE";
+	rule_names[formula_grammar::val_stringID] = "ValString";
+	rule_names[formula_grammar::func_dualID] = "FuncDualE";
+	rule_names[formula_grammar::logical_expr_parenID] = "LogicalParenE";
+	rule_names[formula_grammar::cond_exprID] = "ConditionalE";
+	rule_names[formula_grammar::nonempty_exprID] = "NonEmptyE";
+	rule_names[formula_grammar::exprID] = "Expression";
+	rule_names[formula_grammar::val_qualityID] = "ValQuality";
+
 	/*
 	 * get device attribute properties and initialize internal
 	 * data structures
@@ -1940,13 +1950,9 @@ void Alarm::modify(Tango::DevString argin)
 	alm.send_arg_n = false;
 	alm.dp_n = NULL;
 
-#ifndef _ACCESS_NODE_D
-	alm.formula_tree = ast_parse(alarm_string.c_str(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
-#else
 	alm.formula_tree =
 	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
 	ast_parse<factory_t>(alarm_string.begin(), alarm_string.end(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
-#endif
 	if (alm.formula_tree.full)
 	{
     	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
@@ -1986,11 +1992,7 @@ void Alarm::modify(Tango::DevString argin)
     else
     {
        	ostringstream o;
-#ifndef _ACCESS_NODE_D
-		o << __func__<<": Parsing Failed, syntax error stopped at " << alm.formula_tree.stop << ends;
-#else
 		o << __func__<<": Parsing Failed, syntax error stopped at " << string(alm.formula_tree.stop, alarm_string.end()) << ends; //TODO
-#endif
        	DEBUG_STREAM << o.str() << endl;
        	Tango::Except::throw_exception( \
 				(const char*)"Parsing Failed!", \
@@ -2238,13 +2240,9 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	alm.dp_n = NULL;
 	evn.clear();	
 
-#ifndef _ACCESS_NODE_D	
-	alm.formula_tree = ast_parse(alarm_string.c_str(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces	
-#else	
 	alm.formula_tree = 
 	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
 	ast_parse<factory_t>(alarm_string.begin(), alarm_string.end(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
-#endif
 	if (alm.formula_tree.full)
 	{
     	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
@@ -2307,11 +2305,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
     else
     {
        	ostringstream o;
-#ifndef _ACCESS_NODE_D       	
-		o << "Alarm::load_alarm(): Parsing Failed, syntax error stopped at " << alm.formula_tree.stop << ends;
-#else       	
 		o << "Alarm::load_alarm(): Parsing Failed, syntax error stopped at " << string(alm.formula_tree.stop, alarm_string.end()) << ends; //TODO
-#endif		
        	DEBUG_STREAM << o.str() << endl;
        	Tango::Except::throw_exception( \
 				(const char*)"Parsing Failed!", \
@@ -2729,6 +2723,7 @@ void Alarm::do_alarm(bei_t& e)
 	if (found != events->v_event.end())
 	{	
 		found->value = e.value;
+		found->value_string = e.value_string;
 		found->quality = e.quality;
 		//found->errors = e.errors;
 		found->ex_reason = e.ex_reason;
@@ -3230,44 +3225,27 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
         	throw err.str(); 
         }     		
         string val_st(i->value.begin(), i->value.end());
-#ifndef _ACCESS_NODE_D    
- 		Tango::DevState st;     
-		if(val_st == "ON")
-        	st = Tango::ON;
-        else if(val_st == "OFF")
-        	st = Tango::OFF;
-       	else if(val_st == "CLOSE")
-        	st = Tango::CLOSE;
-        else if(val_st == "OPEN")
-        	st = Tango::OPEN;
-        else if(val_st == "INSERT")
-        	st = Tango::INSERT;
-        else if(val_st == "EXTRACT")
-        	st = Tango::EXTRACT;
-        else if(val_st == "MOVING")
-        	st = Tango::MOVING;
-        else if(val_st == "STANDBY")
-        	st = Tango::STANDBY;
-        else if(val_st == "FAULT")
-        	st = Tango::FAULT;
-        else if(val_st == "INIT")
-        	st = Tango::INIT;
-        else if(val_st == "RUNNING")
-        	st = Tango::RUNNING;  
-        else if(val_st == "ALARM")
-        	st = Tango::ALARM; 
-        else if(val_st == "DISABLE")
-        	st = Tango::DISABLE; 
-        else if(val_st == "UNKNOWN")
-        	st = Tango::UNKNOWN;               	
-#else
         double st =  i->value.value();			//get value directly from node saved with access_node_d
-#endif //_ACCESS_NODE_D    	        	        	      	        	        	        	        	        	        	        	        	
 		DEBUG_STREAM << "		node value state : " << val_st << "=" << st << endl;
 		formula_res_t res;
 		res.value = st;
         return res;
-    }       
+    }
+	else if (i->value.id() == formula_grammar::val_qualityID)
+	{
+		if(i->children.size() != 0)
+		{
+			err <<  "in node val_qualityID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
+			throw err.str();
+		}
+		string val_quality(i->value.begin(), i->value.end());
+
+		double quality =  i->value.value();			//get value directly from node saved with access_node_d
+		DEBUG_STREAM << "		node value quality : " << val_quality << "=" << quality << endl;
+		formula_res_t res;
+		res.value = quality;
+        return res;
+	}
     else if (i->value.id() == formula_grammar::unary_exprID)
     {
 		DEBUG_STREAM << "		node unary expression: " << string(i->value.begin(), i->value.end()) << endl;
@@ -3371,7 +3349,7 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 				err <<  "in node nameID(" << string(i->value.begin(), i->value.end()) << ") value not valid!" << ends;
         		throw err.str();
         	}	
-			else if(it->value.empty())
+			else if(it->type != Tango::DEV_STRING && it->value.empty())
 			{
 				err <<  "in node nameID(" << string(i->value.begin(), i->value.end()) << ") value not initialized!!" << ends;
         		throw err.str();
@@ -3538,22 +3516,92 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 		{
         	err <<  "in node equality_exprID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
         	throw err.str(); 
-        }	
-		if (string(i->value.begin(), i->value.end()) == string("!="))
-        {
-            return eval_expression(i->children.begin(), attr_values) !=
-                eval_expression(i->children.begin()+1, attr_values);
         }
-		else if (string(i->value.begin(), i->value.end()) == string("=="))
-        {
-            return eval_expression(i->children.begin(), attr_values) ==
-                eval_expression(i->children.begin()+1, attr_values);
-        }       
-        else
-        {
-        	err <<  "in node equality_exprID(" << string(i->value.begin(), i->value.end()) << ") value not allowed" << ends;
-        	throw err.str(); 
-        }			   
+
+
+		//string comparison here
+		iter_t const& i2_1 = i->children.begin();
+		iter_t const& i2_2 = i->children.begin()+1;
+		//OK only attr == 'string' or attr != 'string'
+		if(i2_1->value.id() == formula_grammar::nameID && i2_2->value.id() == formula_grammar::val_stringID)
+		{
+			if(i2_1->children.size() == 0 && i2_2->children.size() == 0)
+			{
+				//retrieve string from attribute:
+				string attr_val = "";
+				string name_id(i2_1->value.begin(), i2_1->value.end());
+				std::transform(name_id.begin(), name_id.end(), name_id.begin(), (int(*)(int))tolower);		//transform to lowercase
+				formula_res_t res;
+				vector<event>::iterator it = events->v_event.begin();
+
+				while ((it != events->v_event.end()) && (it->name != name_id))
+						it++;
+				if (it != events->v_event.end())
+				{
+					if(!it->valid)
+					{
+						err <<  "in node nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not valid!" << ends;
+						throw err.str();
+					}
+					else if(it->type != Tango::DEV_STRING && it->value.empty())
+					{
+						err <<  "in node nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not initialized!!" << ends;
+						throw err.str();
+					}
+					ostringstream temp_attr_val;
+					temp_attr_val << it->name << "=" <<it->value_string << ";";
+					attr_values += temp_attr_val.str();
+					res.quality = it->quality;
+					res.ex_reason = it->ex_reason;
+					res.ex_desc = it->ex_desc;
+					res.ex_origin = it->ex_origin;
+					DEBUG_STREAM << "		node name -> " << temp_attr_val.str() << " quality=" << res.quality << endl;
+					attr_val =  string("'") + it->value_string + string("'");
+				}
+				else
+				{
+					err <<  "in event: (" << string(i->value.begin(), i->value.end()) << ") not found in event table" << ends;
+					throw err.str();
+				}
+
+				//retrieve string from formula
+				string val_string(i2_2->value.begin(), i2_2->value.end());
+
+				if (string(i->value.begin(), i->value.end()) == string("!="))
+				{
+					res.value = attr_val != val_string;
+					return res;
+				}
+				else if (string(i->value.begin(), i->value.end()) == string("=="))
+				{
+					res.value = attr_val == val_string;
+					return res;
+				}
+				else
+				{
+					err <<  "in node equality_exprID(" << string(i->value.begin(), i->value.end()) << ") value not allowed (val_stringID)" << ends;
+					throw err.str();
+				}
+			}
+		}
+		else
+		{
+			if (string(i->value.begin(), i->value.end()) == string("!="))
+			{
+				return eval_expression(i->children.begin(), attr_values) !=
+					eval_expression(i->children.begin()+1, attr_values);
+			}
+			else if (string(i->value.begin(), i->value.end()) == string("=="))
+			{
+				return eval_expression(i->children.begin(), attr_values) ==
+					eval_expression(i->children.begin()+1, attr_values);
+			}
+			else
+			{
+				err <<  "in node equality_exprID(" << string(i->value.begin(), i->value.end()) << ") value not allowed" << ends;
+				throw err.str();
+			}
+		}
     }   
     else if (i->value.id() == formula_grammar::compare_exprID)
     {
@@ -3599,9 +3647,110 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
         }
 		formula_res_t res;
 		res = eval_expression(i->children.begin(), attr_values);
-		res.value = fabs(res.value);
-		return res;			//now handled only abs as function
+
+		if (string(i->value.begin(), i->value.end()) == string("abs"))
+		{
+			res.value = fabs(res.value);
+			return res;
+		}
+		else if (string(i->value.begin(), i->value.end()) == string("cos"))
+		{
+			res.value = cos(res.value);
+			return res;
+		}
+		else if (string(i->value.begin(), i->value.end()) == string("sin"))
+		{
+			res.value = sin(res.value);
+			return res;
+		}
+		else if (string(i->value.begin(), i->value.end()) == string("quality"))
+		{
+			if(i->children.size() != 1)
+			{
+				err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
+				throw err.str();
+			}
+			if(i->children.begin()->value.id() != formula_grammar::nameID)
+			{
+				string name_id(i->children.begin()->value.begin(), i->children.begin()->value.end());
+				err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children is not an attribute name but " << name_id << ends;
+				throw err.str();
+			}
+			res.value = res.quality;
+			return res;
+		}
+		else
+		{
+			err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") value not allowed" << ends;
+			throw err.str();
+		}
     }  
+	else if (i->value.id() == formula_grammar::func_dualID)
+	{
+		DEBUG_STREAM << "		node function dual: " << string(i->value.begin(), i->value.end()) << endl;
+		if(i->children.size() != 2)
+		{
+			err <<  "in node func_dualID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
+			throw err.str();
+		}
+		formula_res_t res_1=eval_expression(i->children.begin(), attr_values),
+           	res_2=eval_expression(i->children.begin()+1, attr_values);
+		if (string(i->value.begin(), i->value.end()) == string("min"))
+		{
+        	formula_res_t res;
+        	res.value = min(res_1.value, res_2.value);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
+		}
+		else if (string(i->value.begin(), i->value.end()) == string("max"))
+		{
+        	formula_res_t res;
+        	res.value = max(res_1.value, res_2.value);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
+		}
+		else if (string(i->value.begin(), i->value.end()) == string("pow"))
+		{
+        	formula_res_t res;
+        	res.value = pow(res_1.value, res_2.value);
+        	res.quality = res.combine_quality(res_1.quality, res_2.quality);
+        	res.ex_reason = res.combine_exception(res_1.ex_reason, res_2.ex_reason);
+        	res.ex_desc = res.combine_exception(res_1.ex_desc, res_2.ex_desc);
+        	res.ex_origin = res.combine_exception(res_1.ex_origin, res_2.ex_origin);
+            return res;
+		}
+		else
+		{
+			err <<  "in node func_dualID(" << string(i->value.begin(), i->value.end()) << ") value not allowed" << ends;
+			throw err.str();
+		}
+	}
+	else if (i->value.id() == formula_grammar::cond_exprID)
+	{
+		DEBUG_STREAM << "		node ternary_if expression: " << string(i->value.begin(), i->value.end()) << endl;
+		if(i->children.size() != 3)
+		{
+			err <<  "in node ternary_ifID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
+			throw err.str();
+		}
+		formula_res_t res_1=eval_expression(i->children.begin(), attr_values);
+		if(res_1.value)
+		{
+        	formula_res_t res = eval_expression(i->children.begin()+1, attr_values);
+            return res;
+		}
+		else
+		{
+        	formula_res_t res = eval_expression(i->children.begin()+2, attr_values);
+            return res;
+		}
+	}
     else
     {
         DEBUG_STREAM << "		node unknown id: " << string(i->value.begin(), i->value.end()) << endl;

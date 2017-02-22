@@ -52,29 +52,17 @@
 
 using namespace std;
 
-//#define _ACCESS_NODE_D 1
+
 #if BOOST_VERSION  < 103600
-#ifndef _ACCESS_NODE_D
-typedef char const*         iterator_t;
-typedef boost::spirit::tree_match<iterator_t> parse_tree_match_t;
-typedef boost::spirit::tree_parse_info<>    tree_parse_info_t;
-#else
 typedef std::string::iterator  iterator_t;
 typedef boost::spirit::node_val_data_factory<unsigned int> factory_t;		//want a modified node to contain an unsigned int value
 typedef boost::spirit::tree_match<iterator_t, factory_t> parse_tree_match_t;     
 typedef boost::spirit::tree_parse_info<iterator_t, factory_t>    tree_parse_info_t;   
-#endif
-#else
-#ifndef _ACCESS_NODE_D
-typedef char const*         iterator_t;
-typedef boost::spirit::classic::tree_match<iterator_t> parse_tree_match_t;
-typedef boost::spirit::classic::tree_parse_info<>    tree_parse_info_t;
 #else
 typedef std::string::iterator  iterator_t;
 typedef boost::spirit::classic::node_val_data_factory<unsigned int> factory_t;		//want a modified node to contain an unsigned int value
 typedef boost::spirit::classic::tree_match<iterator_t, factory_t> parse_tree_match_t;     
 typedef boost::spirit::classic::tree_parse_info<iterator_t, factory_t>    tree_parse_info_t;   
-#endif
 #endif
 
 typedef parse_tree_match_t::tree_iterator iter_t;

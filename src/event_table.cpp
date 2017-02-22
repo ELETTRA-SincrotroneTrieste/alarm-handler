@@ -1120,7 +1120,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 			e.ev_name = ev->attr_name;
 #endif
 			e.ts = ev->attr_value->time;
-			extract_values(ev->attr_value, e.value, e.type);
+			extract_values(ev->attr_value, e.value, e.value_string, e.type);
 		} else {
 #if 0//TANGO_VER >= 711
  			string ev_name_str(ev->attr_name);
@@ -1181,13 +1181,11 @@ void EventCallBack::push_event(Tango::EventData* ev)
 	static_cast<Alarm_ns::Alarm *>(mydev)->evlist.push_back(e);
 }  /* push_event() */
 
-void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, int &type)
+void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type)
 {
 	Tango::DevState stval;
 	vector<Tango::DevState> v_st;
-#if 1//TANGO_VER >= 600
 	vector<Tango::DevULong> v_ulo;
-#endif
 	vector<Tango::DevUChar> v_uch;
 	vector<Tango::DevShort> v_sh;
 	vector<Tango::DevUShort> v_ush;
@@ -1197,6 +1195,8 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 	vector<Tango::DevBoolean> v_bo;
 	vector<Tango::DevLong64> v_lo64;
 	vector<Tango::DevULong64> v_ulo64;
+	vector<string> v_string;
+	val_string = string("");
 
 	if (attr_value->get_type() == Tango::DEV_UCHAR) {
 		*(attr_value) >> v_uch;
@@ -1257,6 +1257,10 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 		for(vector<Tango::DevULong64>::iterator  it = v_ulo64.begin(); it != v_ulo64.end(); it++)
 			val.push_back((double)(*it));		//convert all to double
 		type = Tango::DEV_ULONG64;
+	} else if (attr_value->get_type() == Tango::DEV_STRING) {
+		*(attr_value) >> v_string;
+		val_string = *(v_string.begin());	//TODO: support string spectrum attrbutes
+		type = Tango::DEV_STRING;
 	}
 	else {
 		ostringstream o;

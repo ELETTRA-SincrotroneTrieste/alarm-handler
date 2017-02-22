@@ -42,7 +42,6 @@
 #include <mysql.h>
 
 #include <boost/version.hpp>
-#define _ACCESS_NODE_D 1
 #if BOOST_VERSION  >= 103600
 #define BOOST_VER_1_36_0 1
 #endif

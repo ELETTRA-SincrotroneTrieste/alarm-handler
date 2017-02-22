@@ -20,7 +20,6 @@
 #include "log_thread.h"
 #include "cmd_thread.h"
 
-#define _ACCESS_NODE_D 1
 
 static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
 
@@ -193,11 +192,7 @@ void alarm_table::init(vector<string>& avs, vector<string> &evn, map< string,vec
 			tmp_alm.msg.clear();
 			tmp_alm.lev.clear();
 			tmp_alm.grp=0;
-#ifndef _ACCESS_NODE_D 			
-			parse_info<> info = parse(i->c_str(), al, space_p);	//parse string i with grammar al, skipping white spaces
-#else			
 			tree_parse_info_t info = ast_parse<factory_t>(i->begin(), i->end(), al, space_p);
-#endif
 			if (info.full)
 			{
            		LOG_STREAM << gettime().tv_sec << " Parsing succeeded: " << tmp_alm.name << endl;
@@ -206,11 +201,7 @@ void alarm_table::init(vector<string>& avs, vector<string> &evn, map< string,vec
 			}	           		
        		else
         	{
-#ifndef _ACCESS_NODE_D       	
-				LOG_STREAM << gettime().tv_sec << " Parsing failed, stopped at: " << info.stop << endl;
-#else       	
 				LOG_STREAM << gettime().tv_sec << " Parsing failed, stopped at: " << string(info.stop, i->end()) << ends; //TODO
-#endif            	
         	}
 
 			if ((tmp_alm.name.empty() == false) && \

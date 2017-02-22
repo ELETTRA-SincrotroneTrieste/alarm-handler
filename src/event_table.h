@@ -49,6 +49,7 @@ class event {
 		string	devname;
 		string	attname;
 		value_t value;				/* event value */
+		string value_string;	//added for DevString attributes
 		int quality;
 		//Tango::DevErrorList 	errors;
 		string ex_reason;
@@ -101,6 +102,7 @@ class event {
 typedef struct basic_event_info_s {
 	string ev_name;
 	value_t value;
+	string value_string;
 	int quality;
 	//Tango::DevErrorList 	errors;
 	string ex_reason;
@@ -190,7 +192,7 @@ class EventCallBack : public Tango::CallBack, public Tango::LogAdapter
 		~EventCallBack(void);
 		void push_event(Tango::EventData* ev);
 		//void init(event_list* e);
-		void extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, int &type);
+		void extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type);
 	private:
 		//event_list* e_ptr;
 		Tango::DeviceImpl *mydev;
