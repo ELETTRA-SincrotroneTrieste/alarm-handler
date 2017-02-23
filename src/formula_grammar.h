@@ -168,6 +168,9 @@ struct formula_grammar : public grammar<formula_grammar>
             symbol
             	=	(alnum_p | '.' | '_' | '-' | '+')				//any alpha numeric char plus '.', '_', '-'
             	;
+            symbol_attr
+            	=	(alnum_p | '_' )								//any alpha numeric char plus '_' for attribute names
+            	;
             //------------------------------ALARM NAME--------------------------------------	
             name
 #if BOOST_VERSION  < 103600              
@@ -178,7 +181,7 @@ struct formula_grammar : public grammar<formula_grammar>
             			lexeme_d[							//needed to ignore "space_p" (skip white spaces) evaluating name
             				!("tango://" >> (+symbol) >> ':' >> uint_p >> "/")	//eventually match FQDN
             				>> (+symbol) >> '/' >> (+symbol)
-            				>> '/' >> (+symbol) >> '/' >> (+symbol)
+            				>> '/' >> (+symbol) >> '/' >> (+symbol_attr)
             			]
             		]
 //            	=	repeat_p(3)[(+symbol) >> ch_p('/')] >> (+symbol) 
@@ -228,7 +231,9 @@ struct formula_grammar : public grammar<formula_grammar>
 
 			event_
 				=	name
-					>> !(index)
+					>> !( (index)
+						| (".quality")
+						)
 				;				
 
 			/*top = ternary_if;
@@ -307,7 +312,7 @@ struct formula_grammar : public grammar<formula_grammar>
             	=	( root_node_d[str_p("abs")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
             		| root_node_d[str_p("cos")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
             		| root_node_d[str_p("sin")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
-					| root_node_d[str_p("quality")] >> (inner_node_d[ch_p('(') >> name >> ')'])	//TODO: ? not expr_atom ?
+					| root_node_d[str_p("quality")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
             		)
             	;
             function_dual
@@ -335,15 +340,16 @@ struct formula_grammar : public grammar<formula_grammar>
                 	//| (inner_node_d[ch_p('(') >> non_empty_expression >> ')'])
                		| (discard_node_d[ch_p('(')] >> non_empty_expression >> discard_node_d[ch_p(')')])
                 ;
-            logical_expr_paren
+            /*logical_expr_paren
             	=	(discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')])
                 	| logical_expr
-                ;
+                ;*/
         }
         
         rule<ScannerT> top;
         //rule<ScannerT> symbol;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
+        rule<typename lexeme_scanner<ScannerT>::type> symbol_attr;					//needed to use lexeme_d in rule name
         rule<ScannerT, parser_context<>, parser_tag<val_rID> > val_r;
         rule<ScannerT, parser_context<>, parser_tag<val_hID> > val_h;
         rule<ScannerT, parser_context<>, parser_tag<val_stID> > val_st;        

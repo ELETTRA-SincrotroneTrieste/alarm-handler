@@ -3257,11 +3257,22 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 		formula_res_t res;
 		res = eval_expression(i->children.begin(), attr_values);
         if (*i->value.begin() == '+')
+        {
         	res.value = + res.value;
-        if (*i->value.begin() == '-')
+        }
+        else if (*i->value.begin() == '-')
+        {
         	res.value = - res.value;
-        if (*i->value.begin() == '!')
+        }
+        else if (*i->value.begin() == '!')
+        {
         	res.value = ! res.value;
+        }
+        else
+        {
+        	err <<  "in node unary_exprID(" << string(i->value.begin(), i->value.end()) << ") value not allowed" << ends;
+        	throw err.str();
+        }
         return res;
     }
     else if (i->value.id() == formula_grammar::mult_exprID)
@@ -3323,6 +3334,12 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
         }
 		if((i->children.begin()+1)->value.id() == formula_grammar::indexID)
 			ind = eval_expression(i->children.begin()+1, attr_values);		//array index
+		else if(string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) == ".quality")
+		{
+			formula_res_t res = eval_expression(i->children.begin(), attr_values, (int)ind.value);
+			res.value = res.quality;
+			return res;
+		}
 		else
 		{
         	err <<  "in node event_ID(" << string(i->value.begin(), i->value.end()) << ") children2 is not an index ->" << string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) << ends;;
@@ -3665,17 +3682,6 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 		}
 		else if (string(i->value.begin(), i->value.end()) == string("quality"))
 		{
-			if(i->children.size() != 1)
-			{
-				err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
-				throw err.str();
-			}
-			if(i->children.begin()->value.id() != formula_grammar::nameID)
-			{
-				string name_id(i->children.begin()->value.begin(), i->children.begin()->value.end());
-				err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children is not an attribute name but " << name_id << ends;
-				throw err.str();
-			}
 			res.value = res.quality;
 			return res;
 		}
