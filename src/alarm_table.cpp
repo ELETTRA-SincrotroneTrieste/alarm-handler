@@ -882,6 +882,7 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 			else
 			{
 				cout << "att_name="<<att_name<<" UNKWNOWN prop_name="<<prop_name<<endl;
+				i++;
 				continue;
 			}
 			i++;
