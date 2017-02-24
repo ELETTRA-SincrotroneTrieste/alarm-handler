@@ -77,6 +77,17 @@ class update_thread;
 
 namespace Alarm_ns
 {
+enum _AlarmStateEnum {
+	_NORM,
+	_UNACK,
+	_ACKED,
+	_RTNUN,
+	_SHLVD,
+	_DSUPR,
+	_OOSRV,
+} ;
+typedef _AlarmStateEnum AlarmStateEnum;
+
 /*----- PROTECTED REGION ID(Alarm::Additional Class Declarations) ENABLED START -----*/
 
 //	Additional Class Declarations
@@ -204,15 +215,29 @@ public:
 	 *	Attribute AlarmState related methods
 	 *	Description: 
 	 *
-	 *	Data type:	Tango::DevBoolean
+	 *	Data type:	Tango::DevEnum
 	 *	Attr type:	Scalar
 	 */
 	virtual void read_AlarmState(Tango::Attribute &attr);
 	virtual bool is_AlarmState_allowed(Tango::AttReqType type);
 	void add_AlarmState_dynamic_attribute(string attname);
 	void remove_AlarmState_dynamic_attribute(string attname);
-	Tango::DevBoolean *get_AlarmState_data_ptr(string &name);
-	map<string,Tango::DevBoolean>	   AlarmState_data;
+	Tango::DevEnum *get_AlarmState_data_ptr(string &name);
+	map<string,Tango::DevEnum>	   AlarmState_data;
+
+	/**
+	 *	Attribute AlarmFormula related methods
+	 *	Description: 
+	 *
+	 *	Data type:	Tango::DevString
+	 *	Attr type:	Scalar
+	 */
+	virtual void read_AlarmFormula(Tango::Attribute &attr);
+	virtual bool is_AlarmFormula_allowed(Tango::AttReqType type);
+	void add_AlarmFormula_dynamic_attribute(string attname);
+	void remove_AlarmFormula_dynamic_attribute(string attname);
+	Tango::DevString *get_AlarmFormula_data_ptr(string &name);
+	map<string,Tango::DevString>	   AlarmFormula_data;
 
 	//--------------------------------------------------------
 	/**

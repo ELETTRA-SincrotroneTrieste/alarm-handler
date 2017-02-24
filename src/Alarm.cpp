@@ -1105,14 +1105,14 @@ void Alarm::read_alarm(Tango::Attribute &attr)
  *	Read attribute AlarmState related method
  *	Description: 
  *
- *	Data type:	Tango::DevBoolean
+ *	Data type:	Tango::DevEnum (AlarmStateEnum)
  *	Attr type:	Scalar
  */
 //--------------------------------------------------------
 void Alarm::read_AlarmState(Tango::Attribute &attr)
 {
 	DEBUG_STREAM << "Alarm::read_AlarmState(Tango::Attribute &attr) entering... " << endl;
-	Tango::DevBoolean	*att_value = get_AlarmState_data_ptr(attr.get_name());
+	Tango::DevEnum	*att_value = get_AlarmState_data_ptr(attr.get_name());
 	/*----- PROTECTED REGION ID(Alarm::read_AlarmState) ENABLED START -----*/
 	string reason("");
 	string desc("");
@@ -1167,6 +1167,25 @@ void Alarm::read_AlarmState(Tango::Attribute &attr)
 }
 //--------------------------------------------------------
 /**
+ *	Read attribute AlarmFormula related method
+ *	Description: 
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Scalar
+ */
+//--------------------------------------------------------
+void Alarm::read_AlarmFormula(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_AlarmFormula(Tango::Attribute &attr) entering... " << endl;
+	Tango::DevString	*att_value = get_AlarmFormula_data_ptr(attr.get_name());
+	/*----- PROTECTED REGION ID(Alarm::read_AlarmFormula) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(att_value);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_AlarmFormula
+}
+//--------------------------------------------------------
+/**
  *	Method      : Alarm::add_dynamic_attributes()
  *	Description : Create the dynamic attributes if any
  *                for specified device.
@@ -1177,6 +1196,7 @@ void Alarm::add_dynamic_attributes()
 	//	Example to add dynamic attribute:
 	//	Copy inside the following protected area to create instance(s) at startup.
 	//	add_AlarmState_dynamic_attribute("MyAlarmStateAttribute");
+	//	add_AlarmFormula_dynamic_attribute("MyAlarmFormulaAttribute");
 	
 	/*----- PROTECTED REGION ID(Alarm::add_dynamic_attributes) ENABLED START -----*/
 	
@@ -1192,8 +1212,13 @@ void Alarm::add_dynamic_attributes()
 			i != alarms.v_alarm.end(); i++)
 		{
 			add_AlarmState_dynamic_attribute(i->second.attr_name);
-			Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
 			i->second.attr_value = attr_value;
+			i->second.attr_name_formula = i->second.attr_name + string("Formula");
+			add_AlarmFormula_dynamic_attribute(i->second.attr_name_formula);
+			Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(i->second.attr_name_formula);
+			*attr_value_formula = CORBA::string_dup(i->second.formula.c_str());
+			i->second.attr_value_formula = attr_value_formula;
 		}
 	}
 #ifndef _RW_LOCK
@@ -1201,7 +1226,6 @@ void Alarm::add_dynamic_attributes()
 #else
 	alarms.vlock->readerOut();
 #endif
-
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::add_dynamic_attributes
 }
@@ -1247,8 +1271,44 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 			{
 				alarms.log_alarm_db(TYPE_LOG_STATUS, gettime(), found->name, found->stat, ACK, 
 						"", 0, "", "", "", "", -1);
+
+				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+				//TODO: if not _SHLVD, _DSUPR, _OOSRV
+				if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
+					*attr_value = _NORM;
+				else if((i->second.stat == S_ALARM) && i->second.ack == NOT_ACK)
+					*attr_value = _UNACK;
+				else if((i->second.stat == S_ALARM) && i->second.ack == ACK)
+					*attr_value = _ACKED;
+				else if((i->second.stat == S_NORMAL) && i->second.ack == NOT_ACK)
+					*attr_value = _RTNUN;
+				try
+				{	//DevFailed for push events
+					if(i->second.ex_reason.length() == 0)
+					{
+						timeval now;
+						gettimeofday(&now, NULL);
+						push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+						push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					}
+					else
+					{
+						Tango::DevErrorList errors(1);
+						errors.length(1);
+						errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+						errors[0].severity = Tango::ERR;
+						errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+						Tango::DevFailed except(errors);
+						push_change_event(i->second.attr_name, &except);
+						push_archive_event(i->second.attr_name, &except);
+					}
+				} catch(Tango::DevFailed & ex)
+				{
+					WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+				}
 			}
-			found->ack = ACK;		
+			found->ack = ACK;
 		} else {
 			internallock->readerIn();
 			found = find(internal.begin(), internal.end(), *si);
@@ -2344,8 +2404,13 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 				(const char*)"Alarm::load_alarm()", Tango::ERR);
 	}
 	add_AlarmState_dynamic_attribute(alm.attr_name);
-	Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(alm.attr_name);
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
 	alm.attr_value = attr_value;
+	alm.attr_name_formula = alm.attr_name + string("Formula");
+	add_AlarmFormula_dynamic_attribute(alm.attr_name_formula);
+	Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(alm.attr_name_formula);
+	*attr_value_formula = CORBA::string_dup(alm.formula.c_str());
+	alm.attr_value_formula = attr_value_formula;
 	if (alarms.exist(alm.name)) {
 		ostringstream o;
 		o << "Alarm::load_alarm(): alarm '" << alm.name << "' already exist" << ends;
@@ -2786,16 +2851,24 @@ bool Alarm::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts)
 			res = eval_formula(it->second.formula_tree, attr_values);
 				DEBUG_STREAM << "Alarm::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
 				changed = alarms.update(tmpname, ts, res, attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
-				Tango::DevBoolean *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
-				*attr_value = (it->second.stat == S_ALARM);
+				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
+				//TODO: if not _SHLVD, _DSUPR, _OOSRV
+				if((it->second.stat == S_NORMAL) && it->second.ack == ACK)
+					*attr_value = _NORM;
+				else if((it->second.stat == S_ALARM) && it->second.ack == NOT_ACK)
+					*attr_value = _UNACK;
+				else if((it->second.stat == S_ALARM) && it->second.ack == ACK)
+					*attr_value = _ACKED;
+				else if((it->second.stat == S_NORMAL) && it->second.ack == NOT_ACK)
+					*attr_value = _RTNUN;
 			try
 			{	//DevFailed for push events
 				if(it->second.ex_reason.length() == 0)
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
-					push_change_event(it->second.attr_name,(Tango::DevBoolean *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
-					push_archive_event(it->second.attr_name,(Tango::DevBoolean *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
+					push_change_event(it->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
+					push_archive_event(it->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
 				}
 				else
 				{

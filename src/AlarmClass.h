@@ -80,12 +80,27 @@ class AlarmStateAttrib: public Tango::Attr
 {
 public:
 	AlarmStateAttrib(const string &att_name):Attr(att_name.c_str(), 
-			Tango::DEV_BOOLEAN, Tango::READ) {};
+			Tango::DEV_ENUM, Tango::READ) {};
 	~AlarmStateAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
 		{(static_cast<Alarm *>(dev))->read_AlarmState(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
 		{return (static_cast<Alarm *>(dev))->is_AlarmState_allowed(ty);}
+	virtual bool same_type(const type_info &in_type) {return typeid(AlarmStateEnum) == in_type;}
+	virtual string get_enum_type() {return string("AlarmStateEnum");}
+};
+
+//	Attribute AlarmFormula class definition
+class AlarmFormulaAttrib: public Tango::Attr
+{
+public:
+	AlarmFormulaAttrib(const string &att_name):Attr(att_name.c_str(), 
+			Tango::DEV_STRING, Tango::READ) {};
+	~AlarmFormulaAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_AlarmFormula(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_AlarmFormula_allowed(ty);}
 };
 
 

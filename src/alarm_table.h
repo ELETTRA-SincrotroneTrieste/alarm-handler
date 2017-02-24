@@ -258,7 +258,9 @@ class alarm_t {
 		string name,
 					 formula;
 		string attr_name;
-		Tango::DevBoolean *attr_value;
+		string attr_name_formula;
+		Tango::DevEnum *attr_value;
+		Tango::DevString *attr_value_formula;
 		int quality;
 		string ex_reason;
 		string ex_desc;

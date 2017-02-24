@@ -82,6 +82,22 @@ bool Alarm::is_AlarmState_allowed(TANGO_UNUSED(Tango::AttReqType type))
 	return true;
 }
 
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_AlarmFormula_allowed()
+ *	Description : Execution allowed for AlarmFormula attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_AlarmFormula_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for AlarmFormula attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::AlarmFormulaStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::AlarmFormulaStateAllowed_READ
+	return true;
+}
+
 
 //=================================================
 //		Commands Allowed Methods
