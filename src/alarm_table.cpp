@@ -30,6 +30,8 @@ alarm_t::alarm_t()
 {
 	grp=0;
 	counter=0;
+	stat = S_NORMAL;
+	ack = ACK;
 } 
  
 bool alarm_t::operator==(const alarm_t &that)
