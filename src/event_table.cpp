@@ -222,6 +222,7 @@ event_table::event_table(Tango::DeviceImpl *s):Tango::LogAdapter(s)
 {
 	mydev = s;
 	stop_it = false;
+	action = NOTHING;
 }
 
 unsigned int event_table::size(void)
