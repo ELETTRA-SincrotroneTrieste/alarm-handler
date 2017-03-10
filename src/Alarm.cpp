@@ -2310,6 +2310,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
     	if(!alm.name.empty())
     	{
     		alm.attr_name = alm.name;
+#if 0
 			size_t start_pos = 0;
 			string from("/");
 			string to("__");
@@ -2318,6 +2319,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 				alm.attr_name.replace(start_pos, from.length(), to);
 				start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
 			}
+#endif
     	}
     	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written uppercase
     	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase

@@ -177,7 +177,7 @@ struct alarm_parse : public grammar<alarm_parse>
             expression
             	=	discard_node_d
             		[
-            		name
+            		name_alm
             			[
             				assign_a(self.m_alarm.name)			//save name in alarm_t
 						]
