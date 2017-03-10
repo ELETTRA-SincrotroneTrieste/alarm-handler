@@ -67,6 +67,17 @@
 #include "event_table.h"
 #include "formula_grammar.h"
 
+#define NAME_KEY			"name"
+#define FORMULA_KEY			"formula"
+#define DELAY_KEY			"time_threshold"
+#define LEVEL_KEY			"level"
+#define SILENT_TIME_KEY		"silent_time"
+#define GROUP_KEY			"group"
+#define MESSAGE_KEY			"message"
+#define ON_COMMAND_KEY		"on_command"
+#define OFF_COMMAND_KEY		"off_command"
+#define KEY(S_VAL)  		S_VAL "="
+
 ////////////////////////////////////////////////////////////////////////////
 using namespace std; 
 #if BOOST_VERSION  < 103600 
@@ -179,56 +190,47 @@ struct alarm_parse : public grammar<alarm_parse>
             					assign_a(self.m_alarm.formula)	//save formula in alarm_t
             				]
             			]		//root_node_d
-            			  
-            		>> discard_node_d[!time_threshold]			//save time_threshold in alarm_t (leave it optional)
-            		         				
-            		>> discard_node_d
-            			[
-            			level
-            				[
-            					assign_a(self.m_alarm.lev)		//save level in alarm_t
-            				]
-            			]		//discard_node_d
+					>> *(discard_node_d[option])
+			;
 
-                	>> discard_node_d[!silent_time]				//save silent_time in alarm_t (leave it optional)
+            option
+				=	discard_node_d[time_threshold] |
+					discard_node_d[level] |
+					discard_node_d[silent_time] |
+					discard_node_d[group] |
+					discard_node_d[msg] |
+					discard_node_d[on_command] |
+					discard_node_d[off_command]
+			;
 
-            		>> discard_node_d[group]
-
-            		>> discard_node_d[msg]						//save msg in alarm_t
-
-					>> discard_node_d
-            		[
-            		!name										//leave it optional
-            			[
-            				assign_a(self.m_alarm.cmd_name_a)		//save cmd_name_a in alarm_t
-						]
-					]		//discard_node_d	
-					
-					>> discard_node_d[!ch_p(';')]				//action_a and action_n separed by ';'
-					
-					>> discard_node_d
-            		[
-            		!name										//leave it optional
-            			[
-            				assign_a(self.m_alarm.cmd_name_n)		//save cmd_name_n in alarm_t
-						]
-					]		//discard_node_d
-            	;
             //------------------------------ALARM NAME--------------------------------------            
             symbol
             	=	alnum_p | '.' | '_'  | '-' | '+'				//any alpha numeric char plus '.', '_', '-', '+'
             	;	
+            symbol_attr_name
+            	=	alnum_p | '_'									//any alpha numeric char plus '_'
+            	;
             name
             	=	(+symbol) >> '/' >> (+symbol) 
-            		>> '/' >> (+symbol) >> '/' >> (+symbol)
+            		>> '/' >> (+symbol) >> '/' >> (+symbol_attr_name)
+            	;
+            name_alm
+            	=	(+symbol_attr_name)
             	; 
 			//------------------------------LEVEL--------------------------------------	
 			level
-				=	lexeme_d[(+alnum_p)]		//match only possible levels?? (fault, log, ...)
+				=	discard_node_d[str_p(KEY(LEVEL_KEY))] >>
+					//lexeme_d[(+alnum_p)]		//match only possible levels?? (fault, log, ...)
+					//(+(alnum_p-'\t'))
+					(str_p("fault") | str_p("warning") | str_p("log"))
+					[
+						assign_a(self.m_alarm.lev)		//save level in alarm_t
+					]
 				;
 			//------------------------------GROUP--------------------------------------	
 			group
-				=	self.sym_grp				//match only group defined in sym_grp symbol table
+				=	discard_node_d[str_p(KEY(GROUP_KEY))] >>
+					self.sym_grp				//match only group defined in sym_grp symbol table
 					[
 						var(self.m_alarm.grp) |= arg1			//using phoenix::var
 					]
@@ -242,7 +244,8 @@ struct alarm_parse : public grammar<alarm_parse>
 				;
 			//------------------------------MESSAGE--------------------------------------	
 			msg
-				=	ch_p('"') 
+				=	discard_node_d[str_p(KEY(MESSAGE_KEY))] >>
+					ch_p('"')
 					>> (+(anychar_p - '\"')) 		//one ore more char except '"'
 							[
 								assign_a(self.m_alarm.msg)
@@ -251,24 +254,53 @@ struct alarm_parse : public grammar<alarm_parse>
 				;
 			//---------------------------TIME THRESHOLD----------------------------------	
 			time_threshold 
-				=	uint_p
+				=	discard_node_d[str_p(KEY(DELAY_KEY))] >>
+					(uint_p
 					[
 						assign_a(self.m_alarm.time_threshold)
 					]
+					| epsilon_p)
 				;
 			//-----------------------------SILENT TIME------------------------------------
 			silent_time
-				=	int_p
+				= discard_node_d[str_p(KEY(SILENT_TIME_KEY))] >>
+					(int_p
 					[
 						assign_a(self.m_alarm.silent_time)
 					]
+					| epsilon_p)
 				;
-			         
+			//-----------------------------ON COMMAND------------------------------------
+			on_command
+				= discard_node_d[str_p(KEY(ON_COMMAND_KEY))] >>
+						(discard_node_d
+						[
+							name
+							[
+								assign_a(self.m_alarm.cmd_name_a)		//save cmd_name_a in alarm_t
+							]
+						]		//discard_node_d
+						| epsilon_p)
+				;
+			//-----------------------------OFF COMMAND------------------------------------
+			off_command
+				= discard_node_d[str_p(KEY(OFF_COMMAND_KEY))] >>
+						(discard_node_d
+						[
+							name
+							[
+								assign_a(self.m_alarm.cmd_name_n)		//save cmd_name_a in alarm_t
+							]
+						]		//discard_node_d
+						| epsilon_p)
+				;
         }
         
 		typedef rule<ScannerT> rule_t;	
-		rule_t expression, event;
-        rule_t symbol, name, val, token, oper, msg, group, level, time_threshold, silent_time;
+		rule_t expression, event, option;
+        rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
+        rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
+        rule_t name, name_alm, val, token, oper, msg, group, level, time_threshold, silent_time, on_command, off_command;
 		formula_grammar formula;
 		
 		rule_t const&					

@@ -1479,7 +1479,7 @@ void Alarm::load(Tango::DevString argin)
 			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
 
 	alarms.save_alarm_conf_db(alm.attr_name, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
-			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
+			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
 
 
 
@@ -1762,9 +1762,9 @@ Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
 		{
 			ostringstream os;
 			os.clear();
-			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" << ai->second.formula << "\t" << ai->second.time_threshold << 
-			"\t" << ai->second.lev << "\t" << ai->second.silent_time << "\t" << ai->second.grp2str() << "\t" << ai->second.msg << "\t" <<
-			ai->second.cmd_name_a << ";" << ai->second.cmd_name_n << ends;
+			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" /*TODO<< KEY(FORMULA_KEY)*/ << ai->second.formula << "\t" << KEY(DELAY_KEY) << ai->second.time_threshold <<
+			"\t" << KEY(LEVEL_KEY) << ai->second.lev << "\t" << KEY(SILENT_TIME_KEY) << ai->second.silent_time << "\t" << KEY(GROUP_KEY) << ai->second.grp2str() << "\t" << KEY(MESSAGE_KEY) << ai->second.msg << "\t" <<
+			KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << "\t" << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << ends;
 			alarm_filtered.push_back(os.str());
 		}
 	}  /* for */
@@ -2052,7 +2052,7 @@ void Alarm::modify(Tango::DevString argin)
     else
     {
        	ostringstream o;
-		o << __func__<<": Parsing Failed, syntax error stopped at " << string(alm.formula_tree.stop, alarm_string.end()) << ends; //TODO
+		o << __func__<<": Parsing Failed, parsed up to '" << string(alarm_string.begin(), alm.formula_tree.stop) << "' not parsed '" << string(alm.formula_tree.stop, alarm_string.end()) << "'" << ends; //TODO
        	DEBUG_STREAM << o.str() << endl;
        	Tango::Except::throw_exception( \
 				(const char*)"Parsing Failed!", \
@@ -2365,7 +2365,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
     else
     {
        	ostringstream o;
-		o << "Alarm::load_alarm(): Parsing Failed, syntax error stopped at " << string(alm.formula_tree.stop, alarm_string.end()) << ends; //TODO
+		o << "Alarm::load_alarm(): Parsing Failed, '" << string(alarm_string.begin(), alm.formula_tree.stop) << "' parsed ok, BUT '" << string(alm.formula_tree.stop, alarm_string.end()) << "' not parsed" << ends; //TODO
        	DEBUG_STREAM << o.str() << endl;
        	Tango::Except::throw_exception( \
 				(const char*)"Parsing Failed!", \

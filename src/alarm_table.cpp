@@ -32,6 +32,10 @@ alarm_t::alarm_t()
 	counter=0;
 	stat = S_NORMAL;
 	ack = ACK;
+	time_threshold = 0;
+	silent_time = -1;
+	cmd_name_a=string("");
+	cmd_name_n=string("");
 } 
  
 bool alarm_t::operator==(const alarm_t &that)
@@ -779,21 +783,22 @@ void alarm_table::log_alarm_db(unsigned int type, Tango::TimeVal ts, string name
 }
 
 void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
-		string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list)
+		string formula, unsigned int time_threshold, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list)
 {
 	// We want to put properties for attribute "att_name"
 	Tango::DbDatum dbd_att_name(att_name);
-	Tango::DbDatum dbd_name("name");
-	Tango::DbDatum dbd_formula("formula");
-	Tango::DbDatum dbd_time_threshold("time_threshold");
-	Tango::DbDatum dbd_level("level");
-	Tango::DbDatum dbd_silence_time("silence_time");	//TODO: silent_time
-	Tango::DbDatum dbd_group("group");
-	Tango::DbDatum dbd_message("message");
-	Tango::DbDatum dbd_command("command");	//TODO: action
+	Tango::DbDatum dbd_name(NAME_KEY);
+	Tango::DbDatum dbd_formula(FORMULA_KEY);
+	Tango::DbDatum dbd_time_threshold(DELAY_KEY);
+	Tango::DbDatum dbd_level(LEVEL_KEY);
+	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
+	Tango::DbDatum dbd_group(GROUP_KEY);
+	Tango::DbDatum dbd_message(MESSAGE_KEY);
+	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);	//TODO: action
+	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);	//TODO: action
 
 	Tango::DbData db_data;
-	dbd_att_name << 8;                               // Eigth properties for attribute "att_name"
+	dbd_att_name << 9;                               // Eigth properties for attribute "att_name"
 	dbd_name << name;
 	dbd_formula << formula;
 	dbd_time_threshold << time_threshold;
@@ -801,7 +806,8 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	dbd_silence_time << silent_time;
 	dbd_group << grp;
 	dbd_message << msg;
-	dbd_command << action;
+	dbd_oncommand << cmd_a;
+	dbd_offcommand << cmd_n;
 
 	db_data.push_back(dbd_att_name);
 	db_data.push_back(dbd_name);
@@ -811,7 +817,8 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	db_data.push_back(dbd_silence_time);
 	db_data.push_back(dbd_group);
 	db_data.push_back(dbd_message);
-	db_data.push_back(dbd_command);
+	db_data.push_back(dbd_oncommand);
+	db_data.push_back(dbd_offcommand);
 
 	string dev_name(mydev->get_name());
 
@@ -858,27 +865,30 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		string alm_silence_time("-1");
 		string alm_group;
 		string alm_message;
-		string alm_command(";");
+		string alm_on_command("");
+		string alm_off_command("");
 		for (long k=0;k < nb_prop;k++)
 		{
 			string &prop_name = db_data[i].name;
 
-			if (prop_name == "name")
+			if (prop_name == NAME_KEY)
 				db_data[i] >> alm_name;
-			else if (prop_name == "formula")
+			else if (prop_name == FORMULA_KEY)
 				db_data[i] >> alm_formula;
-			else if (prop_name == "time_threshold")
+			else if (prop_name == DELAY_KEY)
 				db_data[i] >> alm_time_threshold;
-			else if (prop_name == "level")
+			else if (prop_name == LEVEL_KEY)
 				db_data[i] >> alm_level;
-			else if (prop_name == "silence_time")
+			else if (prop_name == SILENT_TIME_KEY)
 				db_data[i] >> alm_silence_time;
-			else if (prop_name == "group")
+			else if (prop_name == GROUP_KEY)
 				db_data[i] >> alm_group;
-			else if (prop_name == "message")
+			else if (prop_name == MESSAGE_KEY)
 				db_data[i] >> alm_message;
-			else if (prop_name == "command")
-				db_data[i] >> alm_command;
+			else if (prop_name == ON_COMMAND_KEY)
+				db_data[i] >> alm_on_command;
+			else if (prop_name == OFF_COMMAND_KEY)
+				db_data[i] >> alm_off_command;
 			else
 			{
 				cout << "att_name="<<att_name<<" UNKWNOWN prop_name="<<prop_name<<endl;
@@ -888,11 +898,17 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 			i++;
 		}
 		stringstream alm;
-		alm << alm_name << "\t" << alm_formula << "\t" << alm_time_threshold << "\t" << alm_level <<
-				"\t" << alm_silence_time << "\t" << alm_group << "\t\"" << alm_message <<	"\"\t" << alm_command;
+		alm << alm_name << "\t" <<
+				/*TODO: KEY(FORMULA_KEY)<<*/alm_formula << "\t" <<
+				KEY(DELAY_KEY)<<alm_time_threshold << "\t" <<
+				KEY(LEVEL_KEY)<< alm_level << "\t" <<
+				KEY(SILENT_TIME_KEY)<<alm_silence_time << "\t" <<
+				KEY(GROUP_KEY)<< alm_group << "\t" <<
+				KEY(MESSAGE_KEY)<< "\""  << alm_message <<	"\"\t" <<
+				KEY(ON_COMMAND_KEY)<< alm_on_command << "\t" <<
+				KEY(OFF_COMMAND_KEY)<< alm_off_command;
 		al_list.push_back(alm.str());
 	}
-
 
 #if 0
 

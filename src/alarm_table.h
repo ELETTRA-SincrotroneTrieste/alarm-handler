@@ -356,7 +356,7 @@ class alarm_table {
 		void log_alarm_db(unsigned int type, Tango::TimeVal ts, string name, string status, string ack,
 				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list=vector<string>());
 		void save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
-				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list=vector<string>());
+				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());
 		void get_alarm_list_db(vector<string> &al_list);
 		void init_cmdthread();
 		void stop_cmdthread();
