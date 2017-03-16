@@ -1476,10 +1476,10 @@ void Alarm::load(Tango::DevString argin)
 #endif
 	string cmd_name_full = alm.cmd_name_a + string(";") + alm.cmd_name_n;
 	alarms.log_alarm_db(TYPE_LOG_DESC_ADD, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
-			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
+			alm.formula, alm.on_delay, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
 
 	alarms.save_alarm_conf_db(alm.attr_name, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
-			alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
+			alm.formula, alm.on_delay, alm.off_delay, alm.grp2str(), alm.lev, alm.msg, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
 
 
 
@@ -1762,7 +1762,7 @@ Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
 		{
 			ostringstream os;
 			os.clear();
-			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" /*TODO<< KEY(FORMULA_KEY)*/ << ai->second.formula << "\t" << KEY(DELAY_KEY) << ai->second.time_threshold <<
+			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" /*TODO<< KEY(FORMULA_KEY)*/ << ai->second.formula << "\t" << KEY(ONDELAY_KEY) << ai->second.on_delay << "\t" << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
 			"\t" << KEY(LEVEL_KEY) << ai->second.lev << "\t" << KEY(SILENT_TIME_KEY) << ai->second.silent_time << "\t" << KEY(GROUP_KEY) << ai->second.grp2str() << "\t" << KEY(MESSAGE_KEY) << ai->second.msg << "\t" <<
 			KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << "\t" << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << ends;
 			alarm_filtered.push_back(os.str());
@@ -1996,7 +1996,8 @@ void Alarm::modify(Tango::DevString argin)
 	alm.lev.clear();
 	alm.grp=0;
 	alm.to_be_evaluated = false;
-	alm.time_threshold = 0;
+	alm.on_delay = 0;
+	alm.off_delay = 0;
 	alm.silent_time = -1;
 	alm.silenced = -1;
 	alm.cmd_name_a.clear();
@@ -2090,7 +2091,8 @@ void Alarm::modify(Tango::DevString argin)
 				i->second.lev = alm.lev;
 				i->second.grp = alm.grp;
 				//i->second.to_be_evaluated = alm.to_be_evaluated;
-				i->second.time_threshold = alm.time_threshold;
+				i->second.on_delay = alm.on_delay;
+				i->second.off_delay = alm.off_delay;
 				i->second.silent_time = alm.silent_time;
 				i->second.silenced = alm.silenced;
 				i->second.cmd_name_a = alm.cmd_name_a;
@@ -2119,7 +2121,7 @@ void Alarm::modify(Tango::DevString argin)
 
 
 			alarms.log_alarm_db(TYPE_LOG_DESC_UPDATE, ts, alm.name, "", "",
-					alm.formula, alm.time_threshold, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);
+					alm.formula, alm.on_delay, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);
 
 			//delete proxy for actions
 			if(i->second.dp_a)
@@ -2285,7 +2287,8 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	alm.lev.clear();
 	alm.grp=0;
 	alm.to_be_evaluated = false;
-	alm.time_threshold = 0;
+	alm.on_delay = 0;
+	alm.off_delay = 0;
 	alm.silent_time = -1;
 	alm.silenced = -1;
 	alm.cmd_name_a.clear();
@@ -2376,9 +2379,10 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
     }	
 	alm.ts = gettime();
 	DEBUG_STREAM << "Alarm::load_alarm(): name     = '" << alm.name << "'" << endl;
-	DEBUG_STREAM << "               attr_name     = '" << alm.attr_name << "'" << endl;
+	DEBUG_STREAM << "               attr_name      = '" << alm.attr_name << "'" << endl;
 	DEBUG_STREAM << "               formula        = '" << alm.formula << "'" << endl;
-	DEBUG_STREAM << "               time_threshold = '" << alm.time_threshold << "'" << endl;	
+	DEBUG_STREAM << "               on_delay       = '" << alm.on_delay << "'" << endl;
+	DEBUG_STREAM << "               off_delay      = '" << alm.off_delay << "'" << endl;
 	DEBUG_STREAM << "               msg            = '" << alm.msg << "'" << endl;
 	DEBUG_STREAM << "               grp            = '" << showbase << hex << alm.grp << "'=" << alm.grp2str() << endl;
 	DEBUG_STREAM << "               silent_time    = '" << alm.silent_time << "'" << endl;
@@ -3196,8 +3200,8 @@ void Alarm::set_internal_alarm(string name, Tango::TimeVal t, string msg, unsign
 			if(it->msg.find(name) != string::npos)		
 			{
 				existing=true;
-				if(it->counter < count)
-					it->counter = count;
+				if(it->on_counter < count)
+					it->on_counter = count;
 				break;
 			}
 		}			
@@ -3220,7 +3224,7 @@ void Alarm::set_internal_alarm(string name, Tango::TimeVal t, string msg, unsign
 		}	
 		else
 			it->stat += "*2";*/
-		it->counter++;
+		it->on_counter++;
 		it->msg = msg;		//update with the last message
 	}
 	else
@@ -3233,7 +3237,7 @@ void Alarm::set_internal_alarm(string name, Tango::TimeVal t, string msg, unsign
 			stat << S_ALARM;
 		else
 			stat << S_ALARM << "*" << count;*/
-		alm.counter = count;
+		alm.on_counter = count;
 		//alm.stat = stat.str();
 		alm.stat = S_ALARM;
 		alm.ack = NOT_ACK;
@@ -3914,7 +3918,8 @@ void Alarm::prepare_alarm_attr()
 				aid->lev = ai->second.lev;
 				aid->is_new = ai->second.is_new;			//copy is_new state
 				//ai->second.is_new = 0;						//and set state as not more new //12-06-08: StopNew command set it to 0
-				aid->counter = ai->second.counter;
+				aid->on_counter = ai->second.on_counter;
+				aid->off_counter = ai->second.off_counter;
 				aid->ack = ai->second.ack;					//if already acknowledged but has arrived new alarm ack is reset
 				aid->silenced = ai->second.silenced;		//update silenced from alarm table (maybe not necessary)
 				aid->silent_time = ai->second.silent_time;	//if already alarmed and not saved correctly in properties needed to update
@@ -3949,7 +3954,8 @@ void Alarm::prepare_alarm_attr()
 				aid->msg =ai->second.msg;
 				aid->grp = ai->second.grp;
 				aid->lev = ai->second.lev;
-				aid->counter = ai->second.counter;
+				aid->on_counter = ai->second.on_counter;
+				aid->off_counter = ai->second.off_counter;
 				aid->ack = ai->second.ack;					//if already acknowledged but has arrived new alarm ack is reset
 				aid->is_new = ai->second.is_new;			//copy is_new state
 				aid->silenced = ai->second.silenced;		//update silenced from alarm table (maybe not necessary)
@@ -4010,7 +4016,7 @@ void Alarm::prepare_alarm_attr()
 			is_new = (aid->is_new && aid->silenced <= 0) ? "NEW" : " ";
 			os << aid->ts.tv_sec << "\t" << aid->ts.tv_usec << "\t" \
 			 	 << aid->name << "\t" << aid->stat << "\t" << aid->ack \
-				 << "\t" << aid->counter << "\t" << aid->lev << "\t" << aid->silenced << "\t" << aid->grp2str() << "\t" << aid->msg << "\t" << is_new << ends;
+				 << "\t" << aid->on_counter << "\t" << aid->lev << "\t" << aid->silenced << "\t" << aid->grp2str() << "\t" << aid->msg << "\t" << is_new << ends;
 			tmp_alarm_table.push_back(os.str());
 		}
 	}
@@ -4037,7 +4043,7 @@ void Alarm::prepare_alarm_attr()
 			os.clear();
 			os << aid->ts.tv_sec << "\t" << aid->ts.tv_usec << "\t" \
 			 	 << aid->name << "\t" << aid->stat << "\t" << aid->ack \
-				 << "\t" << aid->counter << "\t" << aid->lev << "\t"<< -1/*silenced*/ <<"\t" << aid->grp2str() << "\t" << aid->msg << "\t "<< ends; //TODO: silenced for internal errors?
+				 << "\t" << aid->on_counter << "\t" << aid->lev << "\t"<< -1/*silenced*/ <<"\t" << aid->grp2str() << "\t" << aid->msg << "\t "<< ends; //TODO: silenced for internal errors?
 			tmp_alarm_table.push_back(os.str());
 		}
 	}

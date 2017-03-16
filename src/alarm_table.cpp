@@ -23,16 +23,29 @@
 
 static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
 
+//TODO: duplicated from alarm.h
+enum _AlarmStateEnum {
+	_NORM,
+	_UNACK,
+	_ACKED,
+	_RTNUN,
+	_SHLVD,
+	_DSUPR,
+	_OOSRV,
+} ;
+
 /*
  * alarm_t class methods
  */
 alarm_t::alarm_t()
 {
 	grp=0;
-	counter=0;
+	on_counter=0;
+	off_counter=0;
 	stat = S_NORMAL;
 	ack = ACK;
-	time_threshold = 0;
+	on_delay = 0;
+	off_delay = 0;
 	silent_time = -1;
 	cmd_name_a=string("");
 	cmd_name_n=string("");
@@ -55,7 +68,7 @@ void alarm_t::str2alm(const string &s)
 	istringstream is(s);
 	ostringstream temp_msg;
 	string temp_grp;
-	is >> ts.tv_sec >> ts.tv_usec >> name >> stat >> ack >> counter >> lev >> silent_time >> temp_grp >> msg;		//stop at first white space in msg
+	is >> ts.tv_sec >> ts.tv_usec >> name >> stat >> ack >> on_counter >> lev >> silent_time >> temp_grp >> msg;		//stop at first white space in msg
 	temp_msg << is.rdbuf();		//read all remaining characters as msg
 	msg += temp_msg.str();
 	str2grp(temp_grp);
@@ -66,7 +79,7 @@ string alarm_t::alm2str(void)
 	ostringstream os;
 	os.clear();
 	os << ts.tv_sec << "\t" << ts.tv_usec << "\t" << name << "\t" \
-		 << stat << "\t" << ack << "\t" << counter << "\t" << lev << "\t" << silent_time << "\t" << grp2str() << "\t" << msg << ends;
+		 << stat << "\t" << ack << "\t" << on_counter << "\t" << lev << "\t" << silent_time << "\t" << grp2str() << "\t" << msg << ends;
 	return(os.str());
 }
 
@@ -367,16 +380,22 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		found->second.ex_reason = res.ex_reason;
 		found->second.ex_desc = res.ex_desc;
 		found->second.ex_origin = res.ex_origin;
-		bool status_time_threshold;
-		if(found->second.time_threshold > 0)		//if enabled time threshold
-			status_time_threshold = ((int)(res.value)) && (found->second.counter >= 1) && ((ts.tv_sec - found->second.time_threshold) > found->second.ts_time_threshold.tv_sec);	//formula gives true and time threshold is passed
+		bool status_on_delay;
+		if(found->second.on_delay > 0)		//if enabled on delay
+			status_on_delay = ((int)(res.value)) && (found->second.on_counter >= 1) && ((ts.tv_sec - found->second.on_delay) > found->second.ts_on_delay.tv_sec);	//formula gives true and on delay has passed
 		else
-			status_time_threshold = (int)(res.value);
+			status_on_delay = (int)(res.value);
+		bool status_off_delay;
+		if(found->second.off_delay > 0)		//if enabled off delay
+			status_off_delay = (!(int)(res.value)) && (found->second.off_counter >= 1) && ((ts.tv_sec - found->second.off_delay) > found->second.ts_off_delay.tv_sec);	//formula gives false and off delay has passed
+		else
+			status_off_delay = !(int)(res.value);
+
 		//if status changed:
-		// - from S_NORMAL to S_ALARM considering also time threshold
+		// - from S_NORMAL to S_ALARM considering also on delay
 		//or
-		// - from S_ALARM to S_NORMAL		
-		if((status_time_threshold && (found->second.stat == S_NORMAL)) || (!(int)(res.value) && (found->second.stat == S_ALARM)))
+		// - from S_ALARM to S_NORMAL considering also off delay
+		if((status_on_delay && (found->second.stat == S_NORMAL)) || (status_off_delay && (found->second.stat == S_ALARM)))
 		{
 			ret_changed=true;
 			a.type_log = TYPE_LOG_STATUS;
@@ -487,20 +506,28 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 				}
 			}
 		}
-		if (status_time_threshold) {
+		if (status_on_delay) {
 			found->second.stat = S_ALARM;
 			//found->second.ack = NOT_ACK;
 		}
-		if((int)(res.value)) {
-			found->second.counter++;
-		} else {
+		else if (status_off_delay) {
 			found->second.stat = S_NORMAL;
-			found->second.counter = 0;
 		}
-		if(found->second.counter == 1)
-			found->second.ts_time_threshold = gettime();		//first occurrance of this alarm, now begin to wait for time threshold
-		if(found->second.counter >= 1)
-			found->second.attr_values_time_threshold = attr_values;		//save last attr_values to be used in timer_update if this alarm pass over time threshold
+
+		if((int)(res.value)) {
+			found->second.on_counter++;
+			found->second.off_counter = 0;
+		} else {
+			found->second.on_counter = 0;
+			found->second.off_counter++;
+		}
+
+		found->second.attr_values_delay = attr_values;		//save last attr_values to be used in timer_update if this alarm pass over on or off delay
+
+		if(found->second.on_counter == 1)
+			found->second.ts_on_delay = gettime();		//first occurrance of this alarm, now begin to wait for on delay
+		if(found->second.off_counter == 1)
+			found->second.ts_off_delay = gettime();		//first occurrance of back to normal, now begin to wait for off delay
 
 		//found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts everytime
 	} else {
@@ -533,14 +560,20 @@ bool alarm_table::timer_update()
 #endif
 	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
 	{		
-		bool status_time_threshold;
-		if(i->second.time_threshold > 0)		//if enabled time threshold
-			status_time_threshold = (i->second.counter >= 1) && ((ts.tv_sec - i->second.time_threshold) > i->second.ts_time_threshold.tv_sec);	//waiting for threshold and time threshold is passed
-		else
-			continue;			//if not enabled time threshold, nothing to do in timer	
+		bool status_on_delay;
+		bool status_off_delay;
+		if(i->second.on_delay == 0 && i->second.off_delay == 0)
+			continue;	//if not enabled on or off delay, nothing to do in timer
+		if(i->second.on_delay > 0)		//if enabled on delay
+			status_on_delay = (i->second.on_counter >= 1) && ((ts.tv_sec - i->second.on_delay) > i->second.ts_on_delay.tv_sec);	//waiting for on delay has passed
+		if(i->second.off_delay > 0)		//if enabled off delay
+			status_off_delay = (i->second.off_counter >= 1) && ((ts.tv_sec - i->second.off_delay) > i->second.ts_off_delay.tv_sec);	//waiting for off delay has passed
 
-		//if status changed from S_NORMAL to S_ALARM considering also time threshold	
-		if(status_time_threshold && (i->second.stat == S_NORMAL))
+		//if status changed:
+		// - from S_NORMAL to S_ALARM considering also on delay
+		//or
+		// - from S_ALARM to S_NORMAL considering also off delay
+		if(status_on_delay && (i->second.stat == S_NORMAL) || (status_off_delay && (i->second.stat == S_ALARM)))
 		{
 			ret_changed = true;
 			if(i->second.silenced > 0)
@@ -559,59 +592,117 @@ bool alarm_table::timer_update()
 			a.name = i->second.name;
 			a.time_s = ts.tv_sec;		
 			a.time_us = ts.tv_usec;
-			a.status = S_ALARM;
+			a.status = (status_on_delay) ? S_ALARM : S_NORMAL;
 			//a.level = found->second.lev;
-			i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
+			if(status_on_delay)
+				i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
 			a.ack = i->second.ack;
-			a.values = i->second.attr_values_time_threshold;
+			a.values = i->second.attr_values_delay;
 			logloop->log_alarm_db(a);
 			i->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
-
-			i->second.is_new = 1;		//here set this alarm as new, read attribute set it to 0	//12-06-08: StopNew command set it to 0
-			if(i->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))
+			if(status_on_delay)
 			{
-				/*try {
-					long call_id;
-					ostringstream tmp;
-					tmp << i->second.name << ";" << i->second.attr_values_time_threshold;
-					Tango::DevString str = CORBA::string_dup(tmp.str().c_str());
-					Tango::DeviceData Din;
-					Din << str;
-					CORBA::string_free(str);
-					//i->second.dp_a->ping();		
-					cmdloop->mutex_dp->lock();			
-					//call_id = i->second.dp_a->command_inout_asynch(i->second.cmd_action_a, Din, true);		//true -> "fire and forget" mode: client do not care at all about the server answer
-					call_id = i->second.dp_a->command_inout_asynch(i->second.cmd_action_a, Din);		
-					cmdloop->mutex_dp->unlock();
-					LOG_STREAM << gettime().tv_sec << " alarm_table::timer_update() executed action: " << i->second.cmd_name_a << " !!!" << endl;
-					cmd_t arg;
-					arg.cmd_id = call_id;
-					arg.dp_add = (long)i->second.dp_a;
-					arg.arg_s = i->second.cmd_name_a;	
-					cmdloop->list.push_back(arg);					
-				} catch(Tango::DevFailed e) 
+				i->second.is_new = 1;		//here set this alarm as new, read attribute set it to 0	//12-06-08: StopNew command set it to 0
+				if(i->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))
 				{
-					string err(e.errors[0].desc);
-					if(err.find("is not yet arrived") == string::npos)			//TODO: change this!!			
-						out_stream << "Failed to execute action " << i->second.cmd_name_a << ", err=" << e.errors[0].desc << ends;
-					//LOG_STREAM << "alarm_table::timer_update() ERROR: " << out_stream.str() << endl;
-				}*/
-				ostringstream tmp;
-				string tmp_attr_val = i->second.attr_values_time_threshold;
-				replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
-				string tmp_msg = i->second.msg;
-				replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
-				tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula;
-				cmd_t arg;
-				arg.cmd_id = CMD_COMMAND;
-				arg.dp_add = (long)i->second.dp_a;
-				arg.arg_s1 = tmp.str();
-				arg.arg_s2 = i->second.cmd_action_a;
-				arg.arg_s3 = i->second.cmd_name_a;
-				arg.arg_b = i->second.send_arg_a;	
-				cmdloop->list.push_back(arg);
+					/*try {
+						long call_id;
+						ostringstream tmp;
+						tmp << i->second.name << ";" << i->second.attr_values_on_delay;
+						Tango::DevString str = CORBA::string_dup(tmp.str().c_str());
+						Tango::DeviceData Din;
+						Din << str;
+						CORBA::string_free(str);
+						//i->second.dp_a->ping();
+						cmdloop->mutex_dp->lock();
+						//call_id = i->second.dp_a->command_inout_asynch(i->second.cmd_action_a, Din, true);		//true -> "fire and forget" mode: client do not care at all about the server answer
+						call_id = i->second.dp_a->command_inout_asynch(i->second.cmd_action_a, Din);
+						cmdloop->mutex_dp->unlock();
+						LOG_STREAM << gettime().tv_sec << " alarm_table::timer_update() executed action: " << i->second.cmd_name_a << " !!!" << endl;
+						cmd_t arg;
+						arg.cmd_id = call_id;
+						arg.dp_add = (long)i->second.dp_a;
+						arg.arg_s = i->second.cmd_name_a;
+						cmdloop->list.push_back(arg);
+					} catch(Tango::DevFailed e)
+					{
+						string err(e.errors[0].desc);
+						if(err.find("is not yet arrived") == string::npos)			//TODO: change this!!
+							out_stream << "Failed to execute action " << i->second.cmd_name_a << ", err=" << e.errors[0].desc << ends;
+						//LOG_STREAM << "alarm_table::timer_update() ERROR: " << out_stream.str() << endl;
+					}*/
+					ostringstream tmp;
+					string tmp_attr_val = i->second.attr_values_delay;
+					replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
+					string tmp_msg = i->second.msg;
+					replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
+					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula;
+					cmd_t arg;
+					arg.cmd_id = CMD_COMMAND;
+					arg.dp_add = (long)i->second.dp_a;
+					arg.arg_s1 = tmp.str();
+					arg.arg_s2 = i->second.cmd_action_a;
+					arg.arg_s3 = i->second.cmd_name_a;
+					arg.arg_b = i->second.send_arg_a;
+					cmdloop->list.push_back(arg);
+				}
 			}
-			*(i->second.attr_value) = true;
+			else if(status_off_delay)
+			{
+				if(i->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))
+				{
+					/*try {
+						long call_id;
+						ostringstream tmp;
+						tmp << i->second.name << ";" << i->second.attr_values_off_delay;
+						Tango::DevString str = CORBA::string_dup(tmp.str().c_str());
+						Tango::DeviceData Din;
+						Din << str;
+						CORBA::string_free(str);
+						//i->second.dp_n->ping();
+						cmdloop->mutex_dp->lock();
+						//call_id = i->second.dp_n->command_inout_asynch(i->second.cmd_action_n, Din, true);		//true -> "fire and forget" mode: client do not care at all about the server answer
+						call_id = i->second.dp_n->command_inout_asynch(i->second.cmd_action_n, Din);
+						cmdloop->mutex_dp->unlock();
+						LOG_STREAM << gettime().tv_sec << " alarm_table::timer_update() executed action: " << i->second.cmd_name_n << " !!!" << endl;
+						cmd_t arg;
+						arg.cmd_id = call_id;
+						arg.dp_add = (long)i->second.dp_n;
+						arg.arg_s = i->second.cmd_name_n;
+						cmdloop->list.push_back(arg);
+					} catch(Tango::DevFailed e)
+					{
+						string err(e.errors[0].desc);
+						if(err.find("is not yet arrived") == string::npos)			//TODO: change this!!
+							out_stream << "Failed to execute action " << i->second.cmd_name_n << ", err=" << e.errors[0].desc << ends;
+						//LOG_STREAM << "alarm_table::timer_update() ERROR: " << out_stream.str() << endl;
+					}*/
+					ostringstream tmp;
+					string tmp_attr_val = i->second.attr_values_delay;
+					replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
+					string tmp_msg = i->second.msg;
+					replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
+					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula;
+					cmd_t arg;
+					arg.cmd_id = CMD_COMMAND;
+					arg.dp_add = (long)i->second.dp_n;
+					arg.arg_s1 = tmp.str();
+					arg.arg_s2 = i->second.cmd_action_n;
+					arg.arg_s3 = i->second.cmd_name_n;
+					arg.arg_b = i->second.send_arg_n;
+					cmdloop->list.push_back(arg);
+				}
+			}
+
+			//TODO: if not _SHLVD, _DSUPR, _OOSRV
+			if((status_off_delay) && i->second.ack == ACK)
+				*(i->second.attr_value) = _NORM;
+			else if((status_on_delay) && i->second.ack == NOT_ACK)
+				*(i->second.attr_value) = _UNACK;
+			else if((status_on_delay) && i->second.ack == ACK)
+				*(i->second.attr_value) = _ACKED;
+			else if((status_off_delay) && i->second.ack == NOT_ACK)
+				*(i->second.attr_value) = _RTNUN;
 			try
 			{
 				if(i->second.ex_reason.length() == 0)
@@ -636,9 +727,12 @@ bool alarm_table::timer_update()
 			} catch(Tango::DevFailed &e)
 			{}
 		}
-		if (status_time_threshold) {
+
+		if (status_on_delay) {
 			i->second.stat = S_ALARM;
-			//found->second.ack = NOT_ACK;
+		}
+		else if (status_off_delay) {
+			i->second.stat = S_NORMAL;
 		}
 		//found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts everytime
 	}
@@ -783,13 +877,14 @@ void alarm_table::log_alarm_db(unsigned int type, Tango::TimeVal ts, string name
 }
 
 void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
-		string formula, unsigned int time_threshold, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list)
+		string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list)
 {
 	// We want to put properties for attribute "att_name"
 	Tango::DbDatum dbd_att_name(att_name);
 	Tango::DbDatum dbd_name(NAME_KEY);
 	Tango::DbDatum dbd_formula(FORMULA_KEY);
-	Tango::DbDatum dbd_time_threshold(DELAY_KEY);
+	Tango::DbDatum dbd_on_delay(ONDELAY_KEY);
+	Tango::DbDatum dbd_off_delay(OFFDELAY_KEY);
 	Tango::DbDatum dbd_level(LEVEL_KEY);
 	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
 	Tango::DbDatum dbd_group(GROUP_KEY);
@@ -801,7 +896,8 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	dbd_att_name << 9;                               // Eigth properties for attribute "att_name"
 	dbd_name << name;
 	dbd_formula << formula;
-	dbd_time_threshold << time_threshold;
+	dbd_on_delay << on_delay;
+	dbd_off_delay << off_delay;
 	dbd_level << lev;
 	dbd_silence_time << silent_time;
 	dbd_group << grp;
@@ -812,7 +908,8 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	db_data.push_back(dbd_att_name);
 	db_data.push_back(dbd_name);
 	db_data.push_back(dbd_formula);
-	db_data.push_back(dbd_time_threshold);
+	db_data.push_back(dbd_on_delay);
+	db_data.push_back(dbd_off_delay);
 	db_data.push_back(dbd_level);
 	db_data.push_back(dbd_silence_time);
 	db_data.push_back(dbd_group);
@@ -860,7 +957,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		i++;
 		string alm_name;
 		string alm_formula;
-		string alm_time_threshold("0");
+		string alm_on_delay("0");
+		string alm_off_delay("0");
 		string alm_level;
 		string alm_silence_time("-1");
 		string alm_group;
@@ -875,8 +973,10 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 				db_data[i] >> alm_name;
 			else if (prop_name == FORMULA_KEY)
 				db_data[i] >> alm_formula;
-			else if (prop_name == DELAY_KEY)
-				db_data[i] >> alm_time_threshold;
+			else if (prop_name == ONDELAY_KEY)
+				db_data[i] >> alm_on_delay;
+			else if (prop_name == OFFDELAY_KEY)
+				db_data[i] >> alm_off_delay;
 			else if (prop_name == LEVEL_KEY)
 				db_data[i] >> alm_level;
 			else if (prop_name == SILENT_TIME_KEY)
@@ -900,7 +1000,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		stringstream alm;
 		alm << alm_name << "\t" <<
 				/*TODO: KEY(FORMULA_KEY)<<*/alm_formula << "\t" <<
-				KEY(DELAY_KEY)<<alm_time_threshold << "\t" <<
+				KEY(ONDELAY_KEY)<<alm_on_delay << "\t" <<
+				KEY(OFFDELAY_KEY)<<alm_off_delay << "\t" <<
 				KEY(LEVEL_KEY)<< alm_level << "\t" <<
 				KEY(SILENT_TIME_KEY)<<alm_silence_time << "\t" <<
 				KEY(GROUP_KEY)<< alm_group << "\t" <<

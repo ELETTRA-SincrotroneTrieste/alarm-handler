@@ -268,7 +268,8 @@ class alarm_t {
 		Tango::TimeVal ts;
 		string stat,
 					 ack;
-		unsigned int counter;
+		unsigned int on_counter;
+		unsigned int off_counter;
 		
 		tree_parse_info_t formula_tree;
 					 
@@ -281,13 +282,15 @@ class alarm_t {
 		string lev;
 		set<string> s_event;
 		int is_new;
-		Tango::TimeVal ts_time_threshold;	//says when it has gone in alarm status for the first time
-		unsigned int time_threshold;		//TODO: seconds, is it enough precision?
+		Tango::TimeVal ts_on_delay;	//says when it has gone in alarm status for the first time
+		unsigned int on_delay;		//TODO: seconds, is it enough precision?
+		Tango::TimeVal ts_off_delay;	//says when it returned normal status
+		unsigned int off_delay;		//TODO: seconds, is it enough precision?
 
 		Tango::TimeVal ts_time_silenced;	//says when it has been silenced
 		int silent_time;			//minutes max to be silent
 		int silenced;				//minutes still to be silent
-		string attr_values_time_threshold;	//attr_values of first occurrence of alarm waiting for time threshold
+		string attr_values_delay;	//attr_values of first occurrence of alarm waiting for on or off delay
 		string cmd_name_a;					//action to execute: when NORMAL -> ALARM, cmd_name = cmd_dp_a/cmd_action_a
 		string cmd_dp_a;						//device proxy part of cmd_name_a
 		string cmd_action_a;					//action part of cmd_name_a
@@ -356,7 +359,7 @@ class alarm_table {
 		void log_alarm_db(unsigned int type, Tango::TimeVal ts, string name, string status, string ack,
 				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list=vector<string>());
 		void save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
-				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());
+				 string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());
 		void get_alarm_list_db(vector<string> &al_list);
 		void init_cmdthread();
 		void stop_cmdthread();

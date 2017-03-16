@@ -69,7 +69,8 @@
 
 #define NAME_KEY			"name"
 #define FORMULA_KEY			"formula"
-#define DELAY_KEY			"time_threshold"
+#define ONDELAY_KEY			"on_delay"
+#define OFFDELAY_KEY		"off_delay"
 #define LEVEL_KEY			"level"
 #define SILENT_TIME_KEY		"silent_time"
 #define GROUP_KEY			"group"
@@ -194,7 +195,8 @@ struct alarm_parse : public grammar<alarm_parse>
 			;
 
             option
-				=	discard_node_d[time_threshold] |
+				=	discard_node_d[on_delay] |
+					discard_node_d[off_delay] |
 					discard_node_d[level] |
 					discard_node_d[silent_time] |
 					discard_node_d[group] |
@@ -252,12 +254,21 @@ struct alarm_parse : public grammar<alarm_parse>
 							]					
 					>> '"'
 				;
-			//---------------------------TIME THRESHOLD----------------------------------	
-			time_threshold 
-				=	discard_node_d[str_p(KEY(DELAY_KEY))] >>
+			//---------------------------ON DELAY----------------------------------------
+			on_delay
+				=	discard_node_d[str_p(KEY(ONDELAY_KEY))] >>
 					(uint_p
 					[
-						assign_a(self.m_alarm.time_threshold)
+						assign_a(self.m_alarm.on_delay)
+					]
+					| epsilon_p)
+				;
+			//---------------------------OFF DELAY---------------------------------------
+			off_delay
+				=	discard_node_d[str_p(KEY(OFFDELAY_KEY))] >>
+					(uint_p
+					[
+						assign_a(self.m_alarm.off_delay)
 					]
 					| epsilon_p)
 				;
@@ -300,7 +311,7 @@ struct alarm_parse : public grammar<alarm_parse>
 		rule_t expression, event, option;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
-        rule_t name, name_alm, val, token, oper, msg, group, level, time_threshold, silent_time, on_command, off_command;
+        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command;
 		formula_grammar formula;
 		
 		rule_t const&					
