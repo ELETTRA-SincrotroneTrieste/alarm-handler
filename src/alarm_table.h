@@ -268,6 +268,7 @@ class alarm_t {
 		Tango::TimeVal ts;
 		string stat,
 					 ack;
+		bool enabled;
 		unsigned int on_counter;
 		unsigned int off_counter;
 		
@@ -315,6 +316,7 @@ class alarm_t {
 		void str2grp(string &s);
 		void insert(const string& s);
 		void clear();
+		void confstr(string &s);
 		
 	protected:
 	private:
@@ -352,15 +354,11 @@ class alarm_table {
 		void new_rwlock();
 		void del_rwlock();
 #endif
-		
 
-		void init_logdb(string dbhost, string dbuser, string dbpw, string dbname, int dbport, string instance_name);
-		void stop_logdb();
-		void log_alarm_db(unsigned int type, Tango::TimeVal ts, string name, string status, string ack,
-				 string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list=vector<string>());
-		void save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
+		void save_alarm_conf_db(string att_name, string name, string status, string ack, bool enabled,
 				 string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());
-		void get_alarm_list_db(vector<string> &al_list);
+		void delete_alarm_conf_db(string att_name);
+		void get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms);
 		void init_cmdthread();
 		void stop_cmdthread();
 		Tango::TimeVal startup_complete;			//to disable action execution at startup		

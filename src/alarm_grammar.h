@@ -77,6 +77,7 @@
 #define MESSAGE_KEY			"message"
 #define ON_COMMAND_KEY		"on_command"
 #define OFF_COMMAND_KEY		"off_command"
+#define ENABLED_KEY			"enabled"
 #define KEY(S_VAL)  		S_VAL "="
 
 ////////////////////////////////////////////////////////////////////////////
@@ -202,7 +203,8 @@ struct alarm_parse : public grammar<alarm_parse>
 					discard_node_d[group] |
 					discard_node_d[msg] |
 					discard_node_d[on_command] |
-					discard_node_d[off_command]
+					discard_node_d[off_command] |
+					discard_node_d[enabled]
 			;
 
             //------------------------------ALARM NAME--------------------------------------            
@@ -305,13 +307,24 @@ struct alarm_parse : public grammar<alarm_parse>
 						]		//discard_node_d
 						| epsilon_p)
 				;
+			//------------------------------ENABLED----------------------------------------
+			enabled
+				=	discard_node_d[str_p(KEY(ENABLED_KEY))] >>
+					//lexeme_d[(+alnum_p)]		//match only possible levels?? (fault, log, ...)
+					//(+(alnum_p-'\t'))
+					//(ch_p('0') | ch_p('1'))
+					bin_p
+					[
+						assign_a(self.m_alarm.enabled)		//save enabled in alarm_t
+					]
+				;
         }
         
 		typedef rule<ScannerT> rule_t;	
 		rule_t expression, event, option;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
-        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command;
+        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled;
 		formula_grammar formula;
 		
 		rule_t const&					

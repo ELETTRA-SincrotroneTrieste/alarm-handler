@@ -17,7 +17,6 @@
 #include <tango.h>
 #include "alarm_table.h"
 #include "alarm_grammar.h"
-#include "log_thread.h"
 #include "cmd_thread.h"
 
 
@@ -49,6 +48,7 @@ alarm_t::alarm_t()
 	silent_time = -1;
 	cmd_name_a=string("");
 	cmd_name_n=string("");
+	enabled=true;
 } 
  
 bool alarm_t::operator==(const alarm_t &that)
@@ -183,6 +183,24 @@ void alarm_t::clear()
 	ack.clear();
 	done = false;
 //	ts = 0;
+}
+
+void alarm_t::confstr(string &s)
+{
+	ostringstream conf;
+	conf <<
+			name << "\t" <<
+			/*TODO: KEY(FORMULA_KEY)<<*/formula << "\t" <<
+			KEY(ONDELAY_KEY)<<on_delay << "\t" <<
+			KEY(OFFDELAY_KEY)<<off_delay << "\t" <<
+			KEY(LEVEL_KEY)<< lev << "\t" <<
+			KEY(SILENT_TIME_KEY)<<silent_time << "\t" <<
+			KEY(GROUP_KEY)<< grp2str() << "\t" <<
+			KEY(MESSAGE_KEY)<< "\""  << msg <<	"\"\t" <<
+			KEY(ON_COMMAND_KEY)<< cmd_name_a << "\t" <<
+			KEY(OFF_COMMAND_KEY)<< cmd_name_n << "\t" <<
+			KEY(ENABLED_KEY)<< (enabled ? "1" : "0");
+	s = conf.str();
 }
 
 /*
@@ -356,7 +374,6 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 	bool ret_changed=false;
 	//Tango::TimeVal now = gettime();
 	TangoSys_MemStream out_stream;
-	alm_log_t a;
 #ifndef _RW_LOCK
 	this->lock();
 #else
@@ -398,19 +415,10 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		if((status_on_delay && (found->second.stat == S_NORMAL)) || (status_off_delay && (found->second.stat == S_ALARM)))
 		{
 			ret_changed=true;
-			a.type_log = TYPE_LOG_STATUS;
-			a.name = alm_name;
-			a.time_s = ts.tv_sec;		
-			a.time_us = ts.tv_usec;
-			a.status = (int)(res.value) ? S_ALARM : S_NORMAL;
-			//a.level = found->second.lev;
 			if((int)(res.value))
 				found->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
-			a.ack = found->second.ack;
-			a.values = attr_values;
 			//a.grp = found->second.grp2str();
 			//a.msg = (int)(res.value) ? found->second.msg : "";
-			logloop->log_alarm_db(a);
 			found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
 			if((int)(res.value))
 			{
@@ -552,7 +560,6 @@ bool alarm_table::timer_update()
 	bool ret_changed=false;
 	Tango::TimeVal ts = gettime();
 	TangoSys_MemStream out_stream;
-	alm_log_t a;
 #ifndef _RW_LOCK
 	this->lock();
 #else
@@ -588,17 +595,8 @@ bool alarm_table::timer_update()
 					i->second.silenced = 0;
 			}
 
-			a.type_log = TYPE_LOG_STATUS;
-			a.name = i->second.name;
-			a.time_s = ts.tv_sec;		
-			a.time_us = ts.tv_usec;
-			a.status = (status_on_delay) ? S_ALARM : S_NORMAL;
-			//a.level = found->second.lev;
 			if(status_on_delay)
 				i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
-			a.ack = i->second.ack;
-			a.values = i->second.attr_values_delay;
-			logloop->log_alarm_db(a);
 			i->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
 			if(status_on_delay)
 			{
@@ -825,22 +823,6 @@ void alarm_table::del_rwlock()
 }
 #endif
 
-void alarm_table::init_logdb(string dbhost, string dbuser, string dbpw, string dbname, int dbport, string instance_name)
-{
-	logloop = new log_thread(dbhost, dbuser, dbpw, dbname, dbport, instance_name);
-	logloop->start();
-}
-
-void alarm_table::stop_logdb()
-{
-	alm_log_t a;
-	a.name = LOG_THREAD_EXIT;
-	a.time_s = LOG_THREAD_EXIT_TIME;
-	logloop->log_alarm_db(a);
-	//sleep(1);
-	//delete logloop;	
-}
-
 void alarm_table::init_cmdthread()
 {
 	cmdloop = new cmd_thread();
@@ -855,28 +837,7 @@ void alarm_table::stop_cmdthread()
 	cmdloop->list.push_back(arg);	
 }
 
-void alarm_table::log_alarm_db(unsigned int type, Tango::TimeVal ts, string name, string status, string ack, 
-		string formula, unsigned int time_threshold, string grp, string lev, string msg, string action, int silent_time, vector<string> alm_list)
-{
-	alm_log_t a;
-	a.type_log = type;
-	a.name = name;
-	a.time_s = ts.tv_sec;	
-	a.time_us = ts.tv_usec;
-	a.time_threshold = time_threshold;
-	a.status = status;
-	a.level = lev;
-	a.ack = ack;
-	a.grp = grp;
-	a.msg = msg;
-	a.action = action;
-	a.formula = formula;
-	a.alm_list = alm_list;
-	a.silent_time = silent_time;
-	logloop->log_alarm_db(a);	
-}
-
-void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string name, string status, string ack,
+void alarm_table::save_alarm_conf_db(string att_name, string name, string status, string ack, bool enabled,
 		string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list)
 {
 	// We want to put properties for attribute "att_name"
@@ -889,11 +850,12 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
 	Tango::DbDatum dbd_group(GROUP_KEY);
 	Tango::DbDatum dbd_message(MESSAGE_KEY);
-	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);	//TODO: action
-	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);	//TODO: action
+	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);
+	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);
+	Tango::DbDatum dbd_enabled(ENABLED_KEY);
 
 	Tango::DbData db_data;
-	dbd_att_name << 9;                               // Eigth properties for attribute "att_name"
+	dbd_att_name << 11;                               // Ten properties for attribute "att_name"
 	dbd_name << name;
 	dbd_formula << formula;
 	dbd_on_delay << on_delay;
@@ -904,6 +866,7 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	dbd_message << msg;
 	dbd_oncommand << cmd_a;
 	dbd_offcommand << cmd_n;
+	dbd_enabled << (enabled ? 1 : 0);
 
 	db_data.push_back(dbd_att_name);
 	db_data.push_back(dbd_name);
@@ -916,6 +879,7 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	db_data.push_back(dbd_message);
 	db_data.push_back(dbd_oncommand);
 	db_data.push_back(dbd_offcommand);
+	db_data.push_back(dbd_enabled);
 
 	string dev_name(mydev->get_name());
 
@@ -923,18 +887,53 @@ void alarm_table::save_alarm_conf_db(string att_name, Tango::TimeVal ts, string 
 	db_dev->get_dbase()->put_device_attribute_property(dev_name,db_data);
 }
 
-void alarm_table::get_alarm_list_db(vector<string> &al_list)
+void alarm_table::delete_alarm_conf_db(string att_name)
 {
-	//logloop->get_alarm_list(al_list);
-/*
- * 			" CONCAT('\t', " << DESC_COL_NAME << ",'\t'," << DESC_COL_FORMULA <<
-				",'\t'," << "IFNULL(" << DESC_COL_TIME_THRESHOLD << ",0)" << ",'\t'," << DESC_COL_LEVEL <<
-				",'\t'," << "IFNULL(" << DESC_COL_SILENT_TIME << ",-1)" <<
-				",'\t'," << DESC_COL_GRP <<	",'\t','\"'," << "IFNULL(" << DESC_COL_MSG << ",'')" <<
-				",'\"','\t'," << "IFNULL(" << DESC_COL_ACTION << ",';')" << ")" <<
- */
+	// We want to put properties for attribute "att_name"
+	Tango::DbDatum dbd_att_name(att_name);
+	Tango::DbDatum dbd_name(NAME_KEY);
+	Tango::DbDatum dbd_formula(FORMULA_KEY);
+	Tango::DbDatum dbd_on_delay(ONDELAY_KEY);
+	Tango::DbDatum dbd_off_delay(OFFDELAY_KEY);
+	Tango::DbDatum dbd_level(LEVEL_KEY);
+	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
+	Tango::DbDatum dbd_group(GROUP_KEY);
+	Tango::DbDatum dbd_message(MESSAGE_KEY);
+	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);
+	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);
+	Tango::DbDatum dbd_enabled(ENABLED_KEY);
 
+	Tango::DbData db_data;
 
+	db_data.push_back(dbd_att_name);
+	db_data.push_back(dbd_name);
+	db_data.push_back(dbd_formula);
+	db_data.push_back(dbd_on_delay);
+	db_data.push_back(dbd_off_delay);
+	db_data.push_back(dbd_level);
+	db_data.push_back(dbd_silence_time);
+	db_data.push_back(dbd_group);
+	db_data.push_back(dbd_message);
+	db_data.push_back(dbd_oncommand);
+	db_data.push_back(dbd_offcommand);
+	db_data.push_back(dbd_enabled);
+
+	string dev_name(mydev->get_name());
+
+	try
+	{
+		Tango::DbDevice *db_dev = mydev->get_db_device();
+		db_dev->get_dbase()->delete_device_attribute_property(dev_name,db_data);
+	}
+	catch(Tango::DevFailed &e)
+	{
+		cout << __func__ << ": Exception deleting " << att_name << " = " << e.errors[0].desc<<endl;
+	}
+}
+
+void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms)
+{
+	saved_alarms.clear();
 	string dev_name(mydev->get_name());
 	vector<string> att_list;
 
@@ -965,6 +964,7 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 		string alm_message;
 		string alm_on_command("");
 		string alm_off_command("");
+		string alm_enabled("1");
 		for (long k=0;k < nb_prop;k++)
 		{
 			string &prop_name = db_data[i].name;
@@ -989,6 +989,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 				db_data[i] >> alm_on_command;
 			else if (prop_name == OFF_COMMAND_KEY)
 				db_data[i] >> alm_off_command;
+			else if (prop_name == ENABLED_KEY)
+				db_data[i] >> alm_enabled;
 			else
 			{
 				cout << "att_name="<<att_name<<" UNKWNOWN prop_name="<<prop_name<<endl;
@@ -1007,8 +1009,10 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list)
 				KEY(GROUP_KEY)<< alm_group << "\t" <<
 				KEY(MESSAGE_KEY)<< "\""  << alm_message <<	"\"\t" <<
 				KEY(ON_COMMAND_KEY)<< alm_on_command << "\t" <<
-				KEY(OFF_COMMAND_KEY)<< alm_off_command;
+				KEY(OFF_COMMAND_KEY)<< alm_off_command << "\t" <<
+				KEY(ENABLED_KEY)<< alm_enabled;
 		al_list.push_back(alm.str());
+		saved_alarms.insert(make_pair(alm_name,alm.str()));
 	}
 
 #if 0

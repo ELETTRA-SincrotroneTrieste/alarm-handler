@@ -47,7 +47,6 @@ static const char *RcsId = "$Id:  $";
 
 #include "alarm-thread.h"
 #include "alarm_grammar.h"
-#include "log_thread.h"
 #include "update-thread.h"
 
 //#define _DUMP_TREE_XML
@@ -196,7 +195,6 @@ void Alarm::delete_device()
 #ifdef _RW_LOCK
 	alarms.del_rwlock();
 #endif
-	alarms.stop_logdb();
 	alarms.stop_cmdthread();
 	sleep(1);		//wait for alarm_thread and log_thread to exit
 	//delete almloop;
@@ -358,17 +356,6 @@ void Alarm::init_device()
 	alarms.new_rwlock();
 #endif
 	try {
-		if((!dbHost.empty()) && (!dbUser.empty()) && (!dbPasswd.empty()) && (!dbName.empty()) && (dbPortint != 0) )
-			//logloop = new log_thread(dbhost, dbuser, dbpw, dbname, dbportint,this);
-			alarms.init_logdb(dbHost, dbUser, dbPasswd, dbName, dbPortint, instanceName);
-	} catch(string & e)
-	{
-		ERROR_STREAM << "Alarm::init_device(): " << e << endl;
-		cout << "Error: " << e << ". Exiting..." << endl;
-		exit(-3);
-	}
-	
-	try {
 		alarms.init_cmdthread();
 	} catch(...)
 	{
@@ -431,7 +418,7 @@ void Alarm::init_device()
     	}
 	}*/
 	try {
-		alarms.get_alarm_list_db(tmp_alm_vec);
+		alarms.get_alarm_list_db(tmp_alm_vec, saved_alarms);
 	} catch(string & e)
 	{
 		ERROR_STREAM << "Alarm::init_device(): " << e << endl;
@@ -1269,9 +1256,6 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 			}
 			if(found->ack == NOT_ACK)
 			{
-				alarms.log_alarm_db(TYPE_LOG_STATUS, gettime(), found->name, found->stat, ACK, 
-						"", 0, "", "", "", "", -1);
-
 				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
 				//TODO: if not _SHLVD, _DSUPR, _OOSRV
 				if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
@@ -1474,13 +1458,11 @@ void Alarm::load(Tango::DevString argin)
 				(const char*)"Alarm::load()", Tango::ERR);
 	}
 #endif
-	string cmd_name_full = alm.cmd_name_a + string(";") + alm.cmd_name_n;
-	alarms.log_alarm_db(TYPE_LOG_DESC_ADD, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
-			alm.formula, alm.on_delay, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);	//but if it fails remove it from table
-
-	alarms.save_alarm_conf_db(alm.attr_name, ts, alm.name, "", "", 		//add new alarm on log before subscribe event
+	alarms.save_alarm_conf_db(alm.attr_name, alm.name, "", "", alm.enabled,		//add new alarm on log before subscribe event
 			alm.formula, alm.on_delay, alm.off_delay, alm.grp2str(), alm.lev, alm.msg, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
-
+	string conf_str;
+	alm.confstr(conf_str);
+	saved_alarms.insert(make_pair(alm.attr_name,conf_str));
 
 
 #ifndef _RW_LOCK
@@ -1677,8 +1659,6 @@ void Alarm::remove(Tango::DevString argin)
 			s.replace(i, 1, "_");
 		}
 	}  /* end if */
-	alarms.log_alarm_db(TYPE_LOG_DESC_DIS, gettime(), log_alm_name, "", "", 		//set active to 0
-			"", 0, "", "", "", "", -1);
 	alarmedlock->writerIn();
 	found = find(alarmed.begin(), alarmed.end(), s);	//look again because in the meanwhile lock was not acquired
 	if (found != alarmed.end()) 
@@ -2010,6 +1990,7 @@ void Alarm::modify(Tango::DevString argin)
 	alm.cmd_action_n.clear();
 	alm.send_arg_n = false;
 	alm.dp_n = NULL;
+	alm.enabled=1;
 
 	alm.formula_tree =
 	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
@@ -2103,6 +2084,7 @@ void Alarm::modify(Tango::DevString argin)
 				i->second.cmd_dp_n = alm.cmd_dp_n;
 				i->second.cmd_action_n = alm.cmd_action_n;
 				//i->second.send_arg_n = alm.send_arg_n;
+				i->second.enabled = alm.enabled;
 
 			} else {
 				ostringstream o;
@@ -2119,9 +2101,8 @@ void Alarm::modify(Tango::DevString argin)
 						(const char*)__func__, Tango::ERR);
 			}
 
-
-			alarms.log_alarm_db(TYPE_LOG_DESC_UPDATE, ts, alm.name, "", "",
-					alm.formula, alm.on_delay, alm.grp2str(), alm.lev, alm.msg, cmd_name_full, alm.silent_time);
+			//update attribute properties
+			events->update_property();
 
 			//delete proxy for actions
 			if(i->second.dp_a)
@@ -2301,6 +2282,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	alm.cmd_action_n.clear();
 	alm.send_arg_n = false;	
 	alm.dp_n = NULL;
+	alm.enabled = 1;
 	evn.clear();	
 
 	alm.formula_tree = 
@@ -2390,6 +2372,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 	DEBUG_STREAM << "               lev            = '" << alm.lev << "'" << endl;
 	DEBUG_STREAM << "               action_a       = '" << alm.cmd_name_a << "'" << endl;	
 	DEBUG_STREAM << "               action_n       = '" << alm.cmd_name_n << "'" << endl;
+	DEBUG_STREAM << "               enabled        = '" << (alm.enabled ? "1" : "0") << "'" << endl;
 	if ((alm.name.empty() == false) && \
 			(alm.formula.empty() == false) && \
 			((alm.lev==LEV_LOG)||(alm.lev==LEV_WARNING)|| \
@@ -4135,6 +4118,44 @@ void Alarm::put_signal_property()
 	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
 	{
 		prop.push_back(it->first);
+
+		string conf_str;
+		it->second.confstr(conf_str);
+		map<string,string>::iterator itmap = saved_alarms.find(it->first);
+		if(itmap == saved_alarms.end())
+		{
+			DEBUG_STREAM << __func__<<": SAVING " << it->first << endl;
+			alarms.save_alarm_conf_db(it->second.attr_name, it->second.name, it->second.stat, it->second.ack, it->second.enabled,
+				it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
+			saved_alarms.insert(make_pair(it->first,conf_str));
+
+		}
+		else
+		{
+			string conf_string;
+			it->second.confstr(conf_string);
+			//alarm found but configuration changed
+			if(conf_string != itmap->second)
+			{
+				DEBUG_STREAM << __func__<<": UPDATING " << it->first << endl;
+				alarms.save_alarm_conf_db(it->second.attr_name, it->second.name, it->second.stat, it->second.ack, it->second.enabled,
+					it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
+				itmap->second = conf_string;
+			}
+		}
+	}
+	map<string, string>::iterator it2=saved_alarms.begin();
+	while(it2 != saved_alarms.end())
+	{
+		alarm_container_t::iterator found = alarms.v_alarm.find(it2->first);
+		if (found == alarms.v_alarm.end())
+		{
+			DEBUG_STREAM << __func__<<": DELETING " << it2->first << endl;
+			alarms.delete_alarm_conf_db(it2->first);
+			saved_alarms.erase(it2);
+		}
+		if(it2 != saved_alarms.end())
+			it2++;
 	}
 #ifndef _RW_LOCK
 	alarms.unlock();

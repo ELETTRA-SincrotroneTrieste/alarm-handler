@@ -342,6 +342,7 @@ private:
 	ReadersWritersLock *internallock;
 	ReadersWritersLock *dslock;
 	int			period;		//subscribe thread period
+	map<string, string> saved_alarms;
 	
 	static int instanceCounter;
 	
