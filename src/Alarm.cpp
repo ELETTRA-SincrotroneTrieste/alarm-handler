@@ -98,23 +98,38 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.29 $";
 //  The following table gives the correspondence
 //  between command and method names.
 //
-//  Command name  |  Method name
+//  Command name     |  Method name
 //================================================================
-//  State         |  Inherited (no method)
-//  Status        |  Inherited (no method)
-//  Ack           |  ack
-//  Load          |  load
-//  Remove        |  remove
-//  Configured    |  configured
-//  StopNew       |  stop_new
-//  Silence       |  silence
-//  Modify        |  modify
+//  State            |  Inherited (no method)
+//  Status           |  Inherited (no method)
+//  Ack              |  ack
+//  Load             |  load
+//  Remove           |  remove
+//  SearchAlarm      |  search_alarm
+//  StopAudible      |  stop_audible
+//  Silence          |  silence
+//  Modify           |  modify
+//  Shelve           |  shelve
+//  Enable           |  enable
+//  Disable          |  disable
+//  ResetStatistics  |  reset_statistics
 //================================================================
 
 //================================================================
-//  Attributes managed is:
+//  Attributes managed are:
 //================================================================
-//  alarm  |  Tango::DevString	Spectrum  ( max = 1024)
+//  audibleAlarm                |  Tango::DevBoolean	Scalar
+//  StatisticsResetTime         |  Tango::DevDouble	Scalar
+//  alarm                       |  Tango::DevString	Spectrum  ( max = 1024)
+//  normalAlarms                |  Tango::DevString	Spectrum  ( max = 10000)
+//  unacknowledgedAlarms        |  Tango::DevString	Spectrum  ( max = 10000)
+//  acknowledgedAlarms          |  Tango::DevString	Spectrum  ( max = 10000)
+//  unacknowledgedNormalAlarms  |  Tango::DevString	Spectrum  ( max = 10000)
+//  shelvedAlarms               |  Tango::DevString	Spectrum  ( max = 10000)
+//  outOfServiceAlarms          |  Tango::DevString	Spectrum  ( max = 10000)
+//  silencedAlarms              |  Tango::DevString	Spectrum  ( max = 10000)
+//  listAlarms                  |  Tango::DevString	Spectrum  ( max = 10000)
+//  frequencyAlarms             |  Tango::DevDouble	Spectrum  ( max = 10000)
 //================================================================
 
 namespace Alarm_ns
@@ -268,6 +283,17 @@ void Alarm::delete_device()
 	//Tango::leavefunc();
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::delete_device
+	delete[] attr_audibleAlarm_read;
+	delete[] attr_StatisticsResetTime_read;
+	delete[] attr_normalAlarms_read;
+	delete[] attr_unacknowledgedAlarms_read;
+	delete[] attr_acknowledgedAlarms_read;
+	delete[] attr_unacknowledgedNormalAlarms_read;
+	delete[] attr_shelvedAlarms_read;
+	delete[] attr_outOfServiceAlarms_read;
+	delete[] attr_silencedAlarms_read;
+	delete[] attr_listAlarms_read;
+	delete[] attr_frequencyAlarms_read;
 }
 
 //--------------------------------------------------------
@@ -295,11 +321,19 @@ void Alarm::init_device()
 		cout << "ERROR: second instance of Alarm Server, exiting..." << endl;
 		exit(-1);
 	}	//-------------------------------------------	
-	errThreshold = 0;
 	alarmedlock = new(ReadersWritersLock);
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
 	alarms.set_dev(this);
+
+	normalAlarms_read.reserve(MAX_ALARMS);
+	unacknowledgedAlarms_read.reserve(MAX_ALARMS);
+	acknowledgedAlarms_read.reserve(MAX_ALARMS);
+	unacknowledgedNormalAlarms_read.reserve(MAX_ALARMS);
+	shelvedAlarms_read.reserve(MAX_ALARMS);
+	outOfServiceAlarms_read.reserve(MAX_ALARMS);
+	silencedAlarms_read.reserve(MAX_ALARMS);
+	listAlarms_read.reserve(MAX_ALARMS);
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::init_device_before
 	
@@ -307,6 +341,17 @@ void Alarm::init_device()
 	//	Get the device properties from database
 	get_device_property();
 	
+	attr_audibleAlarm_read = new Tango::DevBoolean[1];
+	attr_StatisticsResetTime_read = new Tango::DevDouble[1];
+	attr_normalAlarms_read = new Tango::DevString[10000];
+	attr_unacknowledgedAlarms_read = new Tango::DevString[10000];
+	attr_acknowledgedAlarms_read = new Tango::DevString[10000];
+	attr_unacknowledgedNormalAlarms_read = new Tango::DevString[10000];
+	attr_shelvedAlarms_read = new Tango::DevString[10000];
+	attr_outOfServiceAlarms_read = new Tango::DevString[10000];
+	attr_silencedAlarms_read = new Tango::DevString[10000];
+	attr_listAlarms_read = new Tango::DevString[10000];
+	attr_frequencyAlarms_read = new Tango::DevDouble[10000];
 	/*----- PROTECTED REGION ID(Alarm::init_device) ENABLED START -----*/
 	
 	//	Initialize device
@@ -328,21 +373,10 @@ void Alarm::init_device()
 	{
 		ERROR_STREAM << __FUNCTION__ << " Error reading Database property='" << e.errors[0].desc << "'";
 	}
-	string server = "alarm-srv/test";
-	Tango::DbServerInfo info = db->get_server_info(server);
-	INFO_STREAM << " INFO: host=" << info.host;
 
 	delete db;
 #endif
-	
-	dbPortint = atoi(dbPort.c_str());
-	if(dbHost.empty() || dbUser.empty() || dbPasswd.empty() || dbName.empty() || (dbPortint == 0) || instanceName.empty())
-	{
-		ERROR_STREAM << "Alarm::init_device(): not all necessary properties are defined: DbHost="<<dbHost<<
-			" DbUser="<<dbUser<<" DbPasswd="<<dbPasswd<<" DbName="<<dbName<<" DbPort="<<dbPortint<<" InstanceName="<<instanceName<< endl;
-		cout << "Error: not all necessary properties are defined. Exiting..." << endl;
-		exit(-2);
-	}	
+
 	ds_num = 0;				//initialize number of lines returned by read_alarm
 	internal_counter = 0;
 
@@ -676,6 +710,11 @@ void Alarm::init_device()
 	for (int i=0; i< MAX_ALARMS ; i++)
 		ds[i]=(char *) (dss[i]);
 
+	timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
+	last_statistics_reset_time = dnow;
+
 	/*----- PROTECTED REGION END -----*/	//	Alarm::init_device
 }
 
@@ -697,16 +736,9 @@ void Alarm::get_device_property()
 
 	//	Read device properties from database.
 	Tango::DbData	dev_prop;
-	dev_prop.push_back(Tango::DbDatum("AlarmStatus"));
 	dev_prop.push_back(Tango::DbDatum("GroupNames"));
-	dev_prop.push_back(Tango::DbDatum("ErrThreshold"));
-	dev_prop.push_back(Tango::DbDatum("DbHost"));
-	dev_prop.push_back(Tango::DbDatum("DbUser"));
-	dev_prop.push_back(Tango::DbDatum("DbPasswd"));
-	dev_prop.push_back(Tango::DbDatum("DbName"));
-	dev_prop.push_back(Tango::DbDatum("DbPort"));
-	dev_prop.push_back(Tango::DbDatum("InstanceName"));
 	dev_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
+	dev_prop.push_back(Tango::DbDatum("StatisticsTimeWindow"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -721,17 +753,6 @@ void Alarm::get_device_property()
 			(static_cast<AlarmClass *>(get_device_class()));
 		int	i = -1;
 
-		//	Try to initialize AlarmStatus from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  alarmStatus;
-		else {
-			//	Try to initialize AlarmStatus from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  alarmStatus;
-		}
-		//	And try to extract AlarmStatus value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  alarmStatus;
-
 		//	Try to initialize GroupNames from class property
 		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
 		if (cl_prop.is_empty()==false)	cl_prop  >>  groupNames;
@@ -742,83 +763,6 @@ void Alarm::get_device_property()
 		}
 		//	And try to extract GroupNames value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  groupNames;
-
-		//	Try to initialize ErrThreshold from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  errThreshold;
-		else {
-			//	Try to initialize ErrThreshold from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  errThreshold;
-		}
-		//	And try to extract ErrThreshold value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  errThreshold;
-
-		//	Try to initialize DbHost from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  dbHost;
-		else {
-			//	Try to initialize DbHost from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  dbHost;
-		}
-		//	And try to extract DbHost value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  dbHost;
-
-		//	Try to initialize DbUser from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  dbUser;
-		else {
-			//	Try to initialize DbUser from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  dbUser;
-		}
-		//	And try to extract DbUser value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  dbUser;
-
-		//	Try to initialize DbPasswd from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  dbPasswd;
-		else {
-			//	Try to initialize DbPasswd from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  dbPasswd;
-		}
-		//	And try to extract DbPasswd value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  dbPasswd;
-
-		//	Try to initialize DbName from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  dbName;
-		else {
-			//	Try to initialize DbName from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  dbName;
-		}
-		//	And try to extract DbName value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  dbName;
-
-		//	Try to initialize DbPort from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  dbPort;
-		else {
-			//	Try to initialize DbPort from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  dbPort;
-		}
-		//	And try to extract DbPort value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  dbPort;
-
-		//	Try to initialize InstanceName from class property
-		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
-		if (cl_prop.is_empty()==false)	cl_prop  >>  instanceName;
-		else {
-			//	Try to initialize InstanceName from default device value
-			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
-			if (def_prop.is_empty()==false)	def_prop  >>  instanceName;
-		}
-		//	And try to extract InstanceName value from database
-		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  instanceName;
 
 		//	Try to initialize SubscribeRetryPeriod from class property
 		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
@@ -831,6 +775,17 @@ void Alarm::get_device_property()
 		//	And try to extract SubscribeRetryPeriod value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  subscribeRetryPeriod;
 
+		//	Try to initialize StatisticsTimeWindow from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  statisticsTimeWindow;
+		else {
+			//	Try to initialize StatisticsTimeWindow from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  statisticsTimeWindow;
+		}
+		//	And try to extract StatisticsTimeWindow value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  statisticsTimeWindow;
+
 	}
 
 	/*----- PROTECTED REGION ID(Alarm::get_device_property_after) ENABLED START -----*/
@@ -841,32 +796,6 @@ void Alarm::get_device_property()
 	 */	
 	alarm_t tmp_alm;						
 	tmp_alm.init_static_map(groupNames); 
-	
-	/*
-	 * retrive last saved alarms status
-	 */
-	if (alarmStatus.empty() == false) {
-		for (vector<string>::iterator i = alarmStatus.begin(); \
-			 	 i != alarmStatus.end(); i++) {
-			/*
-			 * test for string length; data[1].is_empty() will return false
-			 * when empty string eventually initialized with jive!!!!!!
-			 */
-			if (i->length() != 0) {
-				alarm_t tmp_alm;
-				tmp_alm.str2alm(*i);
-				tmp_alm.is_new = /*(tmp_alm.stat == S_ALARM) ? 1 :*/ 0; //don't beep at startup on old alarms
-				stored.push_back(tmp_alm);
-			}
-		}
-	}
-	DEBUG_STREAM << "saved alarms table:" << endl;
-	if (stored.empty() == false) {
-		for (vector<alarm_t>::iterator a = stored.begin(); \
-			 	 a != stored.end(); a++) {
-			DEBUG_STREAM << "\t" << a->alm2str() << endl;
-		}
-	}
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::get_device_property_after
 }
@@ -896,7 +825,7 @@ void Alarm::always_executed_hook()
 //--------------------------------------------------------
 void Alarm::read_attr_hardware(TANGO_UNUSED(vector<long> &attr_list))
 {
-	DEBUG_STREAM << "Alarm::read_attr_hardware(vector<long> &attr_list) entering... " << endl;
+	//DEBUG_STREAM << "Alarm::read_attr_hardware(vector<long> &attr_list) entering... " << endl;
 	/*----- PROTECTED REGION ID(Alarm::read_attr_hardware) ENABLED START -----*/
 	
 	//	Add your own code
@@ -908,6 +837,46 @@ void Alarm::read_attr_hardware(TANGO_UNUSED(vector<long> &attr_list))
 	/*----- PROTECTED REGION END -----*/	//	Alarm::read_attr_hardware
 }
 
+//--------------------------------------------------------
+/**
+ *	Read attribute audibleAlarm related method
+ *	Description: True if there is at least one alarm that needs audible indication on the GUI
+ *
+ *	Data type:	Tango::DevBoolean
+ *	Attr type:	Scalar
+ */
+//--------------------------------------------------------
+void Alarm::read_audibleAlarm(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_audibleAlarm(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_audibleAlarm) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_audibleAlarm_read);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_audibleAlarm
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute StatisticsResetTime related method
+ *	Description: Time elapsed in seconds since last Resetstatistics
+ *
+ *	Data type:	Tango::DevDouble
+ *	Attr type:	Scalar
+ */
+//--------------------------------------------------------
+void Alarm::read_StatisticsResetTime(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_StatisticsResetTime(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_StatisticsResetTime) ENABLED START -----*/
+	timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
+	*attr_StatisticsResetTime_read = dnow - last_statistics_reset_time;
+	//	Set the attribute value
+	attr.set_value(attr_StatisticsResetTime_read);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_StatisticsResetTime
+}
 //--------------------------------------------------------
 /**
  *	Read attribute alarm related method
@@ -1086,6 +1055,168 @@ void Alarm::read_alarm(Tango::Attribute &attr)
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::read_alarm
 }
+//--------------------------------------------------------
+/**
+ *	Read attribute normalAlarms related method
+ *	Description: List of alarms in normal state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_normalAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_normalAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_normalAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_normalAlarms_read, normalAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_normalAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute unacknowledgedAlarms related method
+ *	Description: List of alarms in unacknowledged state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_unacknowledgedAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_unacknowledgedAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_unacknowledgedAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_unacknowledgedAlarms_read, unacknowledgedAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_unacknowledgedAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute acknowledgedAlarms related method
+ *	Description: List of alarms in acknowledged state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_acknowledgedAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_acknowledgedAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_acknowledgedAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_acknowledgedAlarms_read, acknowledgedAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_acknowledgedAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute unacknowledgedNormalAlarms related method
+ *	Description: List of alarms in unacknowledged normal state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_unacknowledgedNormalAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_unacknowledgedNormalAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_unacknowledgedNormalAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_unacknowledgedNormalAlarms_read, unacknowledgedNormalAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_unacknowledgedNormalAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute shelvedAlarms related method
+ *	Description: List of alarms in shelved state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_shelvedAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_shelvedAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_shelvedAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_shelvedAlarms_read, shelvedAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_shelvedAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute outOfServiceAlarms related method
+ *	Description: List of alarms in out of service state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_outOfServiceAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_outOfServiceAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_outOfServiceAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_outOfServiceAlarms_read, outOfServiceAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_outOfServiceAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute silencedAlarms related method
+ *	Description: List of alarms in silenced state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_silencedAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_silencedAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_silencedAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_silencedAlarms_read, silencedAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_silencedAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute listAlarms related method
+ *	Description: List of all alarms
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_listAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_listAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_listAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_listAlarms_read, listAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_listAlarms
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute frequencyAlarms related method
+ *	Description: List of frequency of evaluation of all alarms
+ *
+ *	Data type:	Tango::DevDouble
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void Alarm::read_frequencyAlarms(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "Alarm::read_frequencyAlarms(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(Alarm::read_frequencyAlarms) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_frequencyAlarms_read, listAlarms_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::read_frequencyAlarms
+}
 
 //--------------------------------------------------------
 /**
@@ -1247,18 +1378,43 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 		if (found != alarmed.end()) 
 		{
 			alarm_container_t::iterator i = alarms.v_alarm.find(*si);
-			if(i != alarms.v_alarm.end())
+
+			if(i == alarms.v_alarm.end())
 			{
-				//update alarm ack in alarm table
-				i->second.ack = ACK;
-				//update alarm status from alarm table
-				found->stat = i->second.stat;
+				INFO_STREAM << __func__ << ": alarm '" << *si << "' not found";
+				alarmedlock->readerOut();
+#ifndef _RW_LOCK
+				alarms.unlock();
+#else
+				alarms.vlock->readerOut();
+#endif
+				continue;
 			}
+			if(!i->second.enabled || i->second.shelved)
+			{
+				DEBUG_STREAM << __func__ << ": alarm '" << *si << "' not enabled";
+				alarmedlock->readerOut();
+#ifndef _RW_LOCK
+				alarms.unlock();
+#else
+				alarms.vlock->readerOut();
+#endif
+				continue;
+			}
+
+			//update alarm ack in alarm table
+			i->second.ack = ACK;
+			//update alarm status from alarm table
+			found->stat = i->second.stat;
+
 			if(found->ack == NOT_ACK)
 			{
 				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
-				//TODO: if not _SHLVD, _DSUPR, _OOSRV
-				if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
+				if(!i->second.enabled)
+					*attr_value = _OOSRV;
+				else if(i->second.shelved && i->second.silenced > 0)
+					*attr_value = _SHLVD;
+				else if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
 					*attr_value = _NORM;
 				else if((i->second.stat == S_ALARM) && i->second.ack == NOT_ACK)
 					*attr_value = _UNACK;
@@ -1293,29 +1449,6 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 				}
 			}
 			found->ack = ACK;
-		} else {
-			internallock->readerIn();
-			found = find(internal.begin(), internal.end(), *si);
-			if (found != internal.end()) {
-				found->ack = ACK;
-			} else {
-				ostringstream o;
-				o << "\"" << *si << "\" not in 'alarmed' or 'internal' table" << endl;
-				WARN_STREAM << "Alarm::ack(): " << o.str() << endl;
-				internallock->readerOut();
-				alarmedlock->readerOut();
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
-				alarms.vlock->readerOut();
-#endif
-				Tango::Except::throw_exception( \
-					(const char*)"Alarm not found!!", \
-					o.str(), \
-					(const char*)"Alarm::ack()", Tango::ERR);									 
-				
-			}
-			internallock->readerOut();
 		}
 		alarmedlock->readerOut();
 #ifndef _RW_LOCK
@@ -1346,28 +1479,6 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 		}
 		alarmedlock->writerOut();
 	}
-	/*
-	 * always remove internal ACKnowlwdged alarms as
-	 * they'll wont switch to "NORMAL"
-	 */
-	to_be_removed.name = "";
-	to_be_removed.formula = "";
-	to_be_removed.stat = S_ALARM;
-	to_be_removed.ack = ACK;
-	go = true;
-	while (go) {
-		internallock->writerIn();
-		vector<alarm_t>::iterator found = \
-				find(internal.begin(), internal.end(), to_be_removed);
-		if (found != internal.end()) {
-			DEBUG_STREAM << "Alarm::ack(): " << found->name \
-					 				 << " ACK, removing"  << endl;
-			internal.erase(found);
-		} else {
-			go = false;
-		}
-		internallock->writerOut();
-	}
 
 	prepare_alarm_attr();
 	try
@@ -1380,8 +1491,31 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -1678,8 +1812,30 @@ void Alarm::remove(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -1691,18 +1847,18 @@ void Alarm::remove(Tango::DevString argin)
 }
 //--------------------------------------------------------
 /**
- *	Command Configured related method
- *	Description: Alarms configured
+ *	Command SearchAlarm related method
+ *	Description: Return list of configured alarms matching the filter string
  *
- *	@param argin String containing a filter for output, if empty return all alarms
- *	@returns Alarms configured
+ *	@param argin String containing a filter for output, if empty or * return all alarms
+ *	@returns Configured alarms
  */
 //--------------------------------------------------------
-Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
+Tango::DevVarStringArray *Alarm::search_alarm(Tango::DevString argin)
 {
 	Tango::DevVarStringArray *argout;
-	DEBUG_STREAM << "Alarm::Configured()  - " << device_name << endl;
-	/*----- PROTECTED REGION ID(Alarm::configured) ENABLED START -----*/
+	DEBUG_STREAM << "Alarm::SearchAlarm()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::search_alarm) ENABLED START -----*/
 	
 	//	Add your own code
 	//	POGO has generated a method core with argout allocation.
@@ -1718,6 +1874,32 @@ Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
 	//	Add your own code to control device here
 
 	string filter(argin);
+	string filter_begin(filter);
+	string filter_end("");
+
+	size_t start_pos = 0;
+/*	string from("*");
+	string to("");
+	while((start_pos = filter.find(from, start_pos)) != std::string::npos)
+	{
+		filter.replace(start_pos, from.length(), to);
+		start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+	}*/
+	start_pos = filter.find("*", start_pos);
+	if(start_pos != std::string::npos && start_pos == filter.size()-1) //* is the only character or at the end of the filter
+	{
+		filter.replace(start_pos, 1, "");
+		filter_begin = filter;
+		DEBUG_STREAM << __func__ << ": updated filter to: " << filter_begin;
+	}
+	/*else if(start_pos != std::string::npos) //* is in the middle of the filter
+	{
+		string filter_begin=filter.substr(0,start_pos);
+		string filter_end=filter.substr(start_pos+1);
+		DEBUG_STREAM << __func__ << ": splitted filter to: " << filter_begin << " - " << filter_end;
+	}*/
+
+
 	size_t found;
 	vector<string> alarm_filtered;
 	ostringstream os1;		
@@ -1734,11 +1916,11 @@ Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) 
 	{
 		found = 0;
-		if(filter.length() != 0)
+		if(filter_begin.length() != 0)
 		{
-			found = ai->first.find(filter);
+			found = ai->first.find(filter_begin);
 		}
-		if((filter.length() == 0) || (found != string::npos))
+		if((filter_begin.length() == 0) || (found != string::npos))
 		{
 			ostringstream os;
 			os.clear();
@@ -1761,20 +1943,20 @@ Tango::DevVarStringArray *Alarm::configured(Tango::DevString argin)
 		i++;
 	}
 
-	/*----- PROTECTED REGION END -----*/	//	Alarm::configured
+	/*----- PROTECTED REGION END -----*/	//	Alarm::search_alarm
 	return argout;
 }
 //--------------------------------------------------------
 /**
- *	Command StopNew related method
- *	Description: Remove "NEW" field from alarm string (so alarm panel stop sound)
+ *	Command StopAudible related method
+ *	Description: Stop audible indications on the GUI
  *
  */
 //--------------------------------------------------------
-void Alarm::stop_new()
+void Alarm::stop_audible()
 {
-	DEBUG_STREAM << "Alarm::StopNew()  - " << device_name << endl;
-	/*----- PROTECTED REGION ID(Alarm::stop_new) ENABLED START -----*/
+	DEBUG_STREAM << "Alarm::StopAudible()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::stop_audible) ENABLED START -----*/
 	
 	//	Add your own code
 	//12-06-08: StopNew command set is_new to 0
@@ -1805,8 +1987,30 @@ void Alarm::stop_new()
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -1814,7 +2018,7 @@ void Alarm::stop_new()
 		INFO_STREAM << __func__<<": " << err.str() << endl;
 	}
 
-	/*----- PROTECTED REGION END -----*/	//	Alarm::stop_new
+	/*----- PROTECTED REGION END -----*/	//	Alarm::stop_audible
 }
 //--------------------------------------------------------
 /**
@@ -1853,9 +2057,14 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 				//silenced already calculated in alarm_table::update, but here updated for panel also if state not changed:
 				//to see minutes countdown
 				if(dminutes < i->second.silent_time)
+				{
 					i->second.silenced = i->second.silent_time - floor(dminutes);
+				}
 				else
+				{
 					i->second.silenced = 0;
+					i->second.shelved = false;
+				}
 			}
 			if(i->second.silenced > 0)
 			{
@@ -1934,8 +2143,30 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -1990,7 +2221,8 @@ void Alarm::modify(Tango::DevString argin)
 	alm.cmd_action_n.clear();
 	alm.send_arg_n = false;
 	alm.dp_n = NULL;
-	alm.enabled=1;
+	alm.enabled=true;
+	alm.shelved=false;
 
 	alm.formula_tree =
 	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
@@ -2075,7 +2307,7 @@ void Alarm::modify(Tango::DevString argin)
 				i->second.on_delay = alm.on_delay;
 				i->second.off_delay = alm.off_delay;
 				i->second.silent_time = alm.silent_time;
-				i->second.silenced = alm.silenced;
+				i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silencedd;
 				i->second.cmd_name_a = alm.cmd_name_a;
 				i->second.cmd_dp_a = alm.cmd_dp_a;
 				i->second.cmd_action_a = alm.cmd_action_a;
@@ -2220,8 +2452,30 @@ void Alarm::modify(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2230,6 +2484,510 @@ void Alarm::modify(Tango::DevString argin)
 	}
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::modify
+}
+//--------------------------------------------------------
+/**
+ *	Command Shelve related method
+ *	Description: Shelve an alarm: no state transition recorded, no audible nor visual indication
+ *
+ *	@param argin String array containing alarm to be shelved
+ */
+//--------------------------------------------------------
+void Alarm::shelve(const Tango::DevVarStringArray *argin)
+{
+	DEBUG_STREAM << "Alarm::Shelve()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::shelve) ENABLED START -----*/
+	
+	//	Add your own code
+	vector<string> str;
+	str << (*argin);
+	vector<string>::iterator si;
+
+	for (si = str.begin(); si != str.end(); si++)
+	{
+#ifndef _RW_LOCK
+		alarms.lock();
+#else
+		alarms.vlock->readerIn();
+#endif
+		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
+		if(i == alarms.v_alarm.end())
+		{
+			ostringstream err;
+			err << *si << " not found in configured alarms" << ends;
+#ifndef _RW_LOCK
+			alarms.unlock();
+#else
+			alarms.vlock->readerOut();
+#endif
+			Tango::Except::throw_exception( \
+				(const char*)"NOT_FOUND", \
+				(const char*)err.str().c_str(), \
+				(const char*)__func__, Tango::ERR);
+		}
+		if(!i->second.enabled)
+		{
+			ostringstream err;
+			err << *si << " is not enabled" << ends;
+#ifndef _RW_LOCK
+			alarms.unlock();
+#else
+			alarms.vlock->readerOut();
+#endif
+			Tango::Except::throw_exception( \
+				(const char*)"NOT_ENABLED", \
+				(const char*)err.str().c_str(), \
+				(const char*)__func__, Tango::ERR);
+		}
+		if(i->second.silenced > 0)
+		{
+			Tango::TimeVal now = gettime();
+			double dnow = now.tv_sec + ((double)now.tv_usec) / 1000000;
+			double dsilent = i->second.ts_time_silenced.tv_sec + ((double)i->second.ts_time_silenced.tv_usec) / 1000000;
+			double dminutes = (dnow - dsilent)/60;
+			//silenced already calculated in alarm_table::update, but here updated for panel also if state not changed:
+			//to see minutes countdown
+			if(dminutes < i->second.silent_time)//TODO: shelve_time ?
+			{
+				i->second.silenced = i->second.silent_time - floor(dminutes);//TODO: shelve_time ?
+			}
+			else
+			{
+				i->second.silenced = 0;
+				i->second.shelved = false;
+			}
+		}
+		if(i->second.shelved)
+		{
+			ostringstream err;
+			err << *si << " is already shelved" << ends;
+#ifndef _RW_LOCK
+			alarms.unlock();
+#else
+			alarms.vlock->readerOut();
+#endif
+			Tango::Except::throw_exception( \
+				(const char*)"ALREADY_SHELVED", \
+				(const char*)err.str().c_str(), \
+				(const char*)__func__, Tango::ERR);
+		}
+		if(i->second.silent_time <= 0)
+		{
+			ostringstream err;
+			err << "Alarm " << *si << " cannot be shelved" << ends;
+#ifndef _RW_LOCK
+			alarms.unlock();
+#else
+			alarms.vlock->readerOut();
+#endif
+			Tango::Except::throw_exception( \
+						(const char*)"NOT_ALLOWED", \
+						err.str(), \
+						(const char*)__func__, Tango::ERR);
+		}
+#ifndef _RW_LOCK
+		alarms.unlock();
+#else
+		alarms.vlock->readerOut();
+#endif
+	}
+
+	for (si = str.begin(); si != str.end(); si++)
+	{
+#ifndef _RW_LOCK
+		alarms.lock();
+#else
+		alarms.vlock->readerIn();
+#endif
+		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
+		if(i == alarms.v_alarm.end())
+			continue;
+		i->second.shelved = true;
+
+		//load silent time
+		i->second.ts_time_silenced = gettime();
+		i->second.silenced = i->second.silent_time;	//TODO: shelve_time ?
+		//search also in alarmed
+		alarmedlock->writerIn();
+		vector<alarm_t>::iterator found = \
+				find(alarmed.begin(), alarmed.end(), *si);
+		if (found != alarmed.end())
+		{
+			alarmed.erase(found);
+		}
+		alarmedlock->writerOut();
+
+
+		Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+
+		*attr_value = _SHLVD;
+		try
+		{	//DevFailed for push events
+			if(i->second.ex_reason.length() == 0)
+			{
+				timeval now;
+				gettimeofday(&now, NULL);
+				push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+				push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+			}
+			else
+			{
+				Tango::DevErrorList errors(1);
+				errors.length(1);
+				errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+				errors[0].severity = Tango::ERR;
+				errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
+				errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+				Tango::DevFailed except(errors);
+				push_change_event(i->second.attr_name, &except);
+				push_archive_event(i->second.attr_name, &except);
+			}
+		} catch(Tango::DevFailed & ex)
+		{
+			WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+		}
+#ifndef _RW_LOCK
+		alarms.unlock();
+#else
+		alarms.vlock->readerOut();
+#endif
+	}
+
+	prepare_alarm_attr();
+	try
+	{
+		if(ds_num == 0)
+		{
+			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+			struct timeval now;
+			gettimeofday(&now,NULL);
+			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+		}
+		else
+		{
+			//attr.set_value(ds, ds_num, 0, false);
+			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+	} catch(Tango::DevFailed& e)
+	{
+		ostringstream err;
+		err << "error pushing alarm change event err=" << e.errors[0].desc;
+		INFO_STREAM << __func__<<": " << err.str() << endl;
+	}
+
+	/*----- PROTECTED REGION END -----*/	//	Alarm::shelve
+}
+//--------------------------------------------------------
+/**
+ *	Command Enable related method
+ *	Description: Enable an alarm from Out of service state
+ *
+ *	@param argin Alarm name
+ */
+//--------------------------------------------------------
+void Alarm::enable(Tango::DevString argin)
+{
+	DEBUG_STREAM << "Alarm::Enable()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::enable) ENABLED START -----*/
+	
+	//	Add your own code
+	string arginname(argin);
+
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	alarm_container_t::iterator i = alarms.v_alarm.find(arginname);
+	if(i == alarms.v_alarm.end())
+	{
+		ostringstream err;
+		err << arginname << " not found in configured alarms" << ends;
+#ifndef _RW_LOCK
+		alarms.unlock();
+#else
+		alarms.vlock->readerOut();
+#endif
+		Tango::Except::throw_exception( \
+			(const char*)"NOT_FOUND", \
+			(const char*)err.str().c_str(), \
+			(const char*)__func__, Tango::ERR);
+	}
+
+	i->second.enabled = true;
+
+	i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silenced
+	i->second.shelved = false;
+
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+
+	if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
+		*attr_value = _NORM;
+	else if((i->second.stat == S_ALARM) && i->second.ack == NOT_ACK)
+		*attr_value = _UNACK;
+	else if((i->second.stat == S_ALARM) && i->second.ack == ACK)
+		*attr_value = _ACKED;
+	else if((i->second.stat == S_NORMAL) && i->second.ack == NOT_ACK)
+		*attr_value = _RTNUN;
+	try
+	{	//DevFailed for push events
+		if(i->second.ex_reason.length() == 0)
+		{
+			timeval now;
+			gettimeofday(&now, NULL);
+			push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+			push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+		}
+		else
+		{
+			Tango::DevErrorList errors(1);
+			errors.length(1);
+			errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+			errors[0].severity = Tango::ERR;
+			errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
+			errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+			Tango::DevFailed except(errors);
+			push_change_event(i->second.attr_name, &except);
+			push_archive_event(i->second.attr_name, &except);
+		}
+	} catch(Tango::DevFailed & ex)
+	{
+		WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+	}
+
+#ifndef _RW_LOCK
+	alarms.unlock();
+#else
+	alarms.vlock->readerOut();
+#endif
+
+	prepare_alarm_attr();
+	try
+	{
+		if(ds_num == 0)
+		{
+			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+			struct timeval now;
+			gettimeofday(&now,NULL);
+			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+		}
+		else
+		{
+			//attr.set_value(ds, ds_num, 0, false);
+			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+	} catch(Tango::DevFailed& e)
+	{
+		ostringstream err;
+		err << "error pushing alarm change event err=" << e.errors[0].desc;
+		INFO_STREAM << __func__<<": " << err.str() << endl;
+	}
+
+	/*----- PROTECTED REGION END -----*/	//	Alarm::enable
+}
+//--------------------------------------------------------
+/**
+ *	Command Disable related method
+ *	Description: Put an alarm in Out of service state
+ *
+ *	@param argin Alarm name
+ */
+//--------------------------------------------------------
+void Alarm::disable(Tango::DevString argin)
+{
+	DEBUG_STREAM << "Alarm::Disable()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::disable) ENABLED START -----*/
+	
+	//	Add your own code
+	string arginname(argin);
+
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	alarm_container_t::iterator i = alarms.v_alarm.find(arginname);
+	if(i == alarms.v_alarm.end())
+	{
+		ostringstream err;
+		err << arginname << " not found in configured alarms" << ends;
+#ifndef _RW_LOCK
+		alarms.unlock();
+#else
+		alarms.vlock->readerOut();
+#endif
+		Tango::Except::throw_exception( \
+			(const char*)"NOT_FOUND", \
+			(const char*)err.str().c_str(), \
+			(const char*)__func__, Tango::ERR);
+	}
+
+	i->second.enabled = false;
+
+	i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silenced
+	i->second.shelved = false;
+
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+
+	*attr_value = _OOSRV;
+	try
+	{	//DevFailed for push events
+		if(i->second.ex_reason.length() == 0)
+		{
+			timeval now;
+			gettimeofday(&now, NULL);
+			push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+			push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+		}
+		else
+		{
+			Tango::DevErrorList errors(1);
+			errors.length(1);
+			errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+			errors[0].severity = Tango::ERR;
+			errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
+			errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+			Tango::DevFailed except(errors);
+			push_change_event(i->second.attr_name, &except);
+			push_archive_event(i->second.attr_name, &except);
+		}
+	} catch(Tango::DevFailed & ex)
+	{
+		WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+	}
+
+#ifndef _RW_LOCK
+		alarms.unlock();
+#else
+		alarms.vlock->readerOut();
+#endif
+
+	/*
+	 * remove from alarmed
+	 */
+	bool go = true;
+	while (go) {
+		alarmedlock->writerIn();
+		vector<alarm_t>::iterator found = \
+				find(alarmed.begin(), alarmed.end(), arginname);
+		if (found != alarmed.end()) {
+			DEBUG_STREAM << "Alarm::"<<__func__<<": " << found->name \
+					 				 << " removing"  << endl;
+			alarmed.erase(found);
+		} else {
+			go = false;
+		}
+		alarmedlock->writerOut();
+	}
+
+	prepare_alarm_attr();
+	try
+	{
+		if(ds_num == 0)
+		{
+			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+			struct timeval now;
+			gettimeofday(&now,NULL);
+			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+		}
+		else
+		{
+			//attr.set_value(ds, ds_num, 0, false);
+			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+	} catch(Tango::DevFailed& e)
+	{
+		ostringstream err;
+		err << "error pushing alarm change event err=" << e.errors[0].desc;
+		INFO_STREAM << __func__<<": " << err.str() << endl;
+	}
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::disable
+}
+//--------------------------------------------------------
+/**
+ *	Command ResetStatistics related method
+ *	Description: Reset statistics
+ *
+ */
+//--------------------------------------------------------
+void Alarm::reset_statistics()
+{
+	DEBUG_STREAM << "Alarm::ResetStatistics()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(Alarm::reset_statistics) ENABLED START -----*/
+	
+	//	Add your own code
+#ifndef _RW_LOCK
+	alarms.lock();
+#else
+	alarms.vlock->readerIn();
+#endif
+	for(alarm_container_t::iterator i = alarms.v_alarm.begin(); i!= alarms.v_alarm.end(); i++)
+	{
+		i->second.freq_counter = 0;
+	}
+	timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
+	last_statistics_reset_time = dnow;
+#ifndef _RW_LOCK
+	alarms.unlock();
+#else
+	alarms.vlock->readerOut();
+#endif
+	/*----- PROTECTED REGION END -----*/	//	Alarm::reset_statistics
 }
 //--------------------------------------------------------
 /**
@@ -2677,10 +3435,6 @@ void Alarm::do_alarm(bei_t& e)
 		if(found_ev != events->v_event.end())
 		{
 			found_ev->err_counter++;
-			if(found_ev->err_counter >= errThreshold)
-			{
-				set_internal_alarm(e.ev_name, gettime(), o.str(), errThreshold);
-			}
 			if(e.type == TYPE_TANGO_ERR)
 				found_ev->ex_reason = string("Event_ERROR");
 			else
@@ -2808,9 +3562,30 @@ void Alarm::do_alarm(bei_t& e)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
-
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	}
 	else
 	{
@@ -2834,22 +3609,26 @@ bool Alarm::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts)
 	alarm_container_t::iterator it = alarms.v_alarm.find(alm_name);
 	if(it != alarms.v_alarm.end())
 	{
+		it->second.freq_counter++;
 		string tmpname=it->first;
 		try {
 			string attr_values;
 			res = eval_formula(it->second.formula_tree, attr_values);
-				DEBUG_STREAM << "Alarm::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
-				changed = alarms.update(tmpname, ts, res, attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
-				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
-				//TODO: if not _SHLVD, _DSUPR, _OOSRV
-				if((it->second.stat == S_NORMAL) && it->second.ack == ACK)
-					*attr_value = _NORM;
-				else if((it->second.stat == S_ALARM) && it->second.ack == NOT_ACK)
-					*attr_value = _UNACK;
-				else if((it->second.stat == S_ALARM) && it->second.ack == ACK)
-					*attr_value = _ACKED;
-				else if((it->second.stat == S_NORMAL) && it->second.ack == NOT_ACK)
-					*attr_value = _RTNUN;
+			DEBUG_STREAM << "Alarm::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
+			changed = alarms.update(tmpname, ts, res, attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
+			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
+			if(!it->second.enabled)
+				*attr_value = _OOSRV;
+			else if(it->second.shelved && it->second.silenced > 0)
+				*attr_value = _SHLVD;
+			else if((it->second.stat == S_NORMAL) && it->second.ack == ACK)
+				*attr_value = _NORM;
+			else if((it->second.stat == S_ALARM) && it->second.ack == NOT_ACK)
+				*attr_value = _UNACK;
+			else if((it->second.stat == S_ALARM) && it->second.ack == ACK)
+				*attr_value = _ACKED;
+			else if((it->second.stat == S_NORMAL) && it->second.ack == NOT_ACK)
+				*attr_value = _RTNUN;
 			try
 			{	//DevFailed for push events
 				if(it->second.ex_reason.length() == 0)
@@ -3002,8 +3781,30 @@ void Alarm::timer_update()
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
+		}
+		push_change_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_change_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_change_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_change_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_change_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
+		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
+		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
+		push_archive_event("unacknowledgedNormalAlarms",&attr_unacknowledgedNormalAlarms_read[0], unacknowledgedNormalAlarms_sz);
+		push_archive_event("shelvedAlarms",&attr_shelvedAlarms_read[0], shelvedAlarms_sz);
+		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
+		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
+		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -3873,13 +4674,83 @@ void Alarm::prepare_alarm_attr()
 {
 	alarm_container_t::iterator ai;
 	vector<alarm_t>::iterator aid;
+	bool is_audible=false;
 #ifndef _RW_LOCK
 	alarms.lock();
 #else
 	alarms.vlock->readerIn();
 #endif
+	outOfServiceAlarms_read.clear();
+	shelvedAlarms_read.clear();
+	acknowledgedAlarms_read.clear();
+	unacknowledgedAlarms_read.clear();
+	unacknowledgedNormalAlarms_read.clear();
+	normalAlarms_read.clear();
+	silencedAlarms_read.clear();
+	listAlarms_read.clear();
+	outOfServiceAlarms_sz=0;
+	shelvedAlarms_sz=0;
+	acknowledgedAlarms_sz=0;
+	unacknowledgedAlarms_sz=0;
+	unacknowledgedNormalAlarms_sz=0;
+	normalAlarms_sz=0;
+	silencedAlarms_sz=0;
+	listAlarms_sz=0;
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
-		if (ai->second.stat == S_ALARM) {
+		if(ai->second.enabled == false)
+		{
+			outOfServiceAlarms_read.push_back(ai->second.name);
+			attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = const_cast<char*>(outOfServiceAlarms_read[outOfServiceAlarms_sz].c_str());
+			outOfServiceAlarms_sz++;
+		}
+		else if(ai->second.shelved)
+		{
+			shelvedAlarms_read.push_back(ai->second.name);
+			attr_shelvedAlarms_read[shelvedAlarms_sz] = const_cast<char*>(shelvedAlarms_read[shelvedAlarms_sz].c_str());
+			shelvedAlarms_sz++;
+		}
+		else
+		{
+			if(ai->second.stat == S_ALARM && ai->second.ack == ACK)
+			{
+				acknowledgedAlarms_read.push_back(ai->second.name);
+				attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = const_cast<char*>(acknowledgedAlarms_read[acknowledgedAlarms_sz].c_str());
+				acknowledgedAlarms_sz++;
+			}
+			else if(ai->second.stat == S_ALARM && ai->second.ack == NOT_ACK)
+			{
+				unacknowledgedAlarms_read.push_back(ai->second.name);
+				attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = const_cast<char*>(unacknowledgedAlarms_read[unacknowledgedAlarms_sz].c_str());
+				unacknowledgedAlarms_sz++;
+			}
+			else if(ai->second.stat == S_NORMAL && ai->second.ack == NOT_ACK)
+			{
+				unacknowledgedNormalAlarms_read.push_back(ai->second.name);
+				attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = const_cast<char*>(unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz].c_str());
+				unacknowledgedNormalAlarms_sz++;
+			}
+			else if(ai->second.stat == S_NORMAL && ai->second.ack == ACK)
+			{
+				normalAlarms_read.push_back(ai->second.name);
+				attr_normalAlarms_read[normalAlarms_sz] = const_cast<char*>(normalAlarms_read[normalAlarms_sz].c_str());
+				normalAlarms_sz++;
+			}
+			if(ai->second.silenced > 0)
+			{
+				silencedAlarms_read.push_back(ai->second.name);
+				attr_silencedAlarms_read[silencedAlarms_sz] = const_cast<char*>(silencedAlarms_read[silencedAlarms_sz].c_str());
+				silencedAlarms_sz++;
+			}
+		}
+		attr_frequencyAlarms_read[listAlarms_sz] = ai->second.freq_counter;
+		listAlarms_read.push_back(ai->second.name);
+		attr_listAlarms_read[listAlarms_sz] = const_cast<char*>(listAlarms_read[listAlarms_sz].c_str());
+		listAlarms_sz++;
+
+		if(!is_audible && ai->second.is_new && ai->second.silenced <= 0 && ai->second.enabled && !ai->second.shelved)
+			is_audible = true;
+
+		if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
 			/*
 			 * alarm status is S_ALARM
 			 */
@@ -3965,6 +4836,7 @@ void Alarm::prepare_alarm_attr()
 			alarmedlock->readerOut();
 		}  /* if else if */
 	}  /* for */
+	*attr_audibleAlarm_read = is_audible;
 #ifndef _RW_LOCK
 	alarms.unlock();
 #else
@@ -3989,9 +4861,14 @@ void Alarm::prepare_alarm_attr()
 				//silenced already calculated in alarm_table::update, but here updated for panel also if state not changed:
 				//to see minutes countdown
 				if(dminutes < aid->silent_time)
+				{
 					aid->silenced = aid->silent_time - floor(dminutes);
+				}
 				else
+				{
 					aid->silenced = 0;
+					aid->shelved = false;
+				}
 			}
 			ostringstream os;
 			os.clear();
@@ -4004,33 +4881,6 @@ void Alarm::prepare_alarm_attr()
 		}
 	}
 	alarmedlock->readerOut();
-	internallock->readerIn();
-	if (internal.empty() == false) {
-		for (aid = internal.begin(); aid != internal.end(); aid++) {
-
-/*			size_t index;
-			int count = 1;
-			index = aid->stat.find("*");
-			if((index != std::string::npos) && (index+1 != std::string::npos))
-			{
-
-				size_t last = aid->stat.size();
-				string str_count= aid->stat.substr(index+1, last - index+1);
-				count = strtol(str_count.c_str(), 0,10);
-			}
-			//do not show internal alarms that have a molteplicity less then errThreshold
-			if((aid->msg.find()) && (count < errThreshold))
-				continue;*/
-
-			ostringstream os;
-			os.clear();
-			os << aid->ts.tv_sec << "\t" << aid->ts.tv_usec << "\t" \
-			 	 << aid->name << "\t" << aid->stat << "\t" << aid->ack \
-				 << "\t" << aid->on_counter << "\t" << aid->lev << "\t"<< -1/*silenced*/ <<"\t" << aid->grp2str() << "\t" << aid->msg << "\t "<< ends; //TODO: silenced for internal errors?
-			tmp_alarm_table.push_back(os.str());
-		}
-	}
-	internallock->readerOut();
 	dslock->writerIn();
 	int i;
 // 	for (i = ds_num - 1; i >= 0; i--) {

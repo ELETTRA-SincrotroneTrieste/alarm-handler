@@ -269,8 +269,10 @@ class alarm_t {
 		string stat,
 					 ack;
 		bool enabled;
+		bool shelved;
 		unsigned int on_counter;
 		unsigned int off_counter;
+		unsigned int freq_counter;
 		
 		tree_parse_info_t formula_tree;
 					 

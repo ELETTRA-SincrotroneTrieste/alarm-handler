@@ -58,6 +58,32 @@ namespace Alarm_ns
 //=========================================
 //	Define classes for attributes
 //=========================================
+//	Attribute audibleAlarm class definition
+class audibleAlarmAttrib: public Tango::Attr
+{
+public:
+	audibleAlarmAttrib():Attr("audibleAlarm",
+			Tango::DEV_BOOLEAN, Tango::READ) {};
+	~audibleAlarmAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_audibleAlarm(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_audibleAlarm_allowed(ty);}
+};
+
+//	Attribute StatisticsResetTime class definition
+class StatisticsResetTimeAttrib: public Tango::Attr
+{
+public:
+	StatisticsResetTimeAttrib():Attr("StatisticsResetTime",
+			Tango::DEV_DOUBLE, Tango::READ) {};
+	~StatisticsResetTimeAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_StatisticsResetTime(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_StatisticsResetTime_allowed(ty);}
+};
+
 //	Attribute alarm class definition
 class alarmAttrib: public Tango::SpectrumAttr
 {
@@ -69,6 +95,123 @@ public:
 		{(static_cast<Alarm *>(dev))->read_alarm(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
 		{return (static_cast<Alarm *>(dev))->is_alarm_allowed(ty);}
+};
+
+//	Attribute normalAlarms class definition
+class normalAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	normalAlarmsAttrib():SpectrumAttr("normalAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~normalAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_normalAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_normalAlarms_allowed(ty);}
+};
+
+//	Attribute unacknowledgedAlarms class definition
+class unacknowledgedAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	unacknowledgedAlarmsAttrib():SpectrumAttr("unacknowledgedAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~unacknowledgedAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_unacknowledgedAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_unacknowledgedAlarms_allowed(ty);}
+};
+
+//	Attribute acknowledgedAlarms class definition
+class acknowledgedAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	acknowledgedAlarmsAttrib():SpectrumAttr("acknowledgedAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~acknowledgedAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_acknowledgedAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_acknowledgedAlarms_allowed(ty);}
+};
+
+//	Attribute unacknowledgedNormalAlarms class definition
+class unacknowledgedNormalAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	unacknowledgedNormalAlarmsAttrib():SpectrumAttr("unacknowledgedNormalAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~unacknowledgedNormalAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_unacknowledgedNormalAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_unacknowledgedNormalAlarms_allowed(ty);}
+};
+
+//	Attribute shelvedAlarms class definition
+class shelvedAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	shelvedAlarmsAttrib():SpectrumAttr("shelvedAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~shelvedAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_shelvedAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_shelvedAlarms_allowed(ty);}
+};
+
+//	Attribute outOfServiceAlarms class definition
+class outOfServiceAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	outOfServiceAlarmsAttrib():SpectrumAttr("outOfServiceAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~outOfServiceAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_outOfServiceAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_outOfServiceAlarms_allowed(ty);}
+};
+
+//	Attribute silencedAlarms class definition
+class silencedAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	silencedAlarmsAttrib():SpectrumAttr("silencedAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~silencedAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_silencedAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_silencedAlarms_allowed(ty);}
+};
+
+//	Attribute listAlarms class definition
+class listAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	listAlarmsAttrib():SpectrumAttr("listAlarms",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~listAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_listAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_listAlarms_allowed(ty);}
+};
+
+//	Attribute frequencyAlarms class definition
+class frequencyAlarmsAttrib: public Tango::SpectrumAttr
+{
+public:
+	frequencyAlarmsAttrib():SpectrumAttr("frequencyAlarms",
+			Tango::DEV_DOUBLE, Tango::READ, 10000) {};
+	~frequencyAlarmsAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<Alarm *>(dev))->read_frequencyAlarms(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<Alarm *>(dev))->is_frequencyAlarms_allowed(ty);}
 };
 
 
@@ -176,11 +319,11 @@ public:
 	{return (static_cast<Alarm *>(dev))->is_Remove_allowed(any);}
 };
 
-//	Command Configured class definition
-class ConfiguredClass : public Tango::Command
+//	Command SearchAlarm class definition
+class SearchAlarmClass : public Tango::Command
 {
 public:
-	ConfiguredClass(const char   *name,
+	SearchAlarmClass(const char   *name,
 	               Tango::CmdArgType in,
 				   Tango::CmdArgType out,
 				   const char        *in_desc,
@@ -188,22 +331,22 @@ public:
 				   Tango::DispLevel  level)
 	:Command(name,in,out,in_desc,out_desc, level)	{};
 
-	ConfiguredClass(const char   *name,
+	SearchAlarmClass(const char   *name,
 	               Tango::CmdArgType in,
 				   Tango::CmdArgType out)
 	:Command(name,in,out)	{};
-	~ConfiguredClass() {};
+	~SearchAlarmClass() {};
 	
 	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
 	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
-	{return (static_cast<Alarm *>(dev))->is_Configured_allowed(any);}
+	{return (static_cast<Alarm *>(dev))->is_SearchAlarm_allowed(any);}
 };
 
-//	Command StopNew class definition
-class StopNewClass : public Tango::Command
+//	Command StopAudible class definition
+class StopAudibleClass : public Tango::Command
 {
 public:
-	StopNewClass(const char   *name,
+	StopAudibleClass(const char   *name,
 	               Tango::CmdArgType in,
 				   Tango::CmdArgType out,
 				   const char        *in_desc,
@@ -211,15 +354,15 @@ public:
 				   Tango::DispLevel  level)
 	:Command(name,in,out,in_desc,out_desc, level)	{};
 
-	StopNewClass(const char   *name,
+	StopAudibleClass(const char   *name,
 	               Tango::CmdArgType in,
 				   Tango::CmdArgType out)
 	:Command(name,in,out)	{};
-	~StopNewClass() {};
+	~StopAudibleClass() {};
 	
 	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
 	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
-	{return (static_cast<Alarm *>(dev))->is_StopNew_allowed(any);}
+	{return (static_cast<Alarm *>(dev))->is_StopAudible_allowed(any);}
 };
 
 //	Command Silence class definition
@@ -266,6 +409,98 @@ public:
 	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
 	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
 	{return (static_cast<Alarm *>(dev))->is_Modify_allowed(any);}
+};
+
+//	Command Shelve class definition
+class ShelveClass : public Tango::Command
+{
+public:
+	ShelveClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	ShelveClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~ShelveClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Alarm *>(dev))->is_Shelve_allowed(any);}
+};
+
+//	Command Enable class definition
+class EnableClass : public Tango::Command
+{
+public:
+	EnableClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	EnableClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~EnableClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Alarm *>(dev))->is_Enable_allowed(any);}
+};
+
+//	Command Disable class definition
+class DisableClass : public Tango::Command
+{
+public:
+	DisableClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	DisableClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~DisableClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Alarm *>(dev))->is_Disable_allowed(any);}
+};
+
+//	Command ResetStatistics class definition
+class ResetStatisticsClass : public Tango::Command
+{
+public:
+	ResetStatisticsClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	ResetStatisticsClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~ResetStatisticsClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<Alarm *>(dev))->is_ResetStatistics_allowed(any);}
 };
 
 

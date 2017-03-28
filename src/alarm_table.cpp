@@ -41,6 +41,7 @@ alarm_t::alarm_t()
 	grp=0;
 	on_counter=0;
 	off_counter=0;
+	freq_counter=0;
 	stat = S_NORMAL;
 	ack = ACK;
 	on_delay = 0;
@@ -49,6 +50,7 @@ alarm_t::alarm_t()
 	cmd_name_a=string("");
 	cmd_name_n=string("");
 	enabled=true;
+	shelved=false;
 } 
  
 bool alarm_t::operator==(const alarm_t &that)
@@ -389,9 +391,16 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			double dsilent = found->second.ts_time_silenced.tv_sec + ((double)found->second.ts_time_silenced.tv_usec) / 1000000;
 			double dminutes = (dnow - dsilent)/60;
 			if(dminutes < found->second.silent_time)
+			{
 				found->second.silenced = found->second.silent_time - floor(dminutes);
+			}
 			else
+			{
 				found->second.silenced = 0;
+				found->second.shelved = false;
+				found->second.is_new = 0;
+				found->second.ack = ACK;
+			}
 		}
 		found->second.quality = res.quality;
 		found->second.ex_reason = res.ex_reason;
@@ -569,34 +578,50 @@ bool alarm_table::timer_update()
 	{		
 		bool status_on_delay;
 		bool status_off_delay;
-		if(i->second.on_delay == 0 && i->second.off_delay == 0)
+		if(i->second.on_delay == 0 && i->second.off_delay == 0 && !i->second.shelved && i->second.silenced <=0)
 			continue;	//if not enabled on or off delay, nothing to do in timer
 		if(i->second.on_delay > 0)		//if enabled on delay
 			status_on_delay = (i->second.on_counter >= 1) && ((ts.tv_sec - i->second.on_delay) > i->second.ts_on_delay.tv_sec);	//waiting for on delay has passed
 		if(i->second.off_delay > 0)		//if enabled off delay
 			status_off_delay = (i->second.off_counter >= 1) && ((ts.tv_sec - i->second.off_delay) > i->second.ts_off_delay.tv_sec);	//waiting for off delay has passed
 
+		//look here also if shelved time ended
+		bool old_shelved = i->second.shelved;
+		int old_silenced = i->second.silenced;
+		if(i->second.silenced > 0)
+		{
+			Tango::TimeVal now = gettime();
+			double dnow = now.tv_sec + ((double)now.tv_usec) / 1000000;
+			double dsilent = i->second.ts_time_silenced.tv_sec + ((double)i->second.ts_time_silenced.tv_usec) / 1000000;
+			double dminutes = (dnow - dsilent)/60;
+			if(dminutes < i->second.silent_time)
+			{
+				i->second.silenced = i->second.silent_time - floor(dminutes);
+			}
+			else
+			{
+				i->second.silenced = 0;
+				i->second.shelved = false;
+				i->second.is_new = 0;
+				i->second.ack = ACK;
+			}
+		}
+		//if just ended silence time, set ret_changed to true so to push events
+		//TODO: not interested in executing commands?
+		if(old_silenced>0 && i->second.silenced == 0)
+			ret_changed = true;
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also on delay
 		//or
 		// - from S_ALARM to S_NORMAL considering also off delay
-		if(status_on_delay && (i->second.stat == S_NORMAL) || (status_off_delay && (i->second.stat == S_ALARM)))
+		//or
+		// - from shelved to not shelved
+		if(status_on_delay && (i->second.stat == S_NORMAL) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved))
 		{
 			ret_changed = true;
-			if(i->second.silenced > 0)
-			{
-				Tango::TimeVal now = gettime();
-				double dnow = now.tv_sec + ((double)now.tv_usec) / 1000000;
-				double dsilent = i->second.ts_time_silenced.tv_sec + ((double)i->second.ts_time_silenced.tv_usec) / 1000000;
-				double dminutes = (dnow - dsilent)/60;
-				if(dminutes < i->second.silent_time)
-					i->second.silenced = i->second.silent_time - floor(dminutes);
-				else
-					i->second.silenced = 0;
-			}
 
 			if(status_on_delay)
-				i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
+				i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM  but not ended shelved time -> NACK
 			i->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
 			if(status_on_delay)
 			{
@@ -692,8 +717,11 @@ bool alarm_table::timer_update()
 				}
 			}
 
-			//TODO: if not _SHLVD, _DSUPR, _OOSRV
-			if((status_off_delay) && i->second.ack == ACK)
+			if(!i->second.enabled)
+				*(i->second.attr_value) = _OOSRV;
+			else if(i->second.shelved && i->second.silenced > 0)
+				*(i->second.attr_value) = _SHLVD;
+			else if((status_off_delay) && i->second.ack == ACK)
 				*(i->second.attr_value) = _NORM;
 			else if((status_on_delay) && i->second.ack == NOT_ACK)
 				*(i->second.attr_value) = _UNACK;
@@ -707,8 +735,8 @@ bool alarm_table::timer_update()
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
-					mydev->push_change_event(i->second.attr_name,(Tango::DevBoolean *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-					mydev->push_archive_event(i->second.attr_name,(Tango::DevBoolean *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					mydev->push_change_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					mydev->push_archive_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
 				}
 				else
 				{

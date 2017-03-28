@@ -5,45 +5,19 @@
       <inheritances classname="Device_4Impl" sourcePath=""/>
       <identification contact="at elettra.eu - graziano.scalamera" author="graziano.scalamera" emailDomain="elettra.eu" classFamily="SoftwareSystem" siteSpecific="" platform="Unix Like" bus="Not Applicable" manufacturer="" reference=""/>
     </description>
-    <deviceProperties name="AlarmStatus" description="Persistent storage of the alarms status">
-      <type xsi:type="pogoDsl:StringVectorType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
     <deviceProperties name="GroupNames" description="Labels for Group mask, first is for mask 0x00">
       <type xsi:type="pogoDsl:StringVectorType"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
     </deviceProperties>
-    <deviceProperties name="ErrThreshold" description="Threshold for Tango error for being internal alarms">
+    <deviceProperties name="SubscribeRetryPeriod" description="Retry subscription period in seconds">
       <type xsi:type="pogoDsl:IntType"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <DefaultPropValue>30</DefaultPropValue>
     </deviceProperties>
-    <deviceProperties name="DbHost" description="Host of the MySQL db">
-      <type xsi:type="pogoDsl:StringType"/>
+    <deviceProperties name="StatisticsTimeWindow" description="Time window to compute statistics in seconds">
+      <type xsi:type="pogoDsl:IntVectorType"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="DbUser" description="Username for the MySQL db">
-      <type xsi:type="pogoDsl:StringType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="DbPasswd" description="Password for the MySQL db">
-      <type xsi:type="pogoDsl:StringType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="DbName" description="Db name for the MySQL db">
-      <type xsi:type="pogoDsl:StringType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="DbPort" description="Port of the MySQL db">
-      <type xsi:type="pogoDsl:StringType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="InstanceName" description="Name used to associate configured alarm rules to this instance">
-      <type xsi:type="pogoDsl:StringType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
-    </deviceProperties>
-    <deviceProperties name="SubscribeRetryPeriod" description="retry period in seconds">
-      <type xsi:type="pogoDsl:IntType"/>
-      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <DefaultPropValue>60</DefaultPropValue>
     </deviceProperties>
     <commands name="State" description="This command gets the device state (stored in its &lt;i>device_state&lt;/i> data member) and returns it to the caller." execMethod="dev_state" displayLevel="OPERATOR" polledPeriod="0">
       <argin description="none.">
@@ -90,16 +64,16 @@
       </argout>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
     </commands>
-    <commands name="Configured" description="Alarms configured" execMethod="configured" displayLevel="OPERATOR" polledPeriod="0">
-      <argin description="String containing a filter for output, if empty return all alarms">
+    <commands name="SearchAlarm" description="Return list of configured alarms matching the filter string" execMethod="search_alarm" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="String containing a filter for output, if empty or * return all alarms">
         <type xsi:type="pogoDsl:StringType"/>
       </argin>
-      <argout description="Alarms configured">
+      <argout description="Configured alarms">
         <type xsi:type="pogoDsl:StringArrayType"/>
       </argout>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
     </commands>
-    <commands name="StopNew" description="Remove &quot;NEW&quot; field from alarm string (so alarm panel stop sound)" execMethod="stop_new" displayLevel="OPERATOR" polledPeriod="0">
+    <commands name="StopAudible" description="Stop audible indications on the GUI" execMethod="stop_audible" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
       <argin description="">
         <type xsi:type="pogoDsl:VoidType"/>
       </argin>
@@ -126,12 +100,136 @@
       </argout>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
     </commands>
+    <commands name="Shelve" description="Shelve an alarm: no state transition recorded, no audible nor visual indication" execMethod="shelve" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="String array containing alarm to be shelved">
+        <type xsi:type="pogoDsl:StringArrayType"/>
+      </argin>
+      <argout description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argout>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+    </commands>
+    <commands name="Enable" description="Enable an alarm from Out of service state" execMethod="enable" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="Alarm name">
+        <type xsi:type="pogoDsl:StringType"/>
+      </argin>
+      <argout description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argout>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+    </commands>
+    <commands name="Disable" description="Put an alarm in Out of service state" execMethod="disable" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="Alarm name">
+        <type xsi:type="pogoDsl:StringType"/>
+      </argin>
+      <argout description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argout>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+    </commands>
+    <commands name="ResetStatistics" description="Reset statistics" execMethod="reset_statistics" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argin>
+      <argout description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argout>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+    </commands>
+    <attributes name="audibleAlarm" attType="Scalar" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:BooleanType"/>
+      <changeEvent fire="true" libCheckCriteria="false"/>
+      <archiveEvent fire="true" libCheckCriteria="false"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="True if there is at least one alarm that needs audible indication on the GUI" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="StatisticsResetTime" attType="Scalar" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:DoubleType"/>
+      <changeEvent fire="false" libCheckCriteria="false"/>
+      <archiveEvent fire="false" libCheckCriteria="false"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="Time elapsed in seconds since last Resetstatistics" label="" unit="s" standardUnit="1" displayUnit="s" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
     <attributes name="alarm" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="1024" maxY="0">
       <dataType xsi:type="pogoDsl:StringType"/>
       <changeEvent fire="false" libCheckCriteria="false"/>
       <archiveEvent fire="false" libCheckCriteria="false"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
       <properties description="" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="normalAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in normal state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="unacknowledgedAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in unacknowledged state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="acknowledgedAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in acknowledged state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="unacknowledgedNormalAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in unacknowledged normal state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="shelvedAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in shelved state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="outOfServiceAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in out of service state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="silencedAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of alarms in silenced state" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="listAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:StringType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of all alarms" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
+    </attributes>
+    <attributes name="frequencyAlarms" attType="Spectrum" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="10000" maxY="" allocReadMember="true" isDynamic="false">
+      <dataType xsi:type="pogoDsl:DoubleType"/>
+      <changeEvent fire="true" libCheckCriteria="true"/>
+      <archiveEvent fire="true" libCheckCriteria="true"/>
+      <dataReadyEvent fire="false" libCheckCriteria="true"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <properties description="List of frequency of evaluation of all alarms" label="" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
     </attributes>
     <dynamicAttributes name="AlarmState" attType="Scalar" rwType="READ" displayLevel="OPERATOR" polledPeriod="0" maxX="" maxY="" allocReadMember="true" isDynamic="true">
       <dataType xsi:type="pogoDsl:EnumType"/>

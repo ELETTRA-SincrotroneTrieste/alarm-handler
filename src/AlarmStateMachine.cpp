@@ -52,6 +52,38 @@ namespace Alarm_ns
 
 //--------------------------------------------------------
 /**
+ *	Method      : Alarm::is_audibleAlarm_allowed()
+ *	Description : Execution allowed for audibleAlarm attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_audibleAlarm_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for audibleAlarm attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::audibleAlarmStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::audibleAlarmStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_StatisticsResetTime_allowed()
+ *	Description : Execution allowed for StatisticsResetTime attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_StatisticsResetTime_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for StatisticsResetTime attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::StatisticsResetTimeStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::StatisticsResetTimeStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
  *	Method      : Alarm::is_alarm_allowed()
  *	Description : Execution allowed for alarm attribute
  */
@@ -63,6 +95,150 @@ bool Alarm::is_alarm_allowed(TANGO_UNUSED(Tango::AttReqType type))
 	/*----- PROTECTED REGION ID(Alarm::alarmStateAllowed_READ) ENABLED START -----*/
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::alarmStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_normalAlarms_allowed()
+ *	Description : Execution allowed for normalAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_normalAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for normalAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::normalAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::normalAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_unacknowledgedAlarms_allowed()
+ *	Description : Execution allowed for unacknowledgedAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_unacknowledgedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for unacknowledgedAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::unacknowledgedAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::unacknowledgedAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_acknowledgedAlarms_allowed()
+ *	Description : Execution allowed for acknowledgedAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_acknowledgedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for acknowledgedAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::acknowledgedAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::acknowledgedAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_unacknowledgedNormalAlarms_allowed()
+ *	Description : Execution allowed for unacknowledgedNormalAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_unacknowledgedNormalAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for unacknowledgedNormalAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::unacknowledgedNormalAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::unacknowledgedNormalAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_shelvedAlarms_allowed()
+ *	Description : Execution allowed for shelvedAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_shelvedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for shelvedAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::shelvedAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::shelvedAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_outOfServiceAlarms_allowed()
+ *	Description : Execution allowed for outOfServiceAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_outOfServiceAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for outOfServiceAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::outOfServiceAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::outOfServiceAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_silencedAlarms_allowed()
+ *	Description : Execution allowed for silencedAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_silencedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for silencedAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::silencedAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::silencedAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_listAlarms_allowed()
+ *	Description : Execution allowed for listAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_listAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for listAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::listAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::listAlarmsStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_frequencyAlarms_allowed()
+ *	Description : Execution allowed for frequencyAlarms attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_frequencyAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for frequencyAlarms attribute in read access.
+	/*----- PROTECTED REGION ID(Alarm::frequencyAlarmsStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::frequencyAlarmsStateAllowed_READ
 	return true;
 }
 
@@ -150,31 +326,31 @@ bool Alarm::is_Remove_allowed(TANGO_UNUSED(const CORBA::Any &any))
 
 //--------------------------------------------------------
 /**
- *	Method      : Alarm::is_Configured_allowed()
- *	Description : Execution allowed for Configured attribute
+ *	Method      : Alarm::is_SearchAlarm_allowed()
+ *	Description : Execution allowed for SearchAlarm attribute
  */
 //--------------------------------------------------------
-bool Alarm::is_Configured_allowed(TANGO_UNUSED(const CORBA::Any &any))
+bool Alarm::is_SearchAlarm_allowed(TANGO_UNUSED(const CORBA::Any &any))
 {
-	//	Not any excluded states for Configured command.
-	/*----- PROTECTED REGION ID(Alarm::ConfiguredStateAllowed) ENABLED START -----*/
+	//	Not any excluded states for SearchAlarm command.
+	/*----- PROTECTED REGION ID(Alarm::SearchAlarmStateAllowed) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	Alarm::ConfiguredStateAllowed
+	/*----- PROTECTED REGION END -----*/	//	Alarm::SearchAlarmStateAllowed
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : Alarm::is_StopNew_allowed()
- *	Description : Execution allowed for StopNew attribute
+ *	Method      : Alarm::is_StopAudible_allowed()
+ *	Description : Execution allowed for StopAudible attribute
  */
 //--------------------------------------------------------
-bool Alarm::is_StopNew_allowed(TANGO_UNUSED(const CORBA::Any &any))
+bool Alarm::is_StopAudible_allowed(TANGO_UNUSED(const CORBA::Any &any))
 {
-	//	Not any excluded states for StopNew command.
-	/*----- PROTECTED REGION ID(Alarm::StopNewStateAllowed) ENABLED START -----*/
+	//	Not any excluded states for StopAudible command.
+	/*----- PROTECTED REGION ID(Alarm::StopAudibleStateAllowed) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	Alarm::StopNewStateAllowed
+	/*----- PROTECTED REGION END -----*/	//	Alarm::StopAudibleStateAllowed
 	return true;
 }
 
@@ -205,6 +381,66 @@ bool Alarm::is_Modify_allowed(TANGO_UNUSED(const CORBA::Any &any))
 	/*----- PROTECTED REGION ID(Alarm::ModifyStateAllowed) ENABLED START -----*/
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::ModifyStateAllowed
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_Shelve_allowed()
+ *	Description : Execution allowed for Shelve attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_Shelve_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for Shelve command.
+	/*----- PROTECTED REGION ID(Alarm::ShelveStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::ShelveStateAllowed
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_Enable_allowed()
+ *	Description : Execution allowed for Enable attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_Enable_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for Enable command.
+	/*----- PROTECTED REGION ID(Alarm::EnableStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::EnableStateAllowed
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_Disable_allowed()
+ *	Description : Execution allowed for Disable attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_Disable_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for Disable command.
+	/*----- PROTECTED REGION ID(Alarm::DisableStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::DisableStateAllowed
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : Alarm::is_ResetStatistics_allowed()
+ *	Description : Execution allowed for ResetStatistics attribute
+ */
+//--------------------------------------------------------
+bool Alarm::is_ResetStatistics_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for ResetStatistics command.
+	/*----- PROTECTED REGION ID(Alarm::ResetStatisticsStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	Alarm::ResetStatisticsStateAllowed
 	return true;
 }
 

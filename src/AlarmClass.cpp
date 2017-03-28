@@ -222,7 +222,7 @@ CORBA::Any *RemoveClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in
 
 //--------------------------------------------------------
 /**
- * method : 		ConfiguredClass::execute()
+ * method : 		SearchAlarmClass::execute()
  * description : 	method to trigger the execution of the command.
  *
  * @param	device	The device on which the command must be executed
@@ -231,17 +231,17 @@ CORBA::Any *RemoveClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in
  *	returns The command output data (packed in the Any object)
  */
 //--------------------------------------------------------
-CORBA::Any *ConfiguredClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
+CORBA::Any *SearchAlarmClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
 {
-	cout2 << "ConfiguredClass::execute(): arrived" << endl;
+	cout2 << "SearchAlarmClass::execute(): arrived" << endl;
 	Tango::DevString argin;
 	extract(in_any, argin);
-	return insert((static_cast<Alarm *>(device))->configured(argin));
+	return insert((static_cast<Alarm *>(device))->search_alarm(argin));
 }
 
 //--------------------------------------------------------
 /**
- * method : 		StopNewClass::execute()
+ * method : 		StopAudibleClass::execute()
  * description : 	method to trigger the execution of the command.
  *
  * @param	device	The device on which the command must be executed
@@ -250,10 +250,10 @@ CORBA::Any *ConfiguredClass::execute(Tango::DeviceImpl *device, const CORBA::Any
  *	returns The command output data (packed in the Any object)
  */
 //--------------------------------------------------------
-CORBA::Any *StopNewClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const CORBA::Any &in_any))
+CORBA::Any *StopAudibleClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const CORBA::Any &in_any))
 {
-	cout2 << "StopNewClass::execute(): arrived" << endl;
-	((static_cast<Alarm *>(device))->stop_new());
+	cout2 << "StopAudibleClass::execute(): arrived" << endl;
+	((static_cast<Alarm *>(device))->stop_audible());
 	return new CORBA::Any();
 }
 
@@ -294,6 +294,84 @@ CORBA::Any *ModifyClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in
 	Tango::DevString argin;
 	extract(in_any, argin);
 	((static_cast<Alarm *>(device))->modify(argin));
+	return new CORBA::Any();
+}
+
+//--------------------------------------------------------
+/**
+ * method : 		ShelveClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *ShelveClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
+{
+	cout2 << "ShelveClass::execute(): arrived" << endl;
+	const Tango::DevVarStringArray *argin;
+	extract(in_any, argin);
+	((static_cast<Alarm *>(device))->shelve(argin));
+	return new CORBA::Any();
+}
+
+//--------------------------------------------------------
+/**
+ * method : 		EnableClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *EnableClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
+{
+	cout2 << "EnableClass::execute(): arrived" << endl;
+	Tango::DevString argin;
+	extract(in_any, argin);
+	((static_cast<Alarm *>(device))->enable(argin));
+	return new CORBA::Any();
+}
+
+//--------------------------------------------------------
+/**
+ * method : 		DisableClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *DisableClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
+{
+	cout2 << "DisableClass::execute(): arrived" << endl;
+	Tango::DevString argin;
+	extract(in_any, argin);
+	((static_cast<Alarm *>(device))->disable(argin));
+	return new CORBA::Any();
+}
+
+//--------------------------------------------------------
+/**
+ * method : 		ResetStatisticsClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *ResetStatisticsClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const CORBA::Any &in_any))
+{
+	cout2 << "ResetStatisticsClass::execute(): arrived" << endl;
+	((static_cast<Alarm *>(device))->reset_statistics());
 	return new CORBA::Any();
 }
 
@@ -366,19 +444,6 @@ void AlarmClass::set_default_property()
 	//	Set Default Class Properties
 
 	//	Set Default device Properties
-	prop_name = "AlarmStatus";
-	prop_desc = "Persistent storage of the alarms status";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
 	prop_name = "GroupNames";
 	prop_desc = "Labels for Group mask, first is for mask 0x00";
 	prop_def  = "";
@@ -392,101 +457,25 @@ void AlarmClass::set_default_property()
 	}
 	else
 		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "ErrThreshold";
-	prop_desc = "Threshold for Tango error for being internal alarms";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "DbHost";
-	prop_desc = "Host of the MySQL db";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "DbUser";
-	prop_desc = "Username for the MySQL db";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "DbPasswd";
-	prop_desc = "Password for the MySQL db";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "DbName";
-	prop_desc = "Db name for the MySQL db";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "DbPort";
-	prop_desc = "Port of the MySQL db";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
-	prop_name = "InstanceName";
-	prop_desc = "Name used to associate configured alarm rules to this instance";
-	prop_def  = "";
-	vect_data.clear();
-	if (prop_def.length()>0)
-	{
-		Tango::DbDatum	data(prop_name);
-		data << vect_data ;
-		dev_def_prop.push_back(data);
-		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
-	}
-	else
-		add_wiz_dev_prop(prop_name, prop_desc);
 	prop_name = "SubscribeRetryPeriod";
-	prop_desc = "retry period in seconds";
-	prop_def  = "";
+	prop_desc = "Retry subscription period in seconds";
+	prop_def  = "30";
 	vect_data.clear();
+	vect_data.push_back("30");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+	prop_name = "StatisticsTimeWindow";
+	prop_desc = "Time window to compute statistics in seconds";
+	prop_def  = "60";
+	vect_data.clear();
+	vect_data.push_back("60");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);
@@ -527,104 +516,6 @@ void AlarmClass::write_class_property()
 	str_desc.push_back("Elettra alarm device server");
 	description << str_desc;
 	data.push_back(description);
-
-	//	put cvs or svn location
-	string	filename("Alarm");
-	filename += "Class.cpp";
-
-	// check for cvs information
-	string	src_path(CvsPath);
-	start = src_path.find("/");
-	if (start!=string::npos)
-	{
-		end   = src_path.find(filename);
-		if (end>start)
-		{
-			string	strloc = src_path.substr(start, end-start);
-			//	Check if specific repository
-			start = strloc.find("/cvsroot/");
-			if (start!=string::npos && start>0)
-			{
-				string	repository = strloc.substr(0, start);
-				if (repository.find("/segfs/")!=string::npos)
-					strloc = "ESRF:" + strloc.substr(start, strloc.length()-start);
-			}
-			Tango::DbDatum	cvs_loc("cvs_location");
-			cvs_loc << strloc;
-			data.push_back(cvs_loc);
-		}
-	}
-
-	// check for svn information
-	else
-	{
-		string	src_path(SvnPath);
-		start = src_path.find("://");
-		if (start!=string::npos)
-		{
-			end = src_path.find(filename);
-			if (end>start)
-			{
-				header = "$HeadURL: ";
-				start = header.length();
-				string	strloc = src_path.substr(start, (end-start));
-				
-				Tango::DbDatum	svn_loc("svn_location");
-				svn_loc << strloc;
-				data.push_back(svn_loc);
-			}
-		}
-	}
-
-	//	Get CVS or SVN revision tag
-	
-	// CVS tag
-	string	tagname(TagName);
-	header = "$Name: ";
-	start = header.length();
-	string	endstr(" $");
-	
-	end   = tagname.find(endstr);
-	if (end!=string::npos && end>start)
-	{
-		string	strtag = tagname.substr(start, end-start);
-		Tango::DbDatum	cvs_tag("cvs_tag");
-		cvs_tag << strtag;
-		data.push_back(cvs_tag);
-	}
-	
-	// SVN tag
-	string	svnpath(SvnPath);
-	header = "$HeadURL: ";
-	start = header.length();
-	
-	end   = svnpath.find(endstr);
-	if (end!=string::npos && end>start)
-	{
-		string	strloc = svnpath.substr(start, end-start);
-		
-		string tagstr ("/tags/");
-		start = strloc.find(tagstr);
-		if ( start!=string::npos )
-		{
-			start = start + tagstr.length();
-			end   = strloc.find(filename);
-			string	strtag = strloc.substr(start, end-start-1);
-			
-			Tango::DbDatum	svn_tag("svn_tag");
-			svn_tag << strtag;
-			data.push_back(svn_tag);
-		}
-	}
-
-	//	Get URL location
-	string	httpServ(HttpServer);
-	if (httpServ.length()>0)
-	{
-		Tango::DbDatum	db_doc_url("doc_url");
-		db_doc_url << httpServ;
-		data.push_back(db_doc_url);
-	}
 
 	//  Put inheritance
 	Tango::DbDatum	inher_datum("InheritedFrom");
@@ -700,6 +591,56 @@ void AlarmClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Add your own code
 	
 	/*----- PROTECTED REGION END -----*/	//	AlarmClass::attribute_factory_before
+	//	Attribute : audibleAlarm
+	audibleAlarmAttrib	*audiblealarm = new audibleAlarmAttrib();
+	Tango::UserDefaultAttrProp	audiblealarm_prop;
+	audiblealarm_prop.set_description("True if there is at least one alarm that needs audible indication on the GUI");
+	//	label	not set for audibleAlarm
+	//	unit	not set for audibleAlarm
+	//	standard_unit	not set for audibleAlarm
+	//	display_unit	not set for audibleAlarm
+	//	format	not set for audibleAlarm
+	//	max_value	not set for audibleAlarm
+	//	min_value	not set for audibleAlarm
+	//	max_alarm	not set for audibleAlarm
+	//	min_alarm	not set for audibleAlarm
+	//	max_warning	not set for audibleAlarm
+	//	min_warning	not set for audibleAlarm
+	//	delta_t	not set for audibleAlarm
+	//	delta_val	not set for audibleAlarm
+	
+	audiblealarm->set_default_properties(audiblealarm_prop);
+	//	Not Polled
+	audiblealarm->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	audiblealarm->set_change_event(true, false);
+	audiblealarm->set_archive_event(true, false);
+	att_list.push_back(audiblealarm);
+
+	//	Attribute : StatisticsResetTime
+	StatisticsResetTimeAttrib	*statisticsresettime = new StatisticsResetTimeAttrib();
+	Tango::UserDefaultAttrProp	statisticsresettime_prop;
+	statisticsresettime_prop.set_description("Time elapsed in seconds since last Resetstatistics");
+	//	label	not set for StatisticsResetTime
+	statisticsresettime_prop.set_unit("s");
+	statisticsresettime_prop.set_standard_unit("1");
+	statisticsresettime_prop.set_display_unit("s");
+	//	format	not set for StatisticsResetTime
+	//	max_value	not set for StatisticsResetTime
+	//	min_value	not set for StatisticsResetTime
+	//	max_alarm	not set for StatisticsResetTime
+	//	min_alarm	not set for StatisticsResetTime
+	//	max_warning	not set for StatisticsResetTime
+	//	min_warning	not set for StatisticsResetTime
+	//	delta_t	not set for StatisticsResetTime
+	//	delta_val	not set for StatisticsResetTime
+	
+	statisticsresettime->set_default_properties(statisticsresettime_prop);
+	//	Not Polled
+	statisticsresettime->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	att_list.push_back(statisticsresettime);
+
 	//	Attribute : alarm
 	alarmAttrib	*alarm = new alarmAttrib();
 	Tango::UserDefaultAttrProp	alarm_prop;
@@ -723,6 +664,240 @@ void AlarmClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	alarm->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
 	att_list.push_back(alarm);
+
+	//	Attribute : normalAlarms
+	normalAlarmsAttrib	*normalalarms = new normalAlarmsAttrib();
+	Tango::UserDefaultAttrProp	normalalarms_prop;
+	normalalarms_prop.set_description("List of alarms in normal state");
+	//	label	not set for normalAlarms
+	//	unit	not set for normalAlarms
+	//	standard_unit	not set for normalAlarms
+	//	display_unit	not set for normalAlarms
+	//	format	not set for normalAlarms
+	//	max_value	not set for normalAlarms
+	//	min_value	not set for normalAlarms
+	//	max_alarm	not set for normalAlarms
+	//	min_alarm	not set for normalAlarms
+	//	max_warning	not set for normalAlarms
+	//	min_warning	not set for normalAlarms
+	//	delta_t	not set for normalAlarms
+	//	delta_val	not set for normalAlarms
+	
+	normalalarms->set_default_properties(normalalarms_prop);
+	//	Not Polled
+	normalalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	normalalarms->set_change_event(true, true);
+	normalalarms->set_archive_event(true, true);
+	att_list.push_back(normalalarms);
+
+	//	Attribute : unacknowledgedAlarms
+	unacknowledgedAlarmsAttrib	*unacknowledgedalarms = new unacknowledgedAlarmsAttrib();
+	Tango::UserDefaultAttrProp	unacknowledgedalarms_prop;
+	unacknowledgedalarms_prop.set_description("List of alarms in unacknowledged state");
+	//	label	not set for unacknowledgedAlarms
+	//	unit	not set for unacknowledgedAlarms
+	//	standard_unit	not set for unacknowledgedAlarms
+	//	display_unit	not set for unacknowledgedAlarms
+	//	format	not set for unacknowledgedAlarms
+	//	max_value	not set for unacknowledgedAlarms
+	//	min_value	not set for unacknowledgedAlarms
+	//	max_alarm	not set for unacknowledgedAlarms
+	//	min_alarm	not set for unacknowledgedAlarms
+	//	max_warning	not set for unacknowledgedAlarms
+	//	min_warning	not set for unacknowledgedAlarms
+	//	delta_t	not set for unacknowledgedAlarms
+	//	delta_val	not set for unacknowledgedAlarms
+	
+	unacknowledgedalarms->set_default_properties(unacknowledgedalarms_prop);
+	//	Not Polled
+	unacknowledgedalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	unacknowledgedalarms->set_change_event(true, true);
+	unacknowledgedalarms->set_archive_event(true, true);
+	att_list.push_back(unacknowledgedalarms);
+
+	//	Attribute : acknowledgedAlarms
+	acknowledgedAlarmsAttrib	*acknowledgedalarms = new acknowledgedAlarmsAttrib();
+	Tango::UserDefaultAttrProp	acknowledgedalarms_prop;
+	acknowledgedalarms_prop.set_description("List of alarms in acknowledged state");
+	//	label	not set for acknowledgedAlarms
+	//	unit	not set for acknowledgedAlarms
+	//	standard_unit	not set for acknowledgedAlarms
+	//	display_unit	not set for acknowledgedAlarms
+	//	format	not set for acknowledgedAlarms
+	//	max_value	not set for acknowledgedAlarms
+	//	min_value	not set for acknowledgedAlarms
+	//	max_alarm	not set for acknowledgedAlarms
+	//	min_alarm	not set for acknowledgedAlarms
+	//	max_warning	not set for acknowledgedAlarms
+	//	min_warning	not set for acknowledgedAlarms
+	//	delta_t	not set for acknowledgedAlarms
+	//	delta_val	not set for acknowledgedAlarms
+	
+	acknowledgedalarms->set_default_properties(acknowledgedalarms_prop);
+	//	Not Polled
+	acknowledgedalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	acknowledgedalarms->set_change_event(true, true);
+	acknowledgedalarms->set_archive_event(true, true);
+	att_list.push_back(acknowledgedalarms);
+
+	//	Attribute : unacknowledgedNormalAlarms
+	unacknowledgedNormalAlarmsAttrib	*unacknowledgednormalalarms = new unacknowledgedNormalAlarmsAttrib();
+	Tango::UserDefaultAttrProp	unacknowledgednormalalarms_prop;
+	unacknowledgednormalalarms_prop.set_description("List of alarms in unacknowledged normal state");
+	//	label	not set for unacknowledgedNormalAlarms
+	//	unit	not set for unacknowledgedNormalAlarms
+	//	standard_unit	not set for unacknowledgedNormalAlarms
+	//	display_unit	not set for unacknowledgedNormalAlarms
+	//	format	not set for unacknowledgedNormalAlarms
+	//	max_value	not set for unacknowledgedNormalAlarms
+	//	min_value	not set for unacknowledgedNormalAlarms
+	//	max_alarm	not set for unacknowledgedNormalAlarms
+	//	min_alarm	not set for unacknowledgedNormalAlarms
+	//	max_warning	not set for unacknowledgedNormalAlarms
+	//	min_warning	not set for unacknowledgedNormalAlarms
+	//	delta_t	not set for unacknowledgedNormalAlarms
+	//	delta_val	not set for unacknowledgedNormalAlarms
+	
+	unacknowledgednormalalarms->set_default_properties(unacknowledgednormalalarms_prop);
+	//	Not Polled
+	unacknowledgednormalalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	unacknowledgednormalalarms->set_change_event(true, true);
+	unacknowledgednormalalarms->set_archive_event(true, true);
+	att_list.push_back(unacknowledgednormalalarms);
+
+	//	Attribute : shelvedAlarms
+	shelvedAlarmsAttrib	*shelvedalarms = new shelvedAlarmsAttrib();
+	Tango::UserDefaultAttrProp	shelvedalarms_prop;
+	shelvedalarms_prop.set_description("List of alarms in shelved state");
+	//	label	not set for shelvedAlarms
+	//	unit	not set for shelvedAlarms
+	//	standard_unit	not set for shelvedAlarms
+	//	display_unit	not set for shelvedAlarms
+	//	format	not set for shelvedAlarms
+	//	max_value	not set for shelvedAlarms
+	//	min_value	not set for shelvedAlarms
+	//	max_alarm	not set for shelvedAlarms
+	//	min_alarm	not set for shelvedAlarms
+	//	max_warning	not set for shelvedAlarms
+	//	min_warning	not set for shelvedAlarms
+	//	delta_t	not set for shelvedAlarms
+	//	delta_val	not set for shelvedAlarms
+	
+	shelvedalarms->set_default_properties(shelvedalarms_prop);
+	//	Not Polled
+	shelvedalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	shelvedalarms->set_change_event(true, true);
+	shelvedalarms->set_archive_event(true, true);
+	att_list.push_back(shelvedalarms);
+
+	//	Attribute : outOfServiceAlarms
+	outOfServiceAlarmsAttrib	*outofservicealarms = new outOfServiceAlarmsAttrib();
+	Tango::UserDefaultAttrProp	outofservicealarms_prop;
+	outofservicealarms_prop.set_description("List of alarms in out of service state");
+	//	label	not set for outOfServiceAlarms
+	//	unit	not set for outOfServiceAlarms
+	//	standard_unit	not set for outOfServiceAlarms
+	//	display_unit	not set for outOfServiceAlarms
+	//	format	not set for outOfServiceAlarms
+	//	max_value	not set for outOfServiceAlarms
+	//	min_value	not set for outOfServiceAlarms
+	//	max_alarm	not set for outOfServiceAlarms
+	//	min_alarm	not set for outOfServiceAlarms
+	//	max_warning	not set for outOfServiceAlarms
+	//	min_warning	not set for outOfServiceAlarms
+	//	delta_t	not set for outOfServiceAlarms
+	//	delta_val	not set for outOfServiceAlarms
+	
+	outofservicealarms->set_default_properties(outofservicealarms_prop);
+	//	Not Polled
+	outofservicealarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	outofservicealarms->set_change_event(true, true);
+	outofservicealarms->set_archive_event(true, true);
+	att_list.push_back(outofservicealarms);
+
+	//	Attribute : silencedAlarms
+	silencedAlarmsAttrib	*silencedalarms = new silencedAlarmsAttrib();
+	Tango::UserDefaultAttrProp	silencedalarms_prop;
+	silencedalarms_prop.set_description("List of alarms in silenced state");
+	//	label	not set for silencedAlarms
+	//	unit	not set for silencedAlarms
+	//	standard_unit	not set for silencedAlarms
+	//	display_unit	not set for silencedAlarms
+	//	format	not set for silencedAlarms
+	//	max_value	not set for silencedAlarms
+	//	min_value	not set for silencedAlarms
+	//	max_alarm	not set for silencedAlarms
+	//	min_alarm	not set for silencedAlarms
+	//	max_warning	not set for silencedAlarms
+	//	min_warning	not set for silencedAlarms
+	//	delta_t	not set for silencedAlarms
+	//	delta_val	not set for silencedAlarms
+	
+	silencedalarms->set_default_properties(silencedalarms_prop);
+	//	Not Polled
+	silencedalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	silencedalarms->set_change_event(true, true);
+	silencedalarms->set_archive_event(true, true);
+	att_list.push_back(silencedalarms);
+
+	//	Attribute : listAlarms
+	listAlarmsAttrib	*listalarms = new listAlarmsAttrib();
+	Tango::UserDefaultAttrProp	listalarms_prop;
+	listalarms_prop.set_description("List of all alarms");
+	//	label	not set for listAlarms
+	//	unit	not set for listAlarms
+	//	standard_unit	not set for listAlarms
+	//	display_unit	not set for listAlarms
+	//	format	not set for listAlarms
+	//	max_value	not set for listAlarms
+	//	min_value	not set for listAlarms
+	//	max_alarm	not set for listAlarms
+	//	min_alarm	not set for listAlarms
+	//	max_warning	not set for listAlarms
+	//	min_warning	not set for listAlarms
+	//	delta_t	not set for listAlarms
+	//	delta_val	not set for listAlarms
+	
+	listalarms->set_default_properties(listalarms_prop);
+	//	Not Polled
+	listalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	listalarms->set_change_event(true, true);
+	listalarms->set_archive_event(true, true);
+	att_list.push_back(listalarms);
+
+	//	Attribute : frequencyAlarms
+	frequencyAlarmsAttrib	*frequencyalarms = new frequencyAlarmsAttrib();
+	Tango::UserDefaultAttrProp	frequencyalarms_prop;
+	frequencyalarms_prop.set_description("List of frequency of evaluation of all alarms");
+	//	label	not set for frequencyAlarms
+	//	unit	not set for frequencyAlarms
+	//	standard_unit	not set for frequencyAlarms
+	//	display_unit	not set for frequencyAlarms
+	//	format	not set for frequencyAlarms
+	//	max_value	not set for frequencyAlarms
+	//	min_value	not set for frequencyAlarms
+	//	max_alarm	not set for frequencyAlarms
+	//	min_alarm	not set for frequencyAlarms
+	//	max_warning	not set for frequencyAlarms
+	//	min_warning	not set for frequencyAlarms
+	//	delta_t	not set for frequencyAlarms
+	//	delta_val	not set for frequencyAlarms
+	
+	frequencyalarms->set_default_properties(frequencyalarms_prop);
+	//	Not Polled
+	frequencyalarms->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	frequencyalarms->set_change_event(true, true);
+	frequencyalarms->set_archive_event(true, true);
+	att_list.push_back(frequencyalarms);
 
 
 	//	Create a list of static attributes
@@ -796,23 +971,23 @@ void AlarmClass::command_factory()
 			Tango::OPERATOR);
 	command_list.push_back(pRemoveCmd);
 
-	//	Command Configured
-	ConfiguredClass	*pConfiguredCmd =
-		new ConfiguredClass("Configured",
+	//	Command SearchAlarm
+	SearchAlarmClass	*pSearchAlarmCmd =
+		new SearchAlarmClass("SearchAlarm",
 			Tango::DEV_STRING, Tango::DEVVAR_STRINGARRAY,
-			"String containing a filter for output, if empty return all alarms",
-			"Alarms configured",
+			"String containing a filter for output, if empty or * return all alarms",
+			"Configured alarms",
 			Tango::OPERATOR);
-	command_list.push_back(pConfiguredCmd);
+	command_list.push_back(pSearchAlarmCmd);
 
-	//	Command StopNew
-	StopNewClass	*pStopNewCmd =
-		new StopNewClass("StopNew",
+	//	Command StopAudible
+	StopAudibleClass	*pStopAudibleCmd =
+		new StopAudibleClass("StopAudible",
 			Tango::DEV_VOID, Tango::DEV_VOID,
 			"",
 			"",
 			Tango::OPERATOR);
-	command_list.push_back(pStopNewCmd);
+	command_list.push_back(pStopAudibleCmd);
 
 	//	Command Silence
 	SilenceClass	*pSilenceCmd =
@@ -831,6 +1006,42 @@ void AlarmClass::command_factory()
 			"",
 			Tango::OPERATOR);
 	command_list.push_back(pModifyCmd);
+
+	//	Command Shelve
+	ShelveClass	*pShelveCmd =
+		new ShelveClass("Shelve",
+			Tango::DEVVAR_STRINGARRAY, Tango::DEV_VOID,
+			"String array containing alarm to be shelved",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pShelveCmd);
+
+	//	Command Enable
+	EnableClass	*pEnableCmd =
+		new EnableClass("Enable",
+			Tango::DEV_STRING, Tango::DEV_VOID,
+			"Alarm name",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pEnableCmd);
+
+	//	Command Disable
+	DisableClass	*pDisableCmd =
+		new DisableClass("Disable",
+			Tango::DEV_STRING, Tango::DEV_VOID,
+			"Alarm name",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pDisableCmd);
+
+	//	Command ResetStatistics
+	ResetStatisticsClass	*pResetStatisticsCmd =
+		new ResetStatisticsClass("ResetStatistics",
+			Tango::DEV_VOID, Tango::DEV_VOID,
+			"",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pResetStatisticsCmd);
 
 	/*----- PROTECTED REGION ID(AlarmClass::command_factory_after) ENABLED START -----*/
 	

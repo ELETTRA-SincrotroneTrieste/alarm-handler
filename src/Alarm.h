@@ -50,7 +50,7 @@
 #include "event_table.h"
 #include "SubscribeThread.h"
 
-#define MAX_ALARMS	1024
+#define MAX_ALARMS	10000
 
 //#define _USE_ELETTRA_DB_RW
 
@@ -109,34 +109,51 @@ public:
 	Tango::DevLong attr_AttributeStoppedNumber_read;
 	Tango::DevLong attr_AttributeNumber_read;
 
+	vector<string> normalAlarms_read;
+	vector<string> unacknowledgedAlarms_read;
+	vector<string> acknowledgedAlarms_read;
+	vector<string> unacknowledgedNormalAlarms_read;
+	vector<string> shelvedAlarms_read;
+	vector<string> outOfServiceAlarms_read;
+	vector<string> silencedAlarms_read;
+	vector<string> listAlarms_read;
+
+	size_t normalAlarms_sz;
+	size_t unacknowledgedAlarms_sz;
+	size_t acknowledgedAlarms_sz;
+	size_t unacknowledgedNormalAlarms_sz;
+	size_t shelvedAlarms_sz;
+	size_t outOfServiceAlarms_sz;
+	size_t silencedAlarms_sz;
+	size_t listAlarms_sz;
+
+	double last_statistics_reset_time;
+
 /*----- PROTECTED REGION END -----*/	//	Alarm::Data Members
 
 //	Device property data members
 public:
-	//	AlarmStatus:	Persistent storage of the alarms status
-	vector<string>	alarmStatus;
 	//	GroupNames:	Labels for Group mask, first is for mask 0x00
 	vector<string>	groupNames;
-	//	ErrThreshold:	Threshold for Tango error for being internal alarms
-	Tango::DevLong	errThreshold;
-	//	DbHost:	Host of the MySQL db
-	string	dbHost;
-	//	DbUser:	Username for the MySQL db
-	string	dbUser;
-	//	DbPasswd:	Password for the MySQL db
-	string	dbPasswd;
-	//	DbName:	Db name for the MySQL db
-	string	dbName;
-	//	DbPort:	Port of the MySQL db
-	string	dbPort;
-	//	InstanceName:	Name used to associate configured alarm rules to this instance
-	string	instanceName;
-	//	SubscribeRetryPeriod:	retry period in seconds
+	//	SubscribeRetryPeriod:	Retry subscription period in seconds
 	Tango::DevLong	subscribeRetryPeriod;
+	//	StatisticsTimeWindow:	Time window to compute statistics in seconds
+	vector<Tango::DevLong>	statisticsTimeWindow;
 
 //	Attribute data members
 public:
+	Tango::DevBoolean	*attr_audibleAlarm_read;
+	Tango::DevDouble	*attr_StatisticsResetTime_read;
 	Tango::DevString	*attr_alarm_read;
+	Tango::DevString	*attr_normalAlarms_read;
+	Tango::DevString	*attr_unacknowledgedAlarms_read;
+	Tango::DevString	*attr_acknowledgedAlarms_read;
+	Tango::DevString	*attr_unacknowledgedNormalAlarms_read;
+	Tango::DevString	*attr_shelvedAlarms_read;
+	Tango::DevString	*attr_outOfServiceAlarms_read;
+	Tango::DevString	*attr_silencedAlarms_read;
+	Tango::DevString	*attr_listAlarms_read;
+	Tango::DevDouble	*attr_frequencyAlarms_read;
 
 //	Constructors and destructors
 public:
@@ -199,6 +216,24 @@ public:
 	virtual void read_attr_hardware(vector<long> &attr_list);
 
 /**
+ *	Attribute audibleAlarm related methods
+ *	Description: True if there is at least one alarm that needs audible indication on the GUI
+ *
+ *	Data type:	Tango::DevBoolean
+ *	Attr type:	Scalar
+ */
+	virtual void read_audibleAlarm(Tango::Attribute &attr);
+	virtual bool is_audibleAlarm_allowed(Tango::AttReqType type);
+/**
+ *	Attribute StatisticsResetTime related methods
+ *	Description: Time elapsed in seconds since last Resetstatistics
+ *
+ *	Data type:	Tango::DevDouble
+ *	Attr type:	Scalar
+ */
+	virtual void read_StatisticsResetTime(Tango::Attribute &attr);
+	virtual bool is_StatisticsResetTime_allowed(Tango::AttReqType type);
+/**
  *	Attribute alarm related methods
  *	Description: 
  *
@@ -207,6 +242,87 @@ public:
  */
 	virtual void read_alarm(Tango::Attribute &attr);
 	virtual bool is_alarm_allowed(Tango::AttReqType type);
+/**
+ *	Attribute normalAlarms related methods
+ *	Description: List of alarms in normal state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_normalAlarms(Tango::Attribute &attr);
+	virtual bool is_normalAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute unacknowledgedAlarms related methods
+ *	Description: List of alarms in unacknowledged state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_unacknowledgedAlarms(Tango::Attribute &attr);
+	virtual bool is_unacknowledgedAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute acknowledgedAlarms related methods
+ *	Description: List of alarms in acknowledged state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_acknowledgedAlarms(Tango::Attribute &attr);
+	virtual bool is_acknowledgedAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute unacknowledgedNormalAlarms related methods
+ *	Description: List of alarms in unacknowledged normal state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_unacknowledgedNormalAlarms(Tango::Attribute &attr);
+	virtual bool is_unacknowledgedNormalAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute shelvedAlarms related methods
+ *	Description: List of alarms in shelved state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_shelvedAlarms(Tango::Attribute &attr);
+	virtual bool is_shelvedAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute outOfServiceAlarms related methods
+ *	Description: List of alarms in out of service state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_outOfServiceAlarms(Tango::Attribute &attr);
+	virtual bool is_outOfServiceAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute silencedAlarms related methods
+ *	Description: List of alarms in silenced state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_silencedAlarms(Tango::Attribute &attr);
+	virtual bool is_silencedAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute listAlarms related methods
+ *	Description: List of all alarms
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_listAlarms(Tango::Attribute &attr);
+	virtual bool is_listAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute frequencyAlarms related methods
+ *	Description: List of frequency of evaluation of all alarms
+ *
+ *	Data type:	Tango::DevDouble
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_frequencyAlarms(Tango::Attribute &attr);
+	virtual bool is_frequencyAlarms_allowed(Tango::AttReqType type);
 
 //	Dynamic attribute methods
 public:
@@ -277,21 +393,21 @@ public:
 	virtual void remove(Tango::DevString argin);
 	virtual bool is_Remove_allowed(const CORBA::Any &any);
 	/**
-	 *	Command Configured related method
-	 *	Description: Alarms configured
+	 *	Command SearchAlarm related method
+	 *	Description: Return list of configured alarms matching the filter string
 	 *
-	 *	@param argin String containing a filter for output, if empty return all alarms
-	 *	@returns Alarms configured
+	 *	@param argin String containing a filter for output, if empty or * return all alarms
+	 *	@returns Configured alarms
 	 */
-	virtual Tango::DevVarStringArray *configured(Tango::DevString argin);
-	virtual bool is_Configured_allowed(const CORBA::Any &any);
+	virtual Tango::DevVarStringArray *search_alarm(Tango::DevString argin);
+	virtual bool is_SearchAlarm_allowed(const CORBA::Any &any);
 	/**
-	 *	Command StopNew related method
-	 *	Description: Remove "NEW" field from alarm string (so alarm panel stop sound)
+	 *	Command StopAudible related method
+	 *	Description: Stop audible indications on the GUI
 	 *
 	 */
-	virtual void stop_new();
-	virtual bool is_StopNew_allowed(const CORBA::Any &any);
+	virtual void stop_audible();
+	virtual bool is_StopAudible_allowed(const CORBA::Any &any);
 	/**
 	 *	Command Silence related method
 	 *	Description: Alarm temporarily silence
@@ -308,6 +424,37 @@ public:
 	 */
 	virtual void modify(Tango::DevString argin);
 	virtual bool is_Modify_allowed(const CORBA::Any &any);
+	/**
+	 *	Command Shelve related method
+	 *	Description: Shelve an alarm: no state transition recorded, no audible nor visual indication
+	 *
+	 *	@param argin String array containing alarm to be shelved
+	 */
+	virtual void shelve(const Tango::DevVarStringArray *argin);
+	virtual bool is_Shelve_allowed(const CORBA::Any &any);
+	/**
+	 *	Command Enable related method
+	 *	Description: Enable an alarm from Out of service state
+	 *
+	 *	@param argin Alarm name
+	 */
+	virtual void enable(Tango::DevString argin);
+	virtual bool is_Enable_allowed(const CORBA::Any &any);
+	/**
+	 *	Command Disable related method
+	 *	Description: Put an alarm in Out of service state
+	 *
+	 *	@param argin Alarm name
+	 */
+	virtual void disable(Tango::DevString argin);
+	virtual bool is_Disable_allowed(const CORBA::Any &any);
+	/**
+	 *	Command ResetStatistics related method
+	 *	Description: Reset statistics
+	 *
+	 */
+	virtual void reset_statistics();
+	virtual bool is_ResetStatistics_allowed(const CORBA::Any &any);
 
 
 	//--------------------------------------------------------
