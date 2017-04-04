@@ -522,6 +522,8 @@ private:
 
 	void prepare_alarm_attr();	//for read attribute alarm and push_change_event
 
+	void remove_AlarmState_dynamic_attribute_no_clean_db(string attname);
+
 	SubscribeThread *thread;
 
 public:

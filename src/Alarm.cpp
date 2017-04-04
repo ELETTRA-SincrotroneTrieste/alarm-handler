@@ -190,7 +190,11 @@ void Alarm::delete_device()
 	/*
 	 * unsubscribe events and release memory
 	 */
-	DEBUG_STREAM << "Alarm::delete_device(): entering..." << endl;
+	bool starting = Tango::Util::instance()->is_svr_starting();
+	bool shutting_down = Tango::Util::instance()->is_svr_shutting_down();
+	bool restarting = Tango::Util::instance()->is_device_restarting(device_name);
+	DEBUG_STREAM << __func__ << " starting="<<(int)starting << " shutting_down="<<(int)shutting_down<<" restarting="<<(int)restarting;
+
 	abortflag = true;
 	DEBUG_STREAM << "Alarm::delete_device(): after abortflag=true..." << endl;
 	try {
@@ -226,6 +230,29 @@ void Alarm::delete_device()
 			delete i->second.dp_n;
 		i->second.dp_n = NULL;
 	}	
+
+	if(restarting || shutting_down) //TODO: handle init, restart device
+	{
+		for(alarm_container_t::iterator it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
+		{
+			try
+			{
+				remove_AlarmState_dynamic_attribute_no_clean_db(it->second.attr_name);
+			}
+			catch(Tango::DevFailed &e)
+			{
+				INFO_STREAM << __func__<<": exception removing " << it->second.attr_name << ": " << e.errors[0].desc;
+			}
+			try
+			{
+				remove_AlarmFormula_dynamic_attribute(it->second.attr_name_formula);
+			}
+			catch(Tango::DevFailed &e)
+			{
+				INFO_STREAM << __func__<<": exception removing " << it->second.attr_name_formula << ": " << e.errors[0].desc;
+			}
+		}
+	}
 	/*
 	 * clear all data structures
 	 */
@@ -1568,6 +1595,19 @@ void Alarm::load(Tango::DevString argin)
 				(const char*)err.c_str(), \
 				(const char*)"Alarm::load()", Tango::ERR);
 	}
+#if 0
+	try
+	{
+		Tango::Attribute attr = this->get_device_attr()->get_attr_by_name(alm.attr_name.c_str());
+		push_att_conf_event(&attr);
+	}
+	catch(Tango::DevFailed &e)
+	{
+		ostringstream o;
+		o << "Alarm::" << __func__<<": alarm '" << alm.name << "' cannot push att_conf event, err="<<e.errors[0].desc ;
+		INFO_STREAM << o.str() << endl;
+	}
+#endif
 #if 0
 	try {
 		add_event(alm, evn);
@@ -3150,14 +3190,6 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 				(const char*)"", \
 				(const char*)"Alarm::load_alarm()", Tango::ERR);
 	}
-	add_AlarmState_dynamic_attribute(alm.attr_name);
-	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
-	alm.attr_value = attr_value;
-	alm.attr_name_formula = alm.attr_name + string("Formula");
-	add_AlarmFormula_dynamic_attribute(alm.attr_name_formula);
-	Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(alm.attr_name_formula);
-	*attr_value_formula = CORBA::string_dup(alm.formula.c_str());
-	alm.attr_value_formula = attr_value_formula;
 	if (alarms.exist(alm.name)) {
 		ostringstream o;
 		o << "Alarm::load_alarm(): alarm '" << alm.name << "' already exist" << ends;
@@ -3231,6 +3263,18 @@ void Alarm::add_alarm(alarm_t& a) throw(string&)
 	alarms.push_back(a);
 	DEBUG_STREAM << "Alarm::add_alarm(): added alarm '" \
 							 << a.name << "'" << endl;
+
+	alarm_container_t::iterator italm = alarms.v_alarm.find(a.name);
+	add_AlarmState_dynamic_attribute(italm->second.attr_name);
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(italm->second.attr_name);
+	italm->second.attr_value = attr_value;
+
+	italm->second.attr_name_formula = italm->second.attr_name + string("Formula");
+	add_AlarmFormula_dynamic_attribute(italm->second.attr_name_formula);
+	Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(italm->second.attr_name_formula);
+	*attr_value_formula = CORBA::string_dup(italm->second.formula.c_str());
+	italm->second.attr_value_formula = attr_value_formula;
+
 }
 void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 {
@@ -3890,11 +3934,30 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 		i->second.dp_a = NULL;
 		if(i->second.dp_n)
 			delete i->second.dp_n;
-		i->second.dp_n = NULL;		
+		i->second.dp_n = NULL;
+		try
+		{
+			remove_AlarmState_dynamic_attribute(i->second.attr_name);
+		}
+		catch(Tango::DevFailed &e)
+		{
+			ostringstream o;
+			o << "Alarm::" << __func__<<": attname '" << i->second.attr_name << "' exception removing attribute err="<<e.errors[0].desc ;
+			INFO_STREAM << o.str() << endl;
+		}
+		try
+		{
+			remove_AlarmFormula_dynamic_attribute(i->second.attr_name_formula);
+		}
+		catch(Tango::DevFailed &e)
+		{
+			ostringstream o;
+			o << "Alarm::" << __func__<<": attname '" << i->second.attr_name_formula << "' exception removing attribute err="<<e.errors[0].desc ;
+			INFO_STREAM << o.str() << endl;
+		}
 		/*
 		 * remove this alarm from alarm table
 		 */
-		remove_AlarmState_dynamic_attribute(i->second.attr_name);
 		alarms.erase(i);
 #ifndef _RW_LOCK
 		alarms.unlock();
@@ -5044,6 +5107,23 @@ void Alarm::put_signal_property()
 		WARN_STREAM << __FUNCTION__<< o.str();
 	}
 	delete db;
+}
+//--------------------------------------------------------
+/**
+ *	remove a AlarmState dynamic attribute without cleaning DB.
+ *
+ *  parameter attname: attribute name to be removed.
+ */
+//--------------------------------------------------------
+void Alarm::remove_AlarmState_dynamic_attribute_no_clean_db(string attname)
+{
+	remove_attribute(attname, true, false);
+	map<string,Tango::DevEnum>::iterator ite;
+    if ((ite=AlarmState_data.find(attname))!=AlarmState_data.end())
+    {
+    	DEBUG_STREAM << __func__<<": entering name="<<attname;
+		AlarmState_data.erase(ite);
+	}
 }
 
 

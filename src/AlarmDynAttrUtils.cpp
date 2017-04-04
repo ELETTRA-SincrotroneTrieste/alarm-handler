@@ -93,6 +93,15 @@ void Alarm::add_AlarmState_dynamic_attribute(string attname)
 	
 	/*----- PROTECTED REGION ID(Alarm::att_AlarmState_dynamic_attribute) ENABLED START -----*/
 	DEBUG_STREAM << __func__<<": entering name="<<attname;
+	alarm_container_t::iterator i = alarms.v_alarm.find(attname);
+	if(i != alarms.v_alarm.end())
+	{
+		alarmstate_prop.set_description(i->second.formula.c_str());
+	}
+	else
+	{
+		INFO_STREAM << __func__<<": name="<<attname<<" NOT FOUND while looking for formula to add as attribute description";
+	}
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::att_AlarmState_dynamic_attribute
 	{
