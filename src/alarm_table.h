@@ -326,14 +326,10 @@ class alarm_t {
 };
 
 typedef map<string,alarm_t> alarm_container_t;	
-#ifndef _RW_LOCK
-class alarm_table  : public omni_mutex {
-#else
 class alarm_table {
-#endif
 	public:
 		alarm_table() {}
-		~alarm_table() {}
+		~alarm_table() {del_rwlock();}
 		void set_dev(Tango::DeviceImpl* devImpl) {mydev=devImpl;}
 
 		//void init(vector<string>& avs);
@@ -351,11 +347,9 @@ class alarm_table {
 		vector<string> to_be_evaluated_list();
 		//vector<alarm_t> v_alarm;
 		alarm_container_t v_alarm;
-#ifdef _RW_LOCK
 		ReadersWritersLock *vlock;
 		void new_rwlock();
 		void del_rwlock();
-#endif
 
 		void save_alarm_conf_db(string att_name, string name, string status, string ack, bool enabled,
 				 string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());

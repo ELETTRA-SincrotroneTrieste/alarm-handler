@@ -266,27 +266,15 @@ void alarm_table::init(vector<string>& avs, vector<string> &evn, map< string,vec
 
 void alarm_table::push_back(alarm_t &a)
 {
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->writerIn();
-#endif
 	//v_alarm.push_back(a);
 	v_alarm.insert(make_pair(a.name,a));
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->writerOut();
-#endif
 }
 
 void alarm_table::show(vector<string> &al_table_string)
 {
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	ostringstream log_msg;
 	string log_str;
 	if (v_alarm.empty() == false) {
@@ -321,11 +309,7 @@ void alarm_table::show(vector<string> &al_table_string)
 			j++;
 		}
 	}
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 }
 
 unsigned int alarm_table::size(void)
@@ -340,11 +324,7 @@ alarm_container_t& alarm_table::get(void)
 
 void alarm_table::stored(vector<alarm_t>& a)
 {
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	if (a.empty() == false) {
 		for (vector<alarm_t>::iterator i = a.begin(); i != a.end(); i++) 
 		{
@@ -364,11 +344,7 @@ void alarm_table::stored(vector<alarm_t>& a)
 			}
 		}  /* for */
 	}  /* if */
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 }
 
 bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_t res, string &attr_values, string grp, string msg, string formula)
@@ -376,11 +352,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 	bool ret_changed=false;
 	//Tango::TimeVal now = gettime();
 	TangoSys_MemStream out_stream;
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	alarm_container_t::iterator found = v_alarm.find(alm_name);
 	if (found != v_alarm.end()) 
 	{
@@ -554,11 +526,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		out_stream << "couldn't find alarm '" << alm_name << "' in 'alarms' table" << ends;
 		LOG_STREAM << gettime().tv_sec << " alarm_table::update(): " << out_stream.str() << endl;
 	}
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 	if(out_stream.str().length() > 0)
 		throw out_stream.str();
 	return ret_changed;
@@ -569,11 +537,7 @@ bool alarm_table::timer_update()
 	bool ret_changed=false;
 	Tango::TimeVal ts = gettime();
 	TangoSys_MemStream out_stream;
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
 	{		
 		bool status_on_delay;
@@ -762,11 +726,7 @@ bool alarm_table::timer_update()
 		}
 		//found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts everytime
 	}
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 	if(out_stream.str().length() > 0)
 		throw out_stream.str();
 	return ret_changed;
@@ -774,17 +734,9 @@ bool alarm_table::timer_update()
 
 void alarm_table::erase(alarm_container_t::iterator i)
 {
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->writerIn();
-#endif
 	v_alarm.erase(i);
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->writerOut();
-#endif
 }
 
 bool alarm_table::exist(string& s)
@@ -799,48 +751,30 @@ bool alarm_table::exist(string& s)
 unsigned int alarm_table::to_be_evaluated_num()
 {
 	unsigned int ret=0;
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
 	{
 		if(i->second.to_be_evaluated == true)
 			ret++;
 	}
 
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 	return ret;
 }
 
 vector<string> alarm_table::to_be_evaluated_list()
 {
 	vector<string> ret;
-#ifndef _RW_LOCK
-	this->lock();
-#else
 	vlock->readerIn();
-#endif
 	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
 	{
 		if(i->second.to_be_evaluated == true)
 			ret.push_back(i->first);
 	}
-
-#ifndef _RW_LOCK
-	this->unlock();
-#else
 	vlock->readerOut();
-#endif
 	return ret;
 }
 
-#ifdef _RW_LOCK
 void alarm_table::new_rwlock()
 {
 	vlock = new(ReadersWritersLock);
@@ -849,7 +783,6 @@ void alarm_table::del_rwlock()
 {
 	delete vlock;
 }
-#endif
 
 void alarm_table::init_cmdthread()
 {

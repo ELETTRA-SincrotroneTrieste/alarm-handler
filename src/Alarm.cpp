@@ -211,9 +211,7 @@ void Alarm::delete_device()
 	e.value.push_back(ALARM_THREAD_EXIT_VALUE);
 	e.value.push_back(ALARM_THREAD_EXIT_VALUE);
 	evlist.push_back(e);
-#ifdef _RW_LOCK
-	alarms.del_rwlock();
-#endif
+	//alarms.del_rwlock(); moved in alarm_table destructor
 	alarms.stop_cmdthread();
 	sleep(1);		//wait for alarm_thread and log_thread to exit
 	//delete almloop;
@@ -413,9 +411,7 @@ void Alarm::init_device()
 	/*
 	 * connect to log database
 	 */	
-#ifdef _RW_LOCK
 	alarms.new_rwlock();
-#endif
 	try {
 		alarms.init_cmdthread();
 	} catch(...)
@@ -1263,11 +1259,7 @@ void Alarm::read_AlarmState(Tango::Attribute &attr)
 	string desc("");
 	string origin("");
 	int quality = Tango::ATTR_VALID;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	alarm_container_t::iterator it;
 	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
 	{
@@ -1284,11 +1276,7 @@ void Alarm::read_AlarmState(Tango::Attribute &attr)
 		quality = it->second.quality;
 	}
 	DEBUG_STREAM << "Alarm::read_AlarmState: " << attr.get_name() << " desc=" << desc << endl;
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 	if(desc.length() > 0)
 	{
 		Tango::Except::throw_exception(
@@ -1346,11 +1334,7 @@ void Alarm::add_dynamic_attributes()
 	/*----- PROTECTED REGION ID(Alarm::add_dynamic_attributes) ENABLED START -----*/
 	
 	//	Add your own code to create and add dynamic attributes if any
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	if (alarms.v_alarm.empty() == false)
 	{
 		for (alarm_container_t::iterator i = alarms.v_alarm.begin(); \
@@ -1366,11 +1350,7 @@ void Alarm::add_dynamic_attributes()
 			i->second.attr_value_formula = attr_value_formula;
 		}
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 	
 	/*----- PROTECTED REGION END -----*/	//	Alarm::add_dynamic_attributes
 }
@@ -1394,11 +1374,7 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 	vector<string>::iterator si;
 	
 	for (si = str.begin(); si != str.end(); si++) {
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
 		alarms.vlock->readerIn();
-#endif
 		alarmedlock->readerIn();
 		vector<alarm_t>::iterator found = \
 		find(alarmed.begin(), alarmed.end(), *si);
@@ -1410,22 +1386,14 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 			{
 				INFO_STREAM << __func__ << ": alarm '" << *si << "' not found";
 				alarmedlock->readerOut();
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->readerOut();
-#endif
 				continue;
 			}
 			if(!i->second.enabled || i->second.shelved)
 			{
 				DEBUG_STREAM << __func__ << ": alarm '" << *si << "' not enabled";
 				alarmedlock->readerOut();
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->readerOut();
-#endif
 				continue;
 			}
 
@@ -1478,11 +1446,7 @@ void Alarm::ack(const Tango::DevVarStringArray *argin)
 			found->ack = ACK;
 		}
 		alarmedlock->readerOut();
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 	}
 	/*
 	 * remove S_NORMAL status ACKnowledged alarms
@@ -1613,19 +1577,11 @@ void Alarm::load(Tango::DevString argin)
 		add_event(alm, evn);
 	} catch (string& err) {
 		WARN_STREAM << "Alarm::load(): " << err << endl;
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
 		alarms.vlock->writerIn();
-#endif
 		alarm_container_t::iterator i = alarms.v_alarm.find(alm.name);		//look for alarm just added
 		if (i != alarms.v_alarm.end())	
 			alarms.erase(i);											//and remove from alarm_table
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->writerOut();
-#endif
 		Tango::Except::throw_exception( \
 				(const char*)"Alarm::load()", \
 				(const char*)err.c_str(), \
@@ -1638,12 +1594,7 @@ void Alarm::load(Tango::DevString argin)
 	alm.confstr(conf_str);
 	saved_alarms.insert(make_pair(alm.attr_name,conf_str));
 
-
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
-		alarms.vlock->readerIn();
-#endif
+	alarms.vlock->readerIn();
 	alarm_container_t::iterator i = alarms.v_alarm.find(alm.name);
 	if(i != alarms.v_alarm.end())
 	{
@@ -1749,11 +1700,7 @@ void Alarm::load(Tango::DevString argin)
 			evlist.push_back(e);
 		}
 	}
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
-		alarms.vlock->readerOut();
-#endif
+	alarms.vlock->readerOut();
 
 
 #if 0//TODO
@@ -1948,11 +1895,7 @@ Tango::DevVarStringArray *Alarm::search_alarm(Tango::DevString argin)
 	alarm_filtered.push_back(os1.str());*/
 
 	alarm_container_t::iterator ai;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) 
 	{
 		found = 0;
@@ -1970,11 +1913,7 @@ Tango::DevVarStringArray *Alarm::search_alarm(Tango::DevString argin)
 			alarm_filtered.push_back(os.str());
 		}
 	}  /* for */
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 	argout->length(alarm_filtered.size());
 	int i = 0;
 	for (vector<string>::iterator it= alarm_filtered.begin(); it != alarm_filtered.end(); it++) 
@@ -2002,19 +1941,11 @@ void Alarm::stop_audible()
 	//12-06-08: StopNew command set is_new to 0
 	//	Add your own code to control device here
 	alarm_container_t::iterator ai;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
 		ai->second.is_new = 0;		//set all alarm as no more new
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 
 	prepare_alarm_attr();
 	try
@@ -2080,11 +2011,7 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 
 	for (si = str.begin(); si != str.end(); si++)
 	{
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
 		alarms.vlock->readerIn();
-#endif
 		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
 		if(i != alarms.v_alarm.end())
 		{
@@ -2110,11 +2037,7 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 			{
 				ostringstream err;
 				err << "Alarm " << *si << " already silenced for " << i->second.silenced << " more minutes" << ends;
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->readerOut();
-#endif
 				Tango::Except::throw_exception( \
 							(const char*)"Alarm already silenced", \
 							err.str(), \
@@ -2124,11 +2047,7 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 			{
 				ostringstream err;
 				err << "Alarm " << *si << " cannot be silenced" << ends;
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->readerOut();
-#endif
 				Tango::Except::throw_exception( \
 							(const char*)"Alarm cannot be silenced", \
 							err.str(), \
@@ -2153,11 +2072,7 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 		//alarms.unlock();
 		if(i == alarms.v_alarm.end())
 		{
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			ostringstream err;
 			err << "Alarm " << *si << " not found" << ends;
 			Tango::Except::throw_exception( \
@@ -2165,11 +2080,7 @@ void Alarm::silence(const Tango::DevVarStringArray *argin)
 						err.str(), \
 						(const char*)"Alarm::silence()", Tango::ERR);
 		}
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 	}
 
 	prepare_alarm_attr();
@@ -2319,11 +2230,7 @@ void Alarm::modify(Tango::DevString argin)
 	//2: if alarm already exist and
 	//   formula is not changed
 	//------------------------------
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->writerIn();
-#endif
 	alarm_container_t::iterator i = alarms.v_alarm.find(alm.name);
 	if (i != alarms.v_alarm.end())
 	{
@@ -2362,11 +2269,7 @@ void Alarm::modify(Tango::DevString argin)
 				ostringstream o;
 				o << __func__<<": syntax error in '" << alarm_string << "'" << ends;
 				WARN_STREAM << o.str() << endl;
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->writerOut();
-#endif
 				Tango::Except::throw_exception( \
 						(const char*)o.str().c_str(), \
 						(const char*)"", \
@@ -2442,21 +2345,13 @@ void Alarm::modify(Tango::DevString argin)
 					set_internal_alarm(INTERNAL_ERROR, gettime(), err.str());
 				}
 			}
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->writerOut();
-#endif
 			return;
 		}
 	}
 	else
 	{
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->writerOut();
-#endif
        	ostringstream o;
        	o << "Alarm '"<<alm.name<<"' not found" << ends;
        	DEBUG_STREAM << o.str() << endl;
@@ -2465,11 +2360,7 @@ void Alarm::modify(Tango::DevString argin)
 				(const char*)o.str().c_str(), \
 				(const char*)__func__, Tango::ERR);
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->writerOut();
-#endif
 
 	//------------------------------
 	//3: remove (set active=0 on db)
@@ -2545,21 +2436,13 @@ void Alarm::shelve(const Tango::DevVarStringArray *argin)
 
 	for (si = str.begin(); si != str.end(); si++)
 	{
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
 		alarms.vlock->readerIn();
-#endif
 		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
 		if(i == alarms.v_alarm.end())
 		{
 			ostringstream err;
 			err << *si << " not found in configured alarms" << ends;
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			Tango::Except::throw_exception( \
 				(const char*)"NOT_FOUND", \
 				(const char*)err.str().c_str(), \
@@ -2569,11 +2452,7 @@ void Alarm::shelve(const Tango::DevVarStringArray *argin)
 		{
 			ostringstream err;
 			err << *si << " is not enabled" << ends;
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			Tango::Except::throw_exception( \
 				(const char*)"NOT_ENABLED", \
 				(const char*)err.str().c_str(), \
@@ -2601,11 +2480,7 @@ void Alarm::shelve(const Tango::DevVarStringArray *argin)
 		{
 			ostringstream err;
 			err << *si << " is already shelved" << ends;
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			Tango::Except::throw_exception( \
 				(const char*)"ALREADY_SHELVED", \
 				(const char*)err.str().c_str(), \
@@ -2615,30 +2490,18 @@ void Alarm::shelve(const Tango::DevVarStringArray *argin)
 		{
 			ostringstream err;
 			err << "Alarm " << *si << " cannot be shelved" << ends;
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			Tango::Except::throw_exception( \
 						(const char*)"NOT_ALLOWED", \
 						err.str(), \
 						(const char*)__func__, Tango::ERR);
 		}
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 	}
 
 	for (si = str.begin(); si != str.end(); si++)
 	{
-#ifndef _RW_LOCK
-		alarms.lock();
-#else
 		alarms.vlock->readerIn();
-#endif
 		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
 		if(i == alarms.v_alarm.end())
 			continue;
@@ -2686,11 +2549,7 @@ void Alarm::shelve(const Tango::DevVarStringArray *argin)
 		{
 			WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 		}
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 	}
 
 	prepare_alarm_attr();
@@ -2749,21 +2608,13 @@ void Alarm::enable(Tango::DevString argin)
 	//	Add your own code
 	string arginname(argin);
 
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	alarm_container_t::iterator i = alarms.v_alarm.find(arginname);
 	if(i == alarms.v_alarm.end())
 	{
 		ostringstream err;
 		err << arginname << " not found in configured alarms" << ends;
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 		Tango::Except::throw_exception( \
 			(const char*)"NOT_FOUND", \
 			(const char*)err.str().c_str(), \
@@ -2811,11 +2662,7 @@ void Alarm::enable(Tango::DevString argin)
 		WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 	}
 
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 
 	prepare_alarm_attr();
 	try
@@ -2873,21 +2720,13 @@ void Alarm::disable(Tango::DevString argin)
 	//	Add your own code
 	string arginname(argin);
 
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	alarm_container_t::iterator i = alarms.v_alarm.find(arginname);
 	if(i == alarms.v_alarm.end())
 	{
 		ostringstream err;
 		err << arginname << " not found in configured alarms" << ends;
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->readerOut();
-#endif
 		Tango::Except::throw_exception( \
 			(const char*)"NOT_FOUND", \
 			(const char*)err.str().c_str(), \
@@ -2928,11 +2767,7 @@ void Alarm::disable(Tango::DevString argin)
 		WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 	}
 
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
-		alarms.vlock->readerOut();
-#endif
+	alarms.vlock->readerOut();
 
 	/*
 	 * remove from alarmed
@@ -3009,11 +2844,7 @@ void Alarm::reset_statistics()
 	/*----- PROTECTED REGION ID(Alarm::reset_statistics) ENABLED START -----*/
 	
 	//	Add your own code
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	for(alarm_container_t::iterator i = alarms.v_alarm.begin(); i!= alarms.v_alarm.end(); i++)
 	{
 		i->second.freq_counter = 0;
@@ -3022,11 +2853,7 @@ void Alarm::reset_statistics()
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
 	last_statistics_reset_time = dnow;
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 	/*----- PROTECTED REGION END -----*/	//	Alarm::reset_statistics
 }
 //--------------------------------------------------------
@@ -3203,11 +3030,7 @@ void Alarm::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 #if 0
 void Alarm::init_alarms(map< string,vector<string> > &alarm_events)
 {
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	if (alarms.v_alarm.empty() == false) 
 	{
 		for (alarm_container_t::iterator i = alarms.v_alarm.begin(); \
@@ -3235,11 +3058,7 @@ void Alarm::init_alarms(map< string,vector<string> > &alarm_events)
 			}	/* for */
 		}
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 }
 #endif
 void Alarm::init_events(vector<string> &evn)
@@ -3308,11 +3127,7 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			a.to_be_evaluated = true;
 			DEBUG_STREAM << "Alarm::add_event(): '" << *j << "' found, added " \
 									 << " alarm '"  << a.name << "' to list, valid=" << k->valid << endl;
-#ifndef _RW_LOCK
-			alarms.lock();
-#else
 			alarms.vlock->readerIn();
-#endif
 			alarm_container_t::iterator l = alarms.v_alarm.find(a.name);
 			if (l != alarms.v_alarm.end()) 
 			{
@@ -3323,11 +3138,7 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 				WARN_STREAM << "Alarm::add_event():	error inserting event '" << *j << "' in set of alarm '" 
 							<< a.name << "'" << endl;
 			}
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 		} 
 		else 
 		{
@@ -3341,11 +3152,7 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			 */
 			DEBUG_STREAM << "Alarm::add_event(): adding '" << *j \
 									 << "' to event list of alarm '" << a.name << "'" << endl;
-#ifndef _RW_LOCK
-			alarms.lock();
-#else
 			alarms.vlock->readerIn();
-#endif
 			alarm_container_t::iterator l = alarms.v_alarm.find(a.name);
 			if (l != alarms.v_alarm.end()) 
 			{			
@@ -3356,11 +3163,7 @@ void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 				WARN_STREAM << "Alarm::add_event():	error inserting event '" << *j << "' in set of alarm '" 
 							<< a.name << "'" << endl;
 			}
-#ifndef _RW_LOCK
-			alarms.unlock();
-#else
 			alarms.vlock->readerOut();
-#endif
 			/*
 			 * now, for the just-added event
 			 */
@@ -3489,11 +3292,7 @@ void Alarm::do_alarm(bei_t& e)
 			vector<string>::iterator j = found_ev->m_alarm.begin();
 			while (j != found_ev->m_alarm.end())
 			{
-#ifndef _RW_LOCK
-				alarms.lock();
-#else
 				alarms.vlock->readerIn();
-#endif
 				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
 				if(it != alarms.v_alarm.end())
 				{
@@ -3518,11 +3317,7 @@ void Alarm::do_alarm(bei_t& e)
 					}catch(Tango::DevFailed &ex)
 					{}
 				}
-#ifndef _RW_LOCK
-          		alarms.unlock();
-#else
           		alarms.vlock->readerOut();
-#endif
           		j++;
 			}
 		}
@@ -3644,11 +3439,7 @@ bool Alarm::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts)
 	formula_res_t res;
 	//alarm_container_t::iterator it = alarms.v_alarm.find(j->first);
 	DEBUG_STREAM << "Alarm::"<<__func__<<": before lock name=" << alm_name<< " ev=" << ev_name << endl;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	DEBUG_STREAM << "Alarm::"<<__func__<<": after lock name=" << alm_name<< " ev=" << ev_name << endl;
 	alarm_container_t::iterator it = alarms.v_alarm.find(alm_name);
 	if(it != alarms.v_alarm.end())
@@ -3778,11 +3569,7 @@ bool Alarm::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts)
 			WARN_STREAM << "Alarm::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 		}
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 	return 	changed;
 }
 
@@ -3860,11 +3647,7 @@ void Alarm::timer_update()
 bool Alarm::remove_alarm(string& s) throw(string&)
 {
 	DEBUG_STREAM << "Alarm::"<<__func__<<": entering alm name=" << s << endl;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->writerIn();
-#endif
 	alarm_container_t::iterator i = alarms.v_alarm.find(s);
 	if (i != alarms.v_alarm.end()) {
 		DEBUG_STREAM << "Alarm::"<<__func__<<": found in table alm name=" << s << endl;
@@ -3900,11 +3683,7 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 						o << "unsubscribe_event() failed for " \
 						 	<< k->name << ends;
 						WARN_STREAM << "Alarm::remove_alarm(): " << o.str() << endl;
-#ifndef _RW_LOCK
-						alarms.unlock();
-#else
 						alarms.vlock->writerOut();
-#endif
 						throw o.str();
 						//return false;
 					}
@@ -3918,11 +3697,7 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 				o << "event '" << *j \
 					<< "' not found in event table" << ends;
 				WARN_STREAM << "Alarm::remove_alarm(): " << o.str() << endl;
-#ifndef _RW_LOCK
-				alarms.unlock();
-#else
 				alarms.vlock->writerOut();
-#endif
 				throw o.str();
 				//return false;
 			}
@@ -3959,22 +3734,14 @@ bool Alarm::remove_alarm(string& s) throw(string&)
 		 * remove this alarm from alarm table
 		 */
 		alarms.erase(i);
-#ifndef _RW_LOCK
-		alarms.unlock();
-#else
 		alarms.vlock->writerOut();
-#endif
 		return true;
 	}
 	else
 	{
 		WARN_STREAM << "Alarm::"<<__func__<<": NOT found in table alm name=" << s << endl;
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->writerOut();
-#endif
 	ostringstream o;
 	o << "alarm '" \
 		<< s << "' not found in alarm table" << ends;
@@ -4738,11 +4505,7 @@ void Alarm::prepare_alarm_attr()
 	alarm_container_t::iterator ai;
 	vector<alarm_t>::iterator aid;
 	bool is_audible=false;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	outOfServiceAlarms_read.clear();
 	shelvedAlarms_read.clear();
 	acknowledgedAlarms_read.clear();
@@ -4900,11 +4663,7 @@ void Alarm::prepare_alarm_attr()
 		}  /* if else if */
 	}  /* for */
 	*attr_audibleAlarm_read = is_audible;
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 
 	vector<string> tmp_alarm_table;
 	string is_new;
@@ -5022,11 +4781,7 @@ bool Alarm::compare_without_domain(string str1, string str2)
 void Alarm::put_signal_property()
 {
 	vector<string> prop;
-#ifndef _RW_LOCK
-	alarms.lock();
-#else
 	alarms.vlock->readerIn();
-#endif
 	alarm_container_t::iterator it;
 	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
 	{
@@ -5070,11 +4825,7 @@ void Alarm::put_signal_property()
 		if(it2 != saved_alarms.end())
 			it2++;
 	}
-#ifndef _RW_LOCK
-	alarms.unlock();
-#else
 	alarms.vlock->readerOut();
-#endif
 
 
 	Tango::DbData	data;
