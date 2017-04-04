@@ -844,8 +844,15 @@ void alarm_table::save_alarm_conf_db(string att_name, string name, string status
 
 	string dev_name(mydev->get_name());
 
-	Tango::DbDevice *db_dev = mydev->get_db_device();
-	db_dev->get_dbase()->put_device_attribute_property(dev_name,db_data);
+	try
+	{
+		Tango::DbDevice *db_dev = mydev->get_db_device();
+		db_dev->get_dbase()->put_device_attribute_property(dev_name,db_data);
+	}
+	catch(Tango::DevFailed &e)
+	{
+		cout << __func__ << ": Exception saving configuration = " << e.errors[0].desc<<endl;
+	}
 }
 
 void alarm_table::delete_alarm_conf_db(string att_name)
@@ -907,8 +914,14 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 		db_data.push_back(Tango::DbDatum(*it));
 	}
 
-	db_dev->get_attribute_property(db_data);
-
+	try
+	{
+		db_dev->get_attribute_property(db_data);
+	}
+	catch(Tango::DevFailed &e)
+	{
+		cout << __func__ << ": Exception reading configuration = " << e.errors[0].desc<<endl;
+	}
 	for (size_t i=0;i < db_data.size();/*i++*/)
 	{
 		Tango::DevLong64 nb_prop;
@@ -972,6 +985,11 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 				KEY(ON_COMMAND_KEY)<< alm_on_command << "\t" <<
 				KEY(OFF_COMMAND_KEY)<< alm_off_command << "\t" <<
 				KEY(ENABLED_KEY)<< alm_enabled;
+		if(alm_name.empty() || alm_formula.empty() || alm_level.empty() || alm_group.empty() || alm_message.empty()) //TODO: decide if all mandatory
+		{
+			cout << __func__ << ": skipped '" << alm.str() << "'" << endl;
+			continue;
+		}
 		al_list.push_back(alm.str());
 		saved_alarms.insert(make_pair(alm_name,alm.str()));
 	}
