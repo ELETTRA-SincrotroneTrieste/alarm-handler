@@ -94,7 +94,7 @@ void cmd_thread::run(void *)
 						cmd.cmd_id = CMD_RESPONSE;			//if no exception till now push in list request of response
 						cmd.call_id = call_id;				//if no exception till now push in list request of response
 						list.push_back(cmd);		//if no exception till now push in list request of response
-					} catch(Tango::DevFailed e) 
+					} catch(Tango::DevFailed &e)
 					{
 						TangoSys_MemStream out_stream;
 						string err(e.errors[0].desc);
@@ -123,7 +123,7 @@ void cmd_thread::run(void *)
 					try {
 						resp = dp->command_inout_reply(cmd.call_id);
 						cout << gettime().tv_sec << " cmd_thread::run() RECEIVED response to action " << cmd.arg_s3 << endl;
-					} catch(Tango::DevFailed e) 
+					} catch(Tango::DevFailed &e)
 					{
 						TangoSys_MemStream out_stream;
 						out_stream << "EXCEPTION executing action " << cmd.arg_s3 << ", err=" << e.errors[0].desc << ends;
@@ -158,7 +158,7 @@ void cmd_thread::run(void *)
 					resp = dp->command_inout_reply(cmd.cmd_id);
 					mutex_dp->unlock();
 					cout << gettime().tv_sec << " cmd_thread::run() received response to action " << cmd.arg_s << endl;
-				} catch(Tango::DevFailed e) 
+				} catch(Tango::DevFailed &e)
 				{
 					TangoSys_MemStream out_stream;
 					out_stream << "EXCEPTION executing action " << cmd.arg_s << ", err=" << e.errors[0].desc << ends;
