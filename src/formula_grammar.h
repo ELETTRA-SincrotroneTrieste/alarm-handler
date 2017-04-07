@@ -80,6 +80,17 @@ struct Assign_Stat
 	}
 };
 
+//TODO: duplicated from alarm.h
+enum _AlarmStateEnum {
+	_NORM,
+	_UNACK,
+	_ACKED,
+	_RTNUN,
+	_SHLVD,
+	_DSUPR,
+	_OOSRV,
+} ;
+
 struct formula_grammar : public grammar<formula_grammar>
 {
 
@@ -116,10 +127,14 @@ struct formula_grammar : public grammar<formula_grammar>
     static const int exprID = 21;
     static const int nonempty_exprID = 22;
     static const int val_qualityID = 23;
+    static const int val_alarm_enum_stID = 24;
+
     
     symbols<unsigned int> tango_states;
     symbols<unsigned int> attr_quality;
     
+    symbols<unsigned int> alarm_enum_states;
+
 	formula_grammar() 
 	{
 		tango_states.add("ON", (unsigned int)Tango::ON);
@@ -142,6 +157,14 @@ struct formula_grammar : public grammar<formula_grammar>
 		attr_quality.add("ATTR_ALARM", (unsigned int)Tango::ATTR_ALARM);
 		attr_quality.add("ATTR_CHANGING", (unsigned int)Tango::ATTR_CHANGING);
 		attr_quality.add("ATTR_WARNING", (unsigned int)Tango::ATTR_WARNING);
+
+		alarm_enum_states.add("NORM", (unsigned int)_NORM);
+		alarm_enum_states.add("UNACK", (unsigned int)_UNACK);
+		alarm_enum_states.add("ACKED", (unsigned int)_ACKED);
+		alarm_enum_states.add("RTNUN", (unsigned int)_RTNUN);
+		alarm_enum_states.add("SHLVD", (unsigned int)_SHLVD);
+		alarm_enum_states.add("DSUPR", (unsigned int)_DSUPR);
+		alarm_enum_states.add("OOSRV", (unsigned int)_OOSRV);
 	}   
    
     template <typename ScannerT>
@@ -211,8 +234,13 @@ struct formula_grammar : public grammar<formula_grammar>
             	;
 			val_quality
 				=
-					//access_node_d[self.tango_states[&Save_Stat]][&Assign_Stat]	//save Tango::state value in node
+					//access_node_d[self.attr_quality[&Save_Stat]][&Assign_Stat]	//save Tango::state value in node
 					access_node_d[self.attr_quality[Save_Stat()]][Assign_Stat()]	//save Tango::state value in node
+            	;
+			val_alarm_enum_st
+				=
+					//access_node_d[self.alarm_enum_states[&Save_Stat]][&Assign_Stat]	//save Tango::state value in node
+					access_node_d[self.alarm_enum_states[Save_Stat()]][Assign_Stat()]	//save Tango::state value in node
             	;
             val_string
 #if BOOST_VERSION  < 103600
@@ -336,7 +364,7 @@ struct formula_grammar : public grammar<formula_grammar>
             expr_atom
                 =	//val_h | val_r
 					event_
-					| val_h | val_r | val_st  | val_quality | val_string
+					| val_h | val_r | val_st  | val_quality | val_alarm_enum_st | val_string
                 	//| (inner_node_d[ch_p('(') >> non_empty_expression >> ')'])
                		| (discard_node_d[ch_p('(')] >> non_empty_expression >> discard_node_d[ch_p(')')])
                 ;
@@ -373,6 +401,8 @@ struct formula_grammar : public grammar<formula_grammar>
 		rule<ScannerT, parser_context<>, parser_tag<nonempty_exprID> > non_empty_expression;
 		rule<ScannerT, parser_context<>, parser_tag<exprID> > expression;
 		rule<ScannerT, parser_context<>, parser_tag<val_qualityID> > val_quality;
+		rule<ScannerT, parser_context<>, parser_tag<val_alarm_enum_stID> > val_alarm_enum_st;
+
 
         rule<ScannerT> const&
         start() const { return top; }      

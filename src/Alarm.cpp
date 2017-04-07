@@ -331,7 +331,10 @@ void Alarm::init_device()
 {
 	DEBUG_STREAM << "Alarm::init_device() create device " << device_name << endl;
 	/*----- PROTECTED REGION ID(Alarm::init_device_before) ENABLED START -----*/
-	
+	bool starting = Tango::Util::instance()->is_svr_starting();
+	bool shutting_down = Tango::Util::instance()->is_svr_shutting_down();
+	bool restarting = Tango::Util::instance()->is_device_restarting(device_name);
+	DEBUG_STREAM << __func__ << " starting="<<(int)starting << " shutting_down="<<(int)shutting_down<<" restarting="<<(int)restarting;
 	//	Initialization before get_device_property() call
 	int dbPortint=0;	
 	abortflag = false;	
@@ -445,6 +448,7 @@ void Alarm::init_device()
 	rule_names[formula_grammar::nonempty_exprID] = "NonEmptyE";
 	rule_names[formula_grammar::exprID] = "Expression";
 	rule_names[formula_grammar::val_qualityID] = "ValQuality";
+	rule_names[formula_grammar::val_alarm_enum_stID] = "ValAlarmEnumStatus";
 
 	/*
 	 * get device attribute properties and initialize internal
@@ -737,6 +741,7 @@ void Alarm::init_device()
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
 	last_statistics_reset_time = dnow;
+	INFO_STREAM << __func__ << ": exiting!";
 
 	/*----- PROTECTED REGION END -----*/	//	Alarm::init_device
 }
@@ -1909,7 +1914,7 @@ Tango::DevVarStringArray *Alarm::search_alarm(Tango::DevString argin)
 			os.clear();
 			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" /*TODO<< KEY(FORMULA_KEY)*/ << ai->second.formula << "\t" << KEY(ONDELAY_KEY) << ai->second.on_delay << "\t" << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
 			"\t" << KEY(LEVEL_KEY) << ai->second.lev << "\t" << KEY(SILENT_TIME_KEY) << ai->second.silent_time << "\t" << KEY(GROUP_KEY) << ai->second.grp2str() << "\t" << KEY(MESSAGE_KEY) << ai->second.msg << "\t" <<
-			KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << "\t" << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << ends;
+			KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << "\t" << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << "\t" << KEY(ENABLED_KEY) << (ai->second.enabled ? "1" : "0") << ends;
 			alarm_filtered.push_back(os.str());
 		}
 	}  /* for */
@@ -3924,6 +3929,20 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 		res.value = st;
         return res;
     }
+    else if (i->value.id() == formula_grammar::val_alarm_enum_stID)
+    {
+        if(i->children.size() != 0)
+        {
+        	err <<  "in node val_alarm_enum_stID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size() << ends;
+        	throw err.str();
+        }
+        string val_st(i->value.begin(), i->value.end());
+        double st =  i->value.value();			//get value directly from node saved with access_node_d
+		DEBUG_STREAM << "		node value alarm enum state : " << val_st << "=" << st << endl;
+		formula_res_t res;
+		res.value = st;
+        return res;
+    }
 	else if (i->value.id() == formula_grammar::val_qualityID)
 	{
 		if(i->children.size() != 0)
@@ -4250,7 +4269,7 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
 				{
 					if(!it->valid)
 					{
-						err <<  "in node nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not valid!" << ends;
+						err <<  "in node equality_exprID -> nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not valid!" << ends;
 						throw err.str();
 					}
 					else if(it->type != Tango::DEV_STRING && it->value.empty())

@@ -22,17 +22,6 @@
 
 static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
 
-//TODO: duplicated from alarm.h
-enum _AlarmStateEnum {
-	_NORM,
-	_UNACK,
-	_ACKED,
-	_RTNUN,
-	_SHLVD,
-	_DSUPR,
-	_OOSRV,
-} ;
-
 /*
  * alarm_t class methods
  */
