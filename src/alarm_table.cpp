@@ -180,16 +180,16 @@ void alarm_t::confstr(string &s)
 {
 	ostringstream conf;
 	conf <<
-			name << "\t" <<
-			/*TODO: KEY(FORMULA_KEY)<<*/formula << "\t" <<
-			KEY(ONDELAY_KEY)<<on_delay << "\t" <<
-			KEY(OFFDELAY_KEY)<<off_delay << "\t" <<
-			KEY(LEVEL_KEY)<< lev << "\t" <<
-			KEY(SILENT_TIME_KEY)<<silent_time << "\t" <<
-			KEY(GROUP_KEY)<< grp2str() << "\t" <<
-			KEY(MESSAGE_KEY)<< "\""  << msg <<	"\"\t" <<
-			KEY(ON_COMMAND_KEY)<< cmd_name_a << "\t" <<
-			KEY(OFF_COMMAND_KEY)<< cmd_name_n << "\t" <<
+			KEY(NAME_KEY)<<name << SEP <<
+			KEY(FORMULA_KEY)<<formula << SEP <<
+			KEY(ONDELAY_KEY)<<on_delay << SEP <<
+			KEY(OFFDELAY_KEY)<<off_delay << SEP <<
+			KEY(LEVEL_KEY)<< lev << SEP <<
+			KEY(SILENT_TIME_KEY)<<silent_time << SEP <<
+			KEY(GROUP_KEY)<< grp2str() << SEP <<
+			KEY(MESSAGE_KEY)<< msg <<	SEP <<
+			KEY(ON_COMMAND_KEY)<< cmd_name_a << SEP <<
+			KEY(OFF_COMMAND_KEY)<< cmd_name_n << SEP <<
 			KEY(ENABLED_KEY)<< (enabled ? "1" : "0");
 	s = conf.str();
 }
@@ -963,16 +963,16 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 			i++;
 		}
 		stringstream alm;
-		alm << alm_name << "\t" <<
-				/*TODO: KEY(FORMULA_KEY)<<*/alm_formula << "\t" <<
-				KEY(ONDELAY_KEY)<<alm_on_delay << "\t" <<
-				KEY(OFFDELAY_KEY)<<alm_off_delay << "\t" <<
-				KEY(LEVEL_KEY)<< alm_level << "\t" <<
-				KEY(SILENT_TIME_KEY)<<alm_silence_time << "\t" <<
-				KEY(GROUP_KEY)<< alm_group << "\t" <<
-				KEY(MESSAGE_KEY)<< "\""  << alm_message <<	"\"\t" <<
-				KEY(ON_COMMAND_KEY)<< alm_on_command << "\t" <<
-				KEY(OFF_COMMAND_KEY)<< alm_off_command << "\t" <<
+		alm << KEY(NAME_KEY)<<alm_name << SEP <<
+				KEY(FORMULA_KEY)<<alm_formula << SEP <<
+				KEY(ONDELAY_KEY)<<alm_on_delay << SEP <<
+				KEY(OFFDELAY_KEY)<<alm_off_delay << SEP <<
+				KEY(LEVEL_KEY)<< alm_level << SEP <<
+				KEY(SILENT_TIME_KEY)<<alm_silence_time << SEP <<
+				KEY(GROUP_KEY)<< alm_group << SEP <<
+				KEY(MESSAGE_KEY)<< alm_message <<	SEP <<
+				KEY(ON_COMMAND_KEY)<< alm_on_command << SEP <<
+				KEY(OFF_COMMAND_KEY)<< alm_off_command << SEP <<
 				KEY(ENABLED_KEY)<< alm_enabled;
 		if(alm_name.empty() || alm_formula.empty() || alm_level.empty() || alm_group.empty() || alm_message.empty()) //TODO: decide if all mandatory
 		{

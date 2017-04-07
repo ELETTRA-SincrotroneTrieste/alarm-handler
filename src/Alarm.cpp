@@ -1910,9 +1910,9 @@ Tango::DevVarStringArray *Alarm::search_alarm(Tango::DevString argin)
 		{
 			ostringstream os;
 			os.clear();
-			os << ai->second.ts.tv_sec << "\t" << ai->second.name << "\t" /*TODO<< KEY(FORMULA_KEY)*/ << ai->second.formula << "\t" << KEY(ONDELAY_KEY) << ai->second.on_delay << "\t" << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
-			"\t" << KEY(LEVEL_KEY) << ai->second.lev << "\t" << KEY(SILENT_TIME_KEY) << ai->second.silent_time << "\t" << KEY(GROUP_KEY) << ai->second.grp2str() << "\t" << KEY(MESSAGE_KEY) << ai->second.msg << "\t" <<
-			KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << "\t" << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << "\t" << KEY(ENABLED_KEY) << (ai->second.enabled ? "1" : "0") << ends;
+			os << ai->second.ts.tv_sec << SEP << KEY(NAME_KEY) << ai->second.name << SEP << KEY(FORMULA_KEY) << ai->second.formula << SEP << KEY(ONDELAY_KEY) << ai->second.on_delay << SEP << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
+				SEP << KEY(LEVEL_KEY) << ai->second.lev << SEP << KEY(SILENT_TIME_KEY) << ai->second.silent_time << SEP << KEY(GROUP_KEY) << ai->second.grp2str() << SEP << KEY(MESSAGE_KEY) << ai->second.msg <<
+				SEP << KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << SEP << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << SEP << KEY(ENABLED_KEY) << (ai->second.enabled ? "1" : "0") << ends;
 			alarm_filtered.push_back(os.str());
 		}
 	}  /* for */
@@ -4506,9 +4506,9 @@ void Alarm::find_event_formula(tree_parse_info_t tree, vector<string> & ev)
 
 void Alarm::eval_node_event(iter_t const& i, vector<string> & ev)
 {
-	DEBUG_STREAM << "In eval_node_event. i->value = " <<
+	DEBUG_STREAM << "In eval_node_event. i->value = '" <<
         string(i->value.begin(), i->value.end()) <<
-        " i->children.size() = " << i->children.size() << " NODE=" << rule_names[i->value.id()] <<  endl;
+        "' i->children.size() = " << i->children.size() << " NODE=" << rule_names[i->value.id()] << endl;
     ostringstream err;
     err << "Looking for event in formula tree: "; 
     /*if (i->value.id() == formula_grammar::event_ID)

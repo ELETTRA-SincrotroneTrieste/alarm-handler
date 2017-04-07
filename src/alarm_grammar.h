@@ -80,6 +80,8 @@
 #define ENABLED_KEY			"enabled"
 #define KEY(S_VAL)  		S_VAL "="
 
+#define SEP					";"
+
 ////////////////////////////////////////////////////////////////////////////
 using namespace std; 
 #if BOOST_VERSION  < 103600 
@@ -177,7 +179,8 @@ struct alarm_parse : public grammar<alarm_parse>
 		//std::pair<string, vector<string> > temp;    	
     	
             expression
-            	=	discard_node_d
+            	=	no_node_d[str_p(KEY(NAME_KEY))] >>
+				no_node_d
             		[
             		name_alm
             			[
@@ -185,6 +188,9 @@ struct alarm_parse : public grammar<alarm_parse>
 						]
 					]		//discard_node_d					
             		>> 
+					no_node_d[separator]
+					>>
+					no_node_d[str_p(KEY(FORMULA_KEY))] >>
             			root_node_d
             			[ 
             			formula	
@@ -192,19 +198,19 @@ struct alarm_parse : public grammar<alarm_parse>
             					assign_a(self.m_alarm.formula)	//save formula in alarm_t
             				]
             			]		//root_node_d
-					>> *(discard_node_d[option])
+					>> *(no_node_d[option])
 			;
 
             option
-				=	discard_node_d[on_delay] |
-					discard_node_d[off_delay] |
-					discard_node_d[level] |
-					discard_node_d[silent_time] |
-					discard_node_d[group] |
-					discard_node_d[msg] |
-					discard_node_d[on_command] |
-					discard_node_d[off_command] |
-					discard_node_d[enabled]
+				=	no_node_d[separator] >> no_node_d[on_delay] |
+					no_node_d[separator] >> no_node_d[off_delay] |
+					no_node_d[separator] >> no_node_d[level] |
+					no_node_d[separator] >> no_node_d[silent_time] |
+					no_node_d[separator] >> no_node_d[group] |
+					no_node_d[separator] >> no_node_d[msg] |
+					no_node_d[separator] >> no_node_d[on_command] |
+					no_node_d[separator] >> no_node_d[off_command] |
+					no_node_d[separator] >> no_node_d[enabled]
 			;
 
             //------------------------------ALARM NAME--------------------------------------            
@@ -248,13 +254,13 @@ struct alarm_parse : public grammar<alarm_parse>
 				;
 			//------------------------------MESSAGE--------------------------------------	
 			msg
-				=	discard_node_d[str_p(KEY(MESSAGE_KEY))] >>
-					ch_p('"')
-					>> (+(anychar_p - '\"')) 		//one ore more char except '"'
+				=	discard_node_d[str_p(KEY(MESSAGE_KEY))]
+					//>> ch_p('"')
+					>> (+(anychar_p - ';')) 		//one ore more char except ';'
 							[
 								assign_a(self.m_alarm.msg)
 							]					
-					>> '"'
+					//>> '"'
 				;
 			//---------------------------ON DELAY----------------------------------------
 			on_delay
@@ -318,13 +324,15 @@ struct alarm_parse : public grammar<alarm_parse>
 						assign_a(self.m_alarm.enabled)		//save enabled in alarm_t
 					]
 				;
+			//------------------------------SEPARATOR--------------------------------------
+			separator = ch_p(SEP);
         }
         
 		typedef rule<ScannerT> rule_t;	
 		rule_t expression, event, option;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
-        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled;
+        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled, separator;
 		formula_grammar formula;
 		
 		rule_t const&					
