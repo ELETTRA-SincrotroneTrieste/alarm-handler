@@ -438,9 +438,6 @@ void Alarm::init_device()
 	rule_names[formula_grammar::expr_atomID] = "AtomicE";
 	rule_names[formula_grammar::shift_exprID] = "ShiftE";
 	rule_names[formula_grammar::unary_exprID] = "UnaryE";
-	rule_names[formula_grammar::funcID] = "FunctionE";
-	rule_names[formula_grammar::nameID] = "NameE";
-	rule_names[formula_grammar::indexID] = "IndexE";
 	rule_names[formula_grammar::val_stringID] = "ValString";
 	rule_names[formula_grammar::func_dualID] = "FuncDualE";
 	rule_names[formula_grammar::logical_expr_parenID] = "LogicalParenE";
@@ -449,6 +446,7 @@ void Alarm::init_device()
 	rule_names[formula_grammar::exprID] = "Expression";
 	rule_names[formula_grammar::val_qualityID] = "ValQuality";
 	rule_names[formula_grammar::val_alarm_enum_stID] = "ValAlarmEnumStatus";
+	rule_names[formula_grammar::propertyID] = "EventProperty";
 
 	/*
 	 * get device attribute properties and initialize internal
@@ -3102,7 +3100,7 @@ void Alarm::add_alarm(alarm_t& a) throw(string&)
 }
 void Alarm::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 {
-	DEBUG_STREAM << "Alarm::add_event(): formula '" << a.formula << "'" << endl;
+	DEBUG_STREAM << "Alarm::add_event(): formula '" << a.formula << "' found " << evn.size() << " events" << endl;
 	/*
 	 * get the list of all the events in the formula
 	 */
@@ -4046,11 +4044,29 @@ formula_res_t Alarm::eval_expression(iter_t const& i, string &attr_values, int e
         }
 		if((i->children.begin()+1)->value.id() == formula_grammar::indexID)
 			ind = eval_expression(i->children.begin()+1, attr_values);		//array index
-		else if(string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) == ".quality")
+		else if((i->children.begin()+1)->value.id() == formula_grammar::propertyID)
 		{
-			formula_res_t res = eval_expression(i->children.begin(), attr_values, (int)ind.value);
-			res.value = res.quality;
-			return res;
+			if(string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) == ".quality")
+			{
+				formula_res_t res = eval_expression(i->children.begin(), attr_values, (int)ind.value);
+				res.value = res.quality;
+				DEBUG_STREAM << "		node event.quality -> " << res.value << endl;
+				return res;
+			}
+			else if(string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) == ".alarm")
+			{
+				formula_res_t res = eval_expression(i->children.begin(), attr_values, (int)ind.value);
+				res.value = (res.value == _UNACK) || (res.value == _ACKED);
+				DEBUG_STREAM << "		node event.alarm -> " << res.value << endl;
+				return res;
+			}
+			else if(string((i->children.begin()+1)->value.begin(), (i->children.begin()+1)->value.end()) == ".normal")
+			{
+				formula_res_t res = eval_expression(i->children.begin(), attr_values, (int)ind.value);
+				res.value = (res.value == _NORM) || (res.value == _RTNUN);
+				DEBUG_STREAM << "		node event.normal -> " << res.value << endl;
+				return res;
+			}
 		}
 		else
 		{
@@ -4490,9 +4506,9 @@ void Alarm::find_event_formula(tree_parse_info_t tree, vector<string> & ev)
 
 void Alarm::eval_node_event(iter_t const& i, vector<string> & ev)
 {
-/*	DEBUG_STREAM << "In eval_node_event. i->value = " <<
+	DEBUG_STREAM << "In eval_node_event. i->value = " <<
         string(i->value.begin(), i->value.end()) <<
-        " i->children.size() = " << i->children.size() << " NODE=" << rule_names[i->value.id()] <<  endl;*/
+        " i->children.size() = " << i->children.size() << " NODE=" << rule_names[i->value.id()] <<  endl;
     ostringstream err;
     err << "Looking for event in formula tree: "; 
     /*if (i->value.id() == formula_grammar::event_ID)

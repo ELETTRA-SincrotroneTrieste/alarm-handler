@@ -128,6 +128,7 @@ struct formula_grammar : public grammar<formula_grammar>
     static const int nonempty_exprID = 22;
     static const int val_qualityID = 23;
     static const int val_alarm_enum_stID = 24;
+    static const int propertyID = 25;
 
     
     symbols<unsigned int> tango_states;
@@ -212,6 +213,11 @@ struct formula_grammar : public grammar<formula_grammar>
             index
             	= 	inner_node_d[ch_p('[') >> uint_p >> ch_p(']')]
             	;
+            property
+            	= 	str_p(".quality")
+					| str_p(".alarm")
+					| str_p(".normal")
+            	;
             //------------------------------FORMULA--------------------------------------	   
 			val_r
 #if BOOST_VERSION  < 103600              
@@ -260,7 +266,7 @@ struct formula_grammar : public grammar<formula_grammar>
 			event_
 				=	name
 					>> !( (index)
-						| (".quality")
+						| (property)
 						)
 				;				
 
@@ -337,18 +343,18 @@ struct formula_grammar : public grammar<formula_grammar>
             	;
 
             function
-            	=	( root_node_d[str_p("abs")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
-            		| root_node_d[str_p("cos")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
-            		| root_node_d[str_p("sin")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
-					| root_node_d[str_p("quality")] >> (inner_node_d[ch_p('(') >> cond_expr >> ')'])	//TODO: ? not expr_atom ?
+            	=	( root_node_d[str_p("abs")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("cos")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("sin")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+					| root_node_d[str_p("quality")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
             		)
             	;
             function_dual
-        	=	(	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+        	=	(	(root_node_d[str_p("max")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> discard_node_d[ch_p(')')]))
         		//|	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> discard_node_d[ch_p(',')] >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> ')']))
-        		|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+        		|	(root_node_d[str_p("min")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> discard_node_d[ch_p(')')]))
         		//|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> discard_node_d[ch_p(',')] >> discard_node_d[ch_p('(')] >> logical_expr >> discard_node_d[ch_p(')')] >> ')']))
-				|	(root_node_d[str_p("pow")] >> (inner_node_d[ch_p('(') >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> ')']))
+				|	(root_node_d[str_p("pow")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(',')] >> cond_expr >> discard_node_d[ch_p(')')]))
         		)
             	//=	*(	(root_node_d[str_p("max")] >> (inner_node_d[ch_p('(') >> logical_expr_paren >> discard_node_d[ch_p(',')] >> logical_expr_paren >> ')']))
             	//	|	(root_node_d[str_p("min")] >> (inner_node_d[ch_p('(') >> logical_expr_paren >> discard_node_d[ch_p(',')] >> logical_expr_paren >> ')']))
@@ -402,6 +408,7 @@ struct formula_grammar : public grammar<formula_grammar>
 		rule<ScannerT, parser_context<>, parser_tag<exprID> > expression;
 		rule<ScannerT, parser_context<>, parser_tag<val_qualityID> > val_quality;
 		rule<ScannerT, parser_context<>, parser_tag<val_alarm_enum_stID> > val_alarm_enum_st;
+		rule<ScannerT, parser_context<>, parser_tag<propertyID> > property;
 
 
         rule<ScannerT> const&
