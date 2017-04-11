@@ -1666,7 +1666,7 @@ void Alarm::load(Tango::DevString argin)
 			try {
 				i->second.dp_n = new Tango::DeviceProxy(i->second.cmd_dp_n);
 				i->second.dp_n->ping();
-				Tango::CommandInfo info = i->second.dp_n->command_query(i->second.cmd_action_a);
+				Tango::CommandInfo info = i->second.dp_n->command_query(i->second.cmd_action_n);
 				if(info.in_type != Tango::DEV_STRING)
 				{
 					ostringstream err;

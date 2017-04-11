@@ -206,7 +206,7 @@ void cmd_list::push_back(cmd_t& cmd)
 {
 	this->lock();
 
-	//cout << "event_list::push_back: " << e.name << " value=" << e.value[0] << endl;
+	//cout << "cmd_list::push_back: cmd_id=" << cmd.cmd_id << " call_id=" << cmd.call_id << endl;
 	try{
 		l_cmd.push_back(cmd);		
 		empty.signal();
@@ -222,7 +222,7 @@ void cmd_list::push_back(cmd_t& cmd)
 	{
 		ostringstream err;
 		err << "exception  signaling omni_condition: '" << ex.errors[0].desc << "'" << ends;
-		//WARN_STREAM << "event_list::push_back(): " << err.str() << endl;	
+		//WARN_STREAM << "cmd_list::push_back(): " << err.str() << endl;
 		printf("cmd_list::push_back: %s", err.str().c_str());
 		Tango::Except::print_exception(ex);	
 	}		
@@ -273,7 +273,7 @@ const cmd_t cmd_list::pop_front(void)
 	/*const*/ cmd_t cmd;
 
 	cmd = *(l_cmd.begin());
-	//cout << "event_list::pop_front: " << e.name << " value=" << e.value[0] << endl; 
+	//cout << "cmd_list::pop_front: " << e.name << " value=" << e.value[0] << endl;
 	l_cmd.pop_front();
 
 	this->unlock();

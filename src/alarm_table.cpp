@@ -529,8 +529,8 @@ bool alarm_table::timer_update()
 	vlock->readerIn();
 	for(alarm_container_t::iterator i = v_alarm.begin(); i != v_alarm.end(); i++)
 	{		
-		bool status_on_delay;
-		bool status_off_delay;
+		bool status_on_delay=false;
+		bool status_off_delay=false;
 		if(i->second.on_delay == 0 && i->second.off_delay == 0 && !i->second.shelved && i->second.silenced <=0)
 			continue;	//if not enabled on or off delay, nothing to do in timer
 		if(i->second.on_delay > 0)		//if enabled on delay
@@ -623,9 +623,9 @@ bool alarm_table::timer_update()
 					cmdloop->list.push_back(arg);
 				}
 			}
-			else if(status_off_delay)
+			else if(status_off_delay && (i->second.stat == S_ALARM))
 			{
-				if(i->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))
+				if(i->second.dp_n && ((ts.tv_sec - startup_complete.tv_sec) > 10))
 				{
 					/*try {
 						long call_id;
@@ -668,6 +668,12 @@ bool alarm_table::timer_update()
 					arg.arg_b = i->second.send_arg_n;
 					cmdloop->list.push_back(arg);
 				}
+			}
+
+			if((int)(status_on_delay)) {
+				i->second.off_counter = 0;
+			} else if(status_off_delay) {
+				i->second.on_counter = 0;
 			}
 
 			if(!i->second.enabled)
