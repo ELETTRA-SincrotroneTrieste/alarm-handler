@@ -2704,7 +2704,8 @@ void Alarm::enable(Tango::DevString argin)
 		err << "error pushing alarm change event err=" << e.errors[0].desc;
 		INFO_STREAM << __func__<<": " << err.str() << endl;
 	}
-
+	//update attribute properties
+	events->update_property();
 	/*----- PROTECTED REGION END -----*/	//	Alarm::enable
 }
 //--------------------------------------------------------
@@ -2831,7 +2832,8 @@ void Alarm::disable(Tango::DevString argin)
 		err << "error pushing alarm change event err=" << e.errors[0].desc;
 		INFO_STREAM << __func__<<": " << err.str() << endl;
 	}
-	
+	//update attribute properties
+	events->update_property();
 	/*----- PROTECTED REGION END -----*/	//	Alarm::disable
 }
 //--------------------------------------------------------

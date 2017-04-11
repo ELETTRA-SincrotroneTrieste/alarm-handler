@@ -811,7 +811,7 @@ void alarm_table::save_alarm_conf_db(string att_name, string name, string status
 	Tango::DbDatum dbd_enabled(ENABLED_KEY);
 
 	Tango::DbData db_data;
-	dbd_att_name << 11;                               // Ten properties for attribute "att_name"
+	dbd_att_name << 11;                               // Eleven properties for attribute "att_name"
 	dbd_name << name;
 	dbd_formula << formula;
 	dbd_on_delay << on_delay;
