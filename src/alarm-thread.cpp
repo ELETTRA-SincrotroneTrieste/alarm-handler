@@ -34,7 +34,7 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.7 $";
 /*
  * alarm_thread::alarm_thread()
  */
-alarm_thread::alarm_thread(Alarm_ns::Alarm *p) : p_Alarm(p) 
+alarm_thread::alarm_thread(AlarmHandler_ns::AlarmHandler *p) : p_Alarm(p)
 {
 	//cout << __FILE__rev << endl;
 }

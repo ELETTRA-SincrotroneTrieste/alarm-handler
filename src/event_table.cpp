@@ -16,7 +16,7 @@
 #include <sys/time.h>
 #include <tango.h>
 #include "event_table.h"
-#include "Alarm.h"
+#include "AlarmHandler.h"
 
 //for get_event_system_for_event_id, to know if ZMQ
 #include <eventconsumer.h>
@@ -336,7 +336,7 @@ event *event_table::get_signal(string signame)
 	for (unsigned int i=0 ; i<v_event.size() ; i++)
 	{
 		event	*sig = &v_event[i];
-		if (static_cast<Alarm_ns::Alarm *>(mydev)->compare_without_domain(sig->name,signame))
+		if (static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_without_domain(sig->name,signame))
 			return sig;
 	}
 	return NULL;
@@ -360,10 +360,10 @@ void event_table::stop(string &signame)
 			if(!v_event[i].stopped)
 			{
 				v_event[i].stopped=true;
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read++;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 				if(v_event[i].running)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -376,7 +376,7 @@ void event_table::stop(string &signame)
 				}
 				if(v_event[i].paused)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -397,19 +397,19 @@ void event_table::stop(string &signame)
 	for (unsigned int i=0 ; i<v_event.size() ; i++)
 	{
 #ifndef _MULTI_TANGO_HOST
-		if (static_cast<Alarm_ns::Alarm *>(mydev)->compare_without_domain(v_event[i].name,signame))
+		if (static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_without_domain(v_event[i].name,signame))
 #else
-		if (!static_cast<Alarm_ns::Alarm *>(mydev)->compare_tango_names(v_event[i].name,signame))
+		if (!static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_tango_names(v_event[i].name,signame))
 #endif
 		{
 			v_event[i].siglock->writerIn();
 			if(!v_event[i].stopped)
 			{
 				v_event[i].stopped=true;
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read++;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 				if(v_event[i].running)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -422,7 +422,7 @@ void event_table::stop(string &signame)
 				}
 				if(v_event[i].paused)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -525,12 +525,12 @@ void event_table::remove(string &signame, bool stop)
 				if(!stop)
 				{
 					if(sig->running)
-						static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read--;
+						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 					if(sig->paused)
-						static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
+						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 					if(sig->stopped)
-						static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read--;
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeNumber_read--;
+						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read--;
 					delete sig->siglock;
 					v_event.erase(pos);
 					DEBUG_STREAM <<"event_table::"<< __func__<<": removed " << signame << endl;
@@ -545,9 +545,9 @@ void event_table::remove(string &signame, bool stop)
 			{
 				event	*sig = &v_event[i];
 #ifndef _MULTI_TANGO_HOST
-				if (static_cast<Alarm_ns::Alarm *>(mydev)->compare_without_domain(sig->name,signame))
+				if (static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_without_domain(sig->name,signame))
 #else
-				if (!static_cast<Alarm_ns::Alarm *>(mydev)->compare_tango_names(sig->name,signame))
+				if (!static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_tango_names(sig->name,signame))
 #endif
 				{
 					found = true;
@@ -576,12 +576,12 @@ void event_table::remove(string &signame, bool stop)
 					if(!stop)
 					{
 						if(sig->running)
-							static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read--;
+							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 						if(sig->paused)
-							static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
+							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 						if(sig->stopped)
-							static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read--;
-						static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeNumber_read--;
+							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
+						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read--;
 						delete sig->siglock;
 						v_event.erase(pos);
 						DEBUG_STREAM <<"event_table::"<< __func__<<": removed " << signame << endl;
@@ -709,7 +709,7 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 		for (unsigned int i=0 ; i<v_event.size() && !found ; i++)
 		{
 			sig = &v_event[i];
-			found = static_cast<Alarm_ns::Alarm *>(mydev)->compare_without_domain(sig->name,signame);
+			found = static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_without_domain(sig->name,signame);
 		}
 		veclock.readerOut();
 		//DEBUG_STREAM << "event_table::"<<__func__<<": signame="<<signame<<" found="<<(found ? "Y" : "N") << " start="<<(start ? "Y" : "N")<< endl;
@@ -781,8 +781,8 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 			//	Add in vector
 			v_event.push_back(*signal);
 			delete signal;
-			static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeNumber_read++;
-			static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read++;
+			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read++;
+			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 			veclock.writerOut();
 			//DEBUG_STREAM << "event_table::"<<__func__<<": signame="<<signame<<" push_back signal"<< endl;
 		}
@@ -838,7 +838,7 @@ void event_table::subscribe_events()
 					continue;
 				}
 			}
-			sig->event_cb = new EventCallBack(static_cast<Alarm_ns::Alarm *>(mydev));
+			sig->event_cb = new EventCallBack(static_cast<AlarmHandler_ns::AlarmHandler *>(mydev));
 			sig->first  = true;
 			sig->first_err  = true;
 			DEBUG_STREAM << "event_table::"<<__func__<<":Subscribing for " << sig->name << " " << (sig->first ? "FIRST" : "NOT FIRST") << endl;
@@ -910,7 +910,7 @@ void event_table::start(string &signame)
 			{
 				if(v_event[i].stopped)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 					try
 					{
 						add(signame, contexts, NOTHING, true);
@@ -928,8 +928,8 @@ void event_table::start(string &signame)
 				}
 				v_event[i].running=true;
 				if(v_event[i].paused)
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read++;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 				v_event[i].paused=false;
 				v_event[i].stopped=false;
 			}
@@ -940,9 +940,9 @@ void event_table::start(string &signame)
 	for (unsigned int i=0 ; i<v_event.size() ; i++)
 	{
 #ifndef _MULTI_TANGO_HOST
-		if (static_cast<Alarm_ns::Alarm *>(mydev)->compare_without_domain(v_event[i].name,signame))
+		if (static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_without_domain(v_event[i].name,signame))
 #else
-		if (!static_cast<Alarm_ns::Alarm *>(mydev)->compare_tango_names(v_event[i].name,signame))
+		if (!static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->compare_tango_names(v_event[i].name,signame))
 #endif
 		{
 			v_event[i].siglock->writerIn();
@@ -950,7 +950,7 @@ void event_table::start(string &signame)
 			{
 				if(v_event[i].stopped)
 				{
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read--;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 					try
 					{
 						add(signame, contexts, NOTHING, true);
@@ -968,8 +968,8 @@ void event_table::start(string &signame)
 				}
 				v_event[i].running=true;
 				if(v_event[i].paused)
-					static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read++;
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 				v_event[i].paused=false;
 				v_event[i].stopped=false;
 			}
@@ -997,7 +997,7 @@ void event_table::start_all()
 			if(v_event[i].stopped)
 			{
 				string signame = v_event[i].name;
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStoppedNumber_read--;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 				try
 				{
 					add(signame, contexts, NOTHING, true);
@@ -1015,8 +1015,8 @@ void event_table::start_all()
 			}
 			v_event[i].running=true;
 			if(v_event[i].paused)
-				static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributePausedNumber_read--;
-			static_cast<Alarm_ns::Alarm *>(mydev)->attr_AttributeStartedNumber_read++;
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
+			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 			v_event[i].paused=false;
 			v_event[i].stopped=false;
 		}
@@ -1073,7 +1073,7 @@ void event_table::put_signal_property()
 	//ReaderLock lock(veclock);
 	if (action>NOTHING)
 	{
-		static_cast<Alarm_ns::Alarm *>(mydev)->put_signal_property();
+		static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->put_signal_property();
 		if(action >= UPDATE_PROP)
 			action--;
 	}
@@ -1179,7 +1179,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 		e.msg = o.str();
 		//cerr << o.str() << endl;		
 	}
-	static_cast<Alarm_ns::Alarm *>(mydev)->evlist.push_back(e);
+	static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->evlist.push_back(e);
 }  /* push_event() */
 
 void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type)

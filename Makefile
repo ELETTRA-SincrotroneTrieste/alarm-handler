@@ -1,4 +1,4 @@
-NAME_SRV = alarm-srv
+NAME_SRV = alarmhandler-srv
 
 
 

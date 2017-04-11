@@ -41,16 +41,16 @@ static const char *RcsId = "$Header: /home/cvsadm/cvsroot/fermi/servers/hdb++/hd
 //-=============================================================================
 
 
-#include "Alarm.h"
+#include "AlarmHandler.h"
 #include "event_table.h"
 
 
-namespace Alarm_ns
+namespace AlarmHandler_ns
 {
 
 //=============================================================================
 //=============================================================================
-SubscribeThread::SubscribeThread(Alarm *dev):Tango::LogAdapter(dev)
+SubscribeThread::SubscribeThread(AlarmHandler *dev):Tango::LogAdapter(dev)
 {
 	alarm_dev = dev;
 	period = 1;

@@ -42,7 +42,7 @@
 
 #include <omnithread.h>
 #include <tango.h>
-#include "Alarm.h"
+#include "AlarmHandler.h"
 
 struct cmd_t
 {

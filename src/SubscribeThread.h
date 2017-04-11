@@ -52,11 +52,11 @@
  //	constants definitions here.
  //-----------------------------------------------
 
-namespace Alarm_ns
+namespace AlarmHandler_ns
 {
 
 //class ArchiveCB;
-class Alarm;
+class AlarmHandler;
 
 class SubscribeThread;
 
@@ -75,12 +75,12 @@ private:
 	/**
 	 *	HdbDevice object
 	 */
-	Alarm	*alarm_dev;
+	AlarmHandler	*alarm_dev;
 
 
 public:
 	int			period;
-	SubscribeThread(Alarm *dev);
+	SubscribeThread(AlarmHandler *dev);
 	void updateProperty();
 	/**
 	 *	Execute the thread loop.

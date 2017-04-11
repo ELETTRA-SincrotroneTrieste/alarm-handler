@@ -21,7 +21,7 @@
 
 #include <omnithread.h>
 #include <tango.h>
-#include <Alarm.h>
+#include <AlarmHandler.h>
 
 #define ALARM_THREAD_EXIT				"alarm_thread_exit"
 #define ALARM_THREAD_EXIT_VALUE	-100
@@ -30,13 +30,13 @@
 
 class alarm_thread : public omni_thread {
 	public:
-		alarm_thread(Alarm_ns::Alarm *p);
+		alarm_thread(AlarmHandler_ns::AlarmHandler *p);
 		~alarm_thread();
 		//int period;
 	protected:
 		void run(void *);
 	private:
-		Alarm_ns::Alarm *p_Alarm;
+		AlarmHandler_ns::AlarmHandler *p_Alarm;
 };
 
 #endif	/* ALARM_THREAD_H */

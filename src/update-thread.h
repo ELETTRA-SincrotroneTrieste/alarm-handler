@@ -22,16 +22,16 @@
 
 #include <omnithread.h>
 #include <tango.h>
-#include <Alarm.h>
+#include <AlarmHandler.h>
 
 class update_thread : public omni_thread {
 	public:
-		update_thread(Alarm_ns::Alarm *p);
+		update_thread(AlarmHandler_ns::AlarmHandler *p);
 		~update_thread();
 	protected:
 		void run(void *);
 	private:
-		Alarm_ns::Alarm *p_Alarm;
+		AlarmHandler_ns::AlarmHandler *p_Alarm;
 };
 
 #endif	/* UPDATE_THREAD_H */
