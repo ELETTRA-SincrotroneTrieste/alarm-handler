@@ -497,7 +497,7 @@ private:
 #if 0
 	void init_alarms(map< string,vector<string> > &alarm_events);
 #endif
-	void add_alarm(alarm_t& a) throw(string&);
+	void add_alarm(alarm_t& a, bool starting=false) throw(string&);
 	void add_event(alarm_t& a, vector<string> &evn) throw(string&);
 #if 0
 	void subscribe_event(alarm_t& a, EventCallBack& ecb, vector<string> &evn) throw(string&);

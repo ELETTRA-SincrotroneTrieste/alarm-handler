@@ -203,7 +203,8 @@ void AlarmHandler::delete_device()
 	e.value.push_back(ALARM_THREAD_EXIT_VALUE);
 	e.value.push_back(ALARM_THREAD_EXIT_VALUE);
 	evlist.push_back(e);
-	//alarms.del_rwlock(); moved in alarm_table destructor
+	if(!shutting_down && !restarting)
+		alarms.del_rwlock(); //otherwise moved in alarm_table destructor
 	alarms.stop_cmdthread();
 	sleep(1);		//wait for alarm_thread and log_thread to exit
 	//delete almloop;
@@ -221,7 +222,7 @@ void AlarmHandler::delete_device()
 		i->second.dp_n = NULL;
 	}	
 
-	if(restarting || shutting_down) //TODO: handle init, restart device
+	if(0/*shutting_down*/) //TODO: no need to remove attributes when shutting down ?
 	{
 		for(alarm_container_t::iterator it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
 		{
@@ -233,6 +234,8 @@ void AlarmHandler::delete_device()
 			{
 				INFO_STREAM << __func__<<": exception removing " << it->second.attr_name << ": " << e.errors[0].desc;
 			}
+#if _FORMULA_ATTR
+			CORBA::string_free(*(it->second.attr_value_formula));
 			try
 			{
 				remove_AlarmFormula_dynamic_attribute(it->second.attr_name_formula);
@@ -241,6 +244,7 @@ void AlarmHandler::delete_device()
 			{
 				INFO_STREAM << __func__<<": exception removing " << it->second.attr_name_formula << ": " << e.errors[0].desc;
 			}
+#endif
 		}
 	}
 	/*
@@ -297,6 +301,7 @@ void AlarmHandler::delete_device()
 	delete dslock;
 	delete events;
 	DEBUG_STREAM << "AlarmHandler::delete_device(): saved AlarmStatus in properties!!" << endl;
+	instanceCounter--;
 	//Tango::leavefunc();
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::delete_device
@@ -494,7 +499,7 @@ void AlarmHandler::init_device()
 		temp_evn.clear();
 		try {		
 			load_alarm(*it_al, tmp_alm, temp_evn);
-			add_alarm(tmp_alm);
+			add_alarm(tmp_alm,/*starting*/true);
 			tmp_alm_name_lst.push_back(tmp_alm.name);
 		} catch(Tango::DevFailed& e)
 		{
@@ -1333,10 +1338,12 @@ void AlarmHandler::add_dynamic_attributes()
 			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
 			i->second.attr_value = attr_value;
 			i->second.attr_name_formula = i->second.attr_name + string("Formula");
+#if _FORMULA_ATTR
 			add_AlarmFormula_dynamic_attribute(i->second.attr_name_formula);
 			Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(i->second.attr_name_formula);
-			*attr_value_formula = CORBA::string_dup(i->second.formula.c_str());
+			*attr_value_formula = Tango::string_dup(i->second.formula.c_str());
 			i->second.attr_value_formula = attr_value_formula;
+#endif
 		}
 	}
 	alarms.vlock->readerOut();
@@ -3070,22 +3077,26 @@ void AlarmHandler::init_events(vector<string> &evn)
 		}
 	}  /* if */
 }
-void AlarmHandler::add_alarm(alarm_t& a) throw(string&)
+void AlarmHandler::add_alarm(alarm_t& a, bool starting) throw(string&)
 {
 	alarms.push_back(a);
 	DEBUG_STREAM << "AlarmHandler::add_alarm(): added alarm '" \
 							 << a.name << "'" << endl;
+	if(!starting)
+	{
+		alarm_container_t::iterator italm = alarms.v_alarm.find(a.name);
+		add_AlarmState_dynamic_attribute(italm->second.attr_name);
+		Tango::DevEnum *attr_value = get_AlarmState_data_ptr(italm->second.attr_name);
+		italm->second.attr_value = attr_value;
 
-	alarm_container_t::iterator italm = alarms.v_alarm.find(a.name);
-	add_AlarmState_dynamic_attribute(italm->second.attr_name);
-	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(italm->second.attr_name);
-	italm->second.attr_value = attr_value;
-
-	italm->second.attr_name_formula = italm->second.attr_name + string("Formula");
-	add_AlarmFormula_dynamic_attribute(italm->second.attr_name_formula);
-	Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(italm->second.attr_name_formula);
-	*attr_value_formula = CORBA::string_dup(italm->second.formula.c_str());
-	italm->second.attr_value_formula = attr_value_formula;
+		italm->second.attr_name_formula = italm->second.attr_name + string("Formula");
+#if _FORMULA_ATTR
+		add_AlarmFormula_dynamic_attribute(italm->second.attr_name_formula);
+		Tango::DevString *attr_value_formula = get_AlarmFormula_data_ptr(italm->second.attr_name_formula);
+		*attr_value_formula = Tango::string_dup(italm->second.formula.c_str());
+		italm->second.attr_value_formula = attr_value_formula;
+#endif
+	}
 
 }
 void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
@@ -3713,6 +3724,8 @@ bool AlarmHandler::remove_alarm(string& s) throw(string&)
 			o << "AlarmHandler::" << __func__<<": attname '" << i->second.attr_name << "' exception removing attribute err="<<e.errors[0].desc ;
 			INFO_STREAM << o.str() << endl;
 		}
+#if _FORMULA_ATTR
+		CORBA::string_free(*(i->second.attr_value_formula));
 		try
 		{
 			remove_AlarmFormula_dynamic_attribute(i->second.attr_name_formula);
@@ -3723,6 +3736,7 @@ bool AlarmHandler::remove_alarm(string& s) throw(string&)
 			o << "AlarmHandler::" << __func__<<": attname '" << i->second.attr_name_formula << "' exception removing attribute err="<<e.errors[0].desc ;
 			INFO_STREAM << o.str() << endl;
 		}
+#endif
 		/*
 		 * remove this alarm from alarm table
 		 */
