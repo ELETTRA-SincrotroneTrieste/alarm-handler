@@ -78,6 +78,18 @@
 #define ON_COMMAND_KEY		"on_command"
 #define OFF_COMMAND_KEY		"off_command"
 #define ENABLED_KEY			"enabled"
+
+#define SILENT_TIME_REMAINING_KEY		"silent_time_remaining"
+#define SHELVED_KEY			"shelved"
+#define ACKNOWLEDGED_KEY	"ack"
+#define ATTR_VALUES_KEY		"attr_values"
+#define VALUE_KEY			"value"
+#define ON_COUNTER_KEY		"on_counter"
+#define OFF_COUNTER_KEY		"off_counter"
+#define QUALITY_KEY			"quality"
+#define EXCEPTION_KEY		"exception"
+#define AUDIBLE_KEY			"audible"
+#define FREQ_COUNTER_KEY	"freq_counter"
 #define KEY(S_VAL)  		S_VAL "="
 
 #define SEP					";"

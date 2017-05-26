@@ -293,6 +293,7 @@ class alarm_t {
 		Tango::TimeVal ts_time_silenced;	//says when it has been silenced
 		int silent_time;			//minutes max to be silent
 		int silenced;				//minutes still to be silent
+		string attr_values;		//attr_values
 		string attr_values_delay;	//attr_values of first occurrence of alarm waiting for on or off delay
 		string cmd_name_a;					//action to execute: when NORMAL -> ALARM, cmd_name = cmd_dp_a/cmd_action_a
 		string cmd_dp_a;						//device proxy part of cmd_name_a

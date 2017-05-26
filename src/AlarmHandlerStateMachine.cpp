@@ -438,6 +438,36 @@ bool AlarmHandler::is_ResetStatistics_allowed(TANGO_UNUSED(const CORBA::Any &any
 	return true;
 }
 
+//--------------------------------------------------------
+/**
+ *	Method      : AlarmHandler::is_StopNew_allowed()
+ *	Description : Execution allowed for StopNew attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_StopNew_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for StopNew command.
+	/*----- PROTECTED REGION ID(AlarmHandler::StopNewStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::StopNewStateAllowed
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : AlarmHandler::is_GetAlarmInfo_allowed()
+ *	Description : Execution allowed for GetAlarmInfo attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_GetAlarmInfo_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for GetAlarmInfo command.
+	/*----- PROTECTED REGION ID(AlarmHandler::GetAlarmInfoStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::GetAlarmInfoStateAllowed
+	return true;
+}
+
 
 /*----- PROTECTED REGION ID(AlarmHandler::AlarmHandlerStateAllowed.AdditionalMethods) ENABLED START -----*/
 

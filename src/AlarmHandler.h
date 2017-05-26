@@ -450,6 +450,22 @@ public:
 	 */
 	virtual void reset_statistics();
 	virtual bool is_ResetStatistics_allowed(const CORBA::Any &any);
+	/**
+	 *	Command StopNew related method
+	 *	Description: Stop audible indications on the GUI
+	 *
+	 */
+	virtual void stop_new();
+	virtual bool is_StopNew_allowed(const CORBA::Any &any);
+	/**
+	 *	Command GetAlarmInfo related method
+	 *	Description: Returns the complete attribute info as an array of key=value
+	 *
+	 *	@param argin Alarm name
+	 *	@returns Complete attribute info as an array of key=value
+	 */
+	virtual Tango::DevVarStringArray *get_alarm_info(Tango::DevString argin);
+	virtual bool is_GetAlarmInfo_allowed(const CORBA::Any &any);
 
 
 	//--------------------------------------------------------

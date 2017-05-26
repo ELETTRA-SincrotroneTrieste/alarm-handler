@@ -368,6 +368,43 @@ CORBA::Any *ResetStatisticsClass::execute(Tango::DeviceImpl *device, TANGO_UNUSE
 	return new CORBA::Any();
 }
 
+//--------------------------------------------------------
+/**
+ * method : 		StopNewClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *StopNewClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const CORBA::Any &in_any))
+{
+	cout2 << "StopNewClass::execute(): arrived" << endl;
+	((static_cast<AlarmHandler *>(device))->stop_new());
+	return new CORBA::Any();
+}
+
+//--------------------------------------------------------
+/**
+ * method : 		GetAlarmInfoClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *GetAlarmInfoClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
+{
+	cout2 << "GetAlarmInfoClass::execute(): arrived" << endl;
+	Tango::DevString argin;
+	extract(in_any, argin);
+	return insert((static_cast<AlarmHandler *>(device))->get_alarm_info(argin));
+}
+
 
 //===================================================================
 //	Properties management
@@ -1035,6 +1072,24 @@ void AlarmHandlerClass::command_factory()
 			"",
 			Tango::OPERATOR);
 	command_list.push_back(pResetStatisticsCmd);
+
+	//	Command StopNew
+	StopNewClass	*pStopNewCmd =
+		new StopNewClass("StopNew",
+			Tango::DEV_VOID, Tango::DEV_VOID,
+			"",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pStopNewCmd);
+
+	//	Command GetAlarmInfo
+	GetAlarmInfoClass	*pGetAlarmInfoCmd =
+		new GetAlarmInfoClass("GetAlarmInfo",
+			Tango::DEV_STRING, Tango::DEVVAR_STRINGARRAY,
+			"Alarm name",
+			"Complete attribute info as an array of key=value",
+			Tango::OPERATOR);
+	command_list.push_back(pGetAlarmInfoCmd);
 
 	/*----- PROTECTED REGION ID(AlarmHandlerClass::command_factory_after) ENABLED START -----*/
 	

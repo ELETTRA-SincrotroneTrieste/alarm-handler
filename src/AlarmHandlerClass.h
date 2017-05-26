@@ -499,6 +499,52 @@ public:
 	{return (static_cast<AlarmHandler *>(dev))->is_ResetStatistics_allowed(any);}
 };
 
+//	Command StopNew class definition
+class StopNewClass : public Tango::Command
+{
+public:
+	StopNewClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	StopNewClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~StopNewClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<AlarmHandler *>(dev))->is_StopNew_allowed(any);}
+};
+
+//	Command GetAlarmInfo class definition
+class GetAlarmInfoClass : public Tango::Command
+{
+public:
+	GetAlarmInfoClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	GetAlarmInfoClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~GetAlarmInfoClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<AlarmHandler *>(dev))->is_GetAlarmInfo_allowed(any);}
+};
+
 
 /**
  *	The AlarmHandlerClass singleton definition
