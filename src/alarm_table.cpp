@@ -369,15 +369,14 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		found->second.ex_origin = res.ex_origin;
 		bool status_on_delay;
 		if(found->second.on_delay > 0)		//if enabled on delay
-			status_on_delay = ((int)(res.value)) && (found->second.on_counter >= 1) && ((ts.tv_sec - found->second.on_delay) > found->second.ts_on_delay.tv_sec);	//formula gives true and on delay has passed
+			status_on_delay = ((bool)(res.value != 0)) && (found->second.on_counter >= 1) && ((ts.tv_sec - found->second.on_delay) > found->second.ts_on_delay.tv_sec);	//formula gives true and on delay has passed
 		else
-			status_on_delay = (int)(res.value);
+			status_on_delay = (bool)(res.value != 0);
 		bool status_off_delay;
 		if(found->second.off_delay > 0)		//if enabled off delay
-			status_off_delay = (!(int)(res.value)) && (found->second.off_counter >= 1) && ((ts.tv_sec - found->second.off_delay) > found->second.ts_off_delay.tv_sec);	//formula gives false and off delay has passed
+			status_off_delay = (!(bool)(res.value != 0)) && (found->second.off_counter >= 1) && ((ts.tv_sec - found->second.off_delay) > found->second.ts_off_delay.tv_sec);	//formula gives false and off delay has passed
 		else
-			status_off_delay = !(int)(res.value);
-
+			status_off_delay = !(bool)(res.value != 0);
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also on delay
 		//or
@@ -385,12 +384,12 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		if((status_on_delay && (found->second.stat == S_NORMAL)) || (status_off_delay && (found->second.stat == S_ALARM)))
 		{
 			ret_changed=true;
-			if((int)(res.value))
+			if((bool)(res.value != 0))
 				found->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM -> NACK
 			//a.grp = found->second.grp2str();
 			//a.msg = (int)(res.value) ? found->second.msg : "";
 			found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts only if status changed
-			if((int)(res.value))
+			if((bool)(res.value != 0))
 			{
 				found->second.is_new = 1;		//here set this alarm as new, read attribute set it to 0	//12-06-08: StopNew command set it to 0
 				if(found->second.dp_a && ((ts.tv_sec - startup_complete.tv_sec) > 10))		//action from S_NORMAL to S_ALARM
@@ -492,7 +491,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			found->second.stat = S_NORMAL;
 		}
 
-		if((int)(res.value)) {
+		if((bool)(res.value != 0)) {
 			found->second.on_counter++;
 			found->second.off_counter = 0;
 		} else {
