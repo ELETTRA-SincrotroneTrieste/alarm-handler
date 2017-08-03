@@ -90,6 +90,7 @@
 #define EXCEPTION_KEY		"exception"
 #define AUDIBLE_KEY			"audible"
 #define FREQ_COUNTER_KEY	"freq_counter"
+#define ALARM_TIME_KEY		"alarm_time"
 #define KEY(S_VAL)  		S_VAL "="
 
 #define SEP					";"
