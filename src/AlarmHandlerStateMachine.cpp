@@ -238,6 +238,22 @@ bool AlarmHandler::is_frequencyAlarms_allowed(TANGO_UNUSED(Tango::AttReqType typ
 
 //--------------------------------------------------------
 /**
+ *	Method      : AlarmHandler::is_alarmSummary_allowed()
+ *	Description : Execution allowed for alarmSummary attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_alarmSummary_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for alarmSummary attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmSummaryStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmSummaryStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
  *	Method      : AlarmHandler::is_AlarmState_allowed()
  *	Description : Execution allowed for AlarmState attribute
  */

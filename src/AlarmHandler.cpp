@@ -125,6 +125,7 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.29 $";
 //  silencedAlarms              |  Tango::DevString	Spectrum  ( max = 10000)
 //  listAlarms                  |  Tango::DevString	Spectrum  ( max = 10000)
 //  frequencyAlarms             |  Tango::DevDouble	Spectrum  ( max = 10000)
+//  alarmSummary                |  Tango::DevString	Spectrum  ( max = 10000)
 //================================================================
 
 namespace AlarmHandler_ns
@@ -318,6 +319,7 @@ void AlarmHandler::delete_device()
 	delete[] attr_silencedAlarms_read;
 	delete[] attr_listAlarms_read;
 	delete[] attr_frequencyAlarms_read;
+	delete[] attr_alarmSummary_read;
 }
 
 //--------------------------------------------------------
@@ -379,6 +381,7 @@ void AlarmHandler::init_device()
 	attr_silencedAlarms_read = new Tango::DevString[10000];
 	attr_listAlarms_read = new Tango::DevString[10000];
 	attr_frequencyAlarms_read = new Tango::DevDouble[10000];
+	attr_alarmSummary_read = new Tango::DevString[10000];
 	/*----- PROTECTED REGION ID(AlarmHandler::init_device) ENABLED START -----*/
 	
 	//	Initialize device
@@ -1236,6 +1239,24 @@ void AlarmHandler::read_frequencyAlarms(Tango::Attribute &attr)
 	
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_frequencyAlarms
 }
+//--------------------------------------------------------
+/**
+ *	Read attribute alarmSummary related method
+ *	Description: 
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void AlarmHandler::read_alarmSummary(Tango::Attribute &attr)
+{
+	DEBUG_STREAM << "AlarmHandler::read_alarmSummary(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(AlarmHandler::read_alarmSummary) ENABLED START -----*/
+	//	Set the attribute value
+	attr.set_value(attr_alarmSummary_read, alarmSummary_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_alarmSummary
+}
 
 //--------------------------------------------------------
 /**
@@ -1494,6 +1515,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -1504,6 +1526,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 
 	} catch(Tango::DevFailed& e)
 	{
@@ -1811,6 +1834,7 @@ void AlarmHandler::remove(Tango::DevString argin)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -1821,6 +1845,7 @@ void AlarmHandler::remove(Tango::DevString argin)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -1970,6 +1995,7 @@ void AlarmHandler::stop_audible()
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -1980,6 +2006,7 @@ void AlarmHandler::stop_audible()
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2106,6 +2133,7 @@ void AlarmHandler::silence(const Tango::DevVarStringArray *argin)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2116,6 +2144,7 @@ void AlarmHandler::silence(const Tango::DevVarStringArray *argin)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2397,6 +2426,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2407,6 +2437,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2575,6 +2606,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
 		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2583,6 +2615,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
 		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2687,6 +2720,7 @@ void AlarmHandler::enable(Tango::DevString argin)
 		push_change_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
 		push_change_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2695,6 +2729,7 @@ void AlarmHandler::enable(Tango::DevString argin)
 		push_archive_event("outOfServiceAlarms",&attr_outOfServiceAlarms_read[0], outOfServiceAlarms_sz);
 		push_archive_event("silencedAlarms",&attr_silencedAlarms_read[0], silencedAlarms_sz);
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2813,6 +2848,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2823,6 +2859,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -2905,6 +2942,7 @@ void AlarmHandler::stop_new()
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -2915,6 +2953,7 @@ void AlarmHandler::stop_new()
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -3597,6 +3636,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -3607,6 +3647,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	}
 	else
 	{
@@ -3808,6 +3849,7 @@ void AlarmHandler::timer_update()
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -3818,6 +3860,7 @@ void AlarmHandler::timer_update()
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -4739,18 +4782,24 @@ void AlarmHandler::prepare_alarm_attr()
 	normalAlarms_sz=0;
 	silencedAlarms_sz=0;
 	listAlarms_sz=0;
+	alarmSummary_sz=0;
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
+		ostringstream alm_summary;
+
+		alm_summary << KEY(NAME_KEY) << ai->first << SEP;
 		if(ai->second.enabled == false)
 		{
 			outOfServiceAlarms_read.push_back(ai->second.name);
 			attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = const_cast<char*>(outOfServiceAlarms_read[outOfServiceAlarms_sz].c_str());
 			outOfServiceAlarms_sz++;
+			alm_summary << KEY(VALUE_KEY) << "OOSRV" << SEP;	//TODO: string or enum value?
 		}
 		else if(ai->second.shelved)
 		{
 			shelvedAlarms_read.push_back(ai->second.name);
 			attr_shelvedAlarms_read[shelvedAlarms_sz] = const_cast<char*>(shelvedAlarms_read[shelvedAlarms_sz].c_str());
 			shelvedAlarms_sz++;
+			alm_summary << KEY(VALUE_KEY) << "SHLVD" << SEP;	//TODO: string or enum value?
 		}
 		else
 		{
@@ -4759,24 +4808,28 @@ void AlarmHandler::prepare_alarm_attr()
 				acknowledgedAlarms_read.push_back(ai->second.name);
 				attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = const_cast<char*>(acknowledgedAlarms_read[acknowledgedAlarms_sz].c_str());
 				acknowledgedAlarms_sz++;
+				alm_summary << KEY(VALUE_KEY) << "ACKED" << SEP;	//TODO: string or enum value?
 			}
 			else if(ai->second.stat == S_ALARM && ai->second.ack == NOT_ACK)
 			{
 				unacknowledgedAlarms_read.push_back(ai->second.name);
 				attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = const_cast<char*>(unacknowledgedAlarms_read[unacknowledgedAlarms_sz].c_str());
 				unacknowledgedAlarms_sz++;
+				alm_summary << KEY(VALUE_KEY) << "UNACK" << SEP;	//TODO: string or enum value?
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == NOT_ACK)
 			{
 				unacknowledgedNormalAlarms_read.push_back(ai->second.name);
 				attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = const_cast<char*>(unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz].c_str());
 				unacknowledgedNormalAlarms_sz++;
+				alm_summary << KEY(VALUE_KEY) << "RTNUN" << SEP;	//TODO: string or enum value?
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == ACK)
 			{
 				normalAlarms_read.push_back(ai->second.name);
 				attr_normalAlarms_read[normalAlarms_sz] = const_cast<char*>(normalAlarms_read[normalAlarms_sz].c_str());
 				normalAlarms_sz++;
+				alm_summary << KEY(VALUE_KEY) << "NORM" << SEP;	//TODO: string or enum value?
 			}
 			if(ai->second.silenced > 0)
 			{
@@ -4785,6 +4838,23 @@ void AlarmHandler::prepare_alarm_attr()
 				silencedAlarms_sz++;
 			}
 		}
+		alm_summary << KEY(ALARM_TIME_KEY) << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec << SEP;
+		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg << SEP;	//TODO: escape ';'
+		alm_summary << KEY(ACKNOWLEDGED_KEY) << (ai->second.ack== ACK ? 1 : 0) << SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
+		alm_summary << KEY(ENABLED_KEY) << (ai->second.enabled ? 1 : 0) << SEP;
+		alm_summary << KEY(SHELVED_KEY) << (ai->second.shelved ? 1 : 0) << SEP;
+		alm_summary << KEY(LEVEL_KEY) << ai->second.lev << SEP;
+		alm_summary << KEY(GROUP_KEY) << ai->second.grp2str() << SEP;
+		alm_summary << KEY(ON_COUNTER_KEY) << ai->second.on_counter << SEP;
+		alm_summary << KEY(OFF_COUNTER_KEY) << ai->second.off_counter << SEP;
+		alm_summary << KEY(FREQ_COUNTER_KEY) << ai->second.freq_counter << SEP;
+		alm_summary << KEY(QUALITY_KEY) << ai->second.quality << SEP;
+		ostringstream tmp_ex;
+		tmp_ex.str("");
+		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
+			tmp_ex << "Reason: '" << ai->second.ex_reason << "' Desc: '" << ai->second.ex_desc << "' Origin: '" << ai->second.ex_origin << "'";
+		alm_summary << KEY(EXCEPTION_KEY) << tmp_ex.str() << SEP;
+		alm_summary << KEY(SILENT_TIME_REMAINING_KEY) << ai->second.silenced << SEP;
 		attr_frequencyAlarms_read[listAlarms_sz] = ai->second.freq_counter;
 		listAlarms_read.push_back(ai->second.name);
 		attr_listAlarms_read[listAlarms_sz] = const_cast<char*>(listAlarms_read[listAlarms_sz].c_str());
@@ -4792,6 +4862,8 @@ void AlarmHandler::prepare_alarm_attr()
 
 		if(!is_audible && ai->second.is_new && ai->second.silenced <= 0 && ai->second.enabled && !ai->second.shelved)
 			is_audible = true;
+		alm_summary << KEY(AUDIBLE_KEY) << (is_audible ? 1 : 0) << SEP;
+		alm_summary << KEY(ATTR_VALUES_KEY) << ai->second.attr_values << SEP;
 
 		if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
 			/*
@@ -4878,6 +4950,9 @@ void AlarmHandler::prepare_alarm_attr()
 			}  /* if */
 			alarmedlock->readerOut();
 		}  /* if else if */
+		alarmSummary_read[alarmSummary_sz] = alm_summary.str();
+		attr_alarmSummary_read[alarmSummary_sz] = const_cast<char*>(alarmSummary_read[alarmSummary_sz].c_str());
+		alarmSummary_sz++;
 	}  /* for */
 	*attr_audibleAlarm_read = is_audible;
 	alarms.vlock->readerOut();

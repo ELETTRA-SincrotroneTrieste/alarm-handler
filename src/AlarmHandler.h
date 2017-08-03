@@ -112,6 +112,7 @@ public:
 	vector<string> outOfServiceAlarms_read;
 	vector<string> silencedAlarms_read;
 	vector<string> listAlarms_read;
+	string alarmSummary_read[10000];
 
 	size_t normalAlarms_sz;
 	size_t unacknowledgedAlarms_sz;
@@ -121,6 +122,7 @@ public:
 	size_t outOfServiceAlarms_sz;
 	size_t silencedAlarms_sz;
 	size_t listAlarms_sz;
+	size_t alarmSummary_sz;
 
 	double last_statistics_reset_time;
 
@@ -149,6 +151,7 @@ public:
 	Tango::DevString	*attr_silencedAlarms_read;
 	Tango::DevString	*attr_listAlarms_read;
 	Tango::DevDouble	*attr_frequencyAlarms_read;
+	Tango::DevString	*attr_alarmSummary_read;
 
 //	Constructors and destructors
 public:
@@ -318,6 +321,15 @@ public:
  */
 	virtual void read_frequencyAlarms(Tango::Attribute &attr);
 	virtual bool is_frequencyAlarms_allowed(Tango::AttReqType type);
+/**
+ *	Attribute alarmSummary related methods
+ *	Description: 
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_alarmSummary(Tango::Attribute &attr);
+	virtual bool is_alarmSummary_allowed(Tango::AttReqType type);
 
 //	Dynamic attribute methods
 public:

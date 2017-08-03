@@ -929,6 +929,32 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	frequencyalarms->set_archive_event(true, true);
 	att_list.push_back(frequencyalarms);
 
+	//	Attribute : alarmSummary
+	alarmSummaryAttrib	*alarmsummary = new alarmSummaryAttrib();
+	Tango::UserDefaultAttrProp	alarmsummary_prop;
+	//	description	not set for alarmSummary
+	//	label	not set for alarmSummary
+	//	unit	not set for alarmSummary
+	//	standard_unit	not set for alarmSummary
+	//	display_unit	not set for alarmSummary
+	//	format	not set for alarmSummary
+	//	max_value	not set for alarmSummary
+	//	min_value	not set for alarmSummary
+	//	max_alarm	not set for alarmSummary
+	//	min_alarm	not set for alarmSummary
+	//	max_warning	not set for alarmSummary
+	//	min_warning	not set for alarmSummary
+	//	delta_t	not set for alarmSummary
+	//	delta_val	not set for alarmSummary
+	
+	alarmsummary->set_default_properties(alarmsummary_prop);
+	//	Not Polled
+	alarmsummary->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	alarmsummary->set_change_event(true, true);
+	alarmsummary->set_archive_event(true, true);
+	att_list.push_back(alarmsummary);
+
 
 	//	Create a list of static attributes
 	create_static_attribute_list(get_class_attr()->get_attr_list());

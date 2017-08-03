@@ -210,6 +210,19 @@ public:
 		{return (static_cast<AlarmHandler *>(dev))->is_frequencyAlarms_allowed(ty);}
 };
 
+//	Attribute alarmSummary class definition
+class alarmSummaryAttrib: public Tango::SpectrumAttr
+{
+public:
+	alarmSummaryAttrib():SpectrumAttr("alarmSummary",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~alarmSummaryAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<AlarmHandler *>(dev))->read_alarmSummary(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmSummary_allowed(ty);}
+};
+
 
 //=========================================
 //	Define classes for dynamic attributes
