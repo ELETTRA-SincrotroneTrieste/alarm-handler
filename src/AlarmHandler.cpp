@@ -5125,17 +5125,27 @@ void AlarmHandler::put_signal_property()
 	Tango::DbData	data;
 	data.push_back(Tango::DbDatum("AlarmList"));
 	data[0]  <<  prop;
+	Tango::Database *db;
+	try
+	{
 #ifndef _USE_ELETTRA_DB_RW
-	Tango::Database *db = new Tango::Database();
+	db = new Tango::Database();
 #else
 	//save properties using host_rw e port_rw to connect to database
-	Tango::Database *db;
 	if(host_rw != "")
 		db = new Tango::Database(host_rw,port_rw);
 	else
 		db = new Tango::Database();
 	DEBUG_STREAM << __func__<<": connecting to db "<<host_rw<<":"<<port_rw;
 #endif
+	}
+	catch(Tango::DevFailed &e)
+	{
+		stringstream o;
+		o << " Error connecting to Tango DataBase='" << e.errors[0].desc << "'";
+		WARN_STREAM << __FUNCTION__<< o.str();
+		return;
+	}
 	try
 	{
 		DECLARE_TIME_VAR	t0, t1;
