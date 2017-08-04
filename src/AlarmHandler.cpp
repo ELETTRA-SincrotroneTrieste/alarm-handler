@@ -5052,6 +5052,8 @@ string AlarmHandler::remove_domain(string str)
 			start = 8;	//tango:// len
 		}
 		string::size_type	end2 = str.find(":", start);
+		if(end2 == string::npos) //not fqdn, so no tango host in the name
+			return str;
 		if(end1 > end2)	//'.' not in the tango host part
 			return str;
 		string th = str.substr(0, end1);
