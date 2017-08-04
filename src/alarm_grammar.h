@@ -231,7 +231,7 @@ struct alarm_parse : public grammar<alarm_parse>
             	=	alnum_p | '.' | '_'  | '-' | '+'				//any alpha numeric char plus '.', '_', '-', '+'
             	;	
             symbol_attr_name
-            	=	alnum_p | '_'									//any alpha numeric char plus '_'
+            	=	alnum_p | '.' | '_'  | '-'						//any alpha numeric char plus '_'
             	;
             name
             	=	(+symbol) >> '/' >> (+symbol) 
