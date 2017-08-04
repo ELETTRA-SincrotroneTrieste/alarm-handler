@@ -275,26 +275,37 @@ void AlarmHandler::delete_device()
 	as << vs;
 	Tango::DbData	data_put;
 	data_put.push_back(as);
+	Tango::Database *db=NULL;
+	try
+	{
 #ifndef _USE_ELETTRA_DB_RW
-	Tango::Database *db = new Tango::Database();
-#else	
-	//salvataggio proprietà usando host_rw e port_rw per connettersi al database
-	Tango::Database *db;
-	if(host_rw != "")
-		db = new Tango::Database(host_rw,port_rw);
-	else
 		db = new Tango::Database();
+#else	
+		//salvataggio proprietà usando host_rw e port_rw per connettersi al database
+		if(host_rw != "")
+			db = new Tango::Database(host_rw,port_rw);
+		else
+			db = new Tango::Database();
 #endif
-	try {
-
-		db->put_device_property(get_name(), data_put);
 	}
 	catch(Tango::DevFailed &e)
 	{
-		ERROR_STREAM << __FUNCTION__<< " error saving properties='" << e.errors[0].desc << "'";
-	} 
-	delete db;
-	
+		stringstream o;
+		o << " Error connecting to Tango DataBase='" << e.errors[0].desc << "'";
+		WARN_STREAM << __FUNCTION__<< o.str();
+	}
+	if(db)
+	{
+		try {
+			db->put_device_property(get_name(), data_put);
+			DEBUG_STREAM << "AlarmHandler::delete_device(): saved AlarmStatus in properties!!" << endl;
+		}
+		catch(Tango::DevFailed &e)
+		{
+			ERROR_STREAM << __FUNCTION__<< " error saving properties='" << e.errors[0].desc << "'";
+		}
+		delete db;
+	}
 	/*
 	 * clear storage
 	 */
@@ -303,7 +314,7 @@ void AlarmHandler::delete_device()
 	delete internallock;
 	delete dslock;
 	delete events;
-	DEBUG_STREAM << "AlarmHandler::delete_device(): saved AlarmStatus in properties!!" << endl;
+
 	instanceCounter--;
 	//Tango::leavefunc();
 
@@ -389,22 +400,31 @@ void AlarmHandler::init_device()
 	
 #ifdef _USE_ELETTRA_DB_RW
 	host_rw = "";
-	Tango::Database *db = new Tango::Database();
+	Tango::Database *db=NULL;
 	try
 	{
-		Tango::DbData db_data;
-		db_data.push_back((Tango::DbDatum("Host")));
-		db_data.push_back((Tango::DbDatum("Port")));
-		db->get_property("Database",db_data);
- 
-		db_data[0] >> host_rw;
-		db_data[1] >> port_rw;
+		db = new Tango::Database();
 	}catch(Tango::DevFailed &e)
 	{
-		ERROR_STREAM << __FUNCTION__ << " Error reading Database property='" << e.errors[0].desc << "'";
+		ERROR_STREAM << __FUNCTION__ << " Error connecting to Tango DataBase='" << e.errors[0].desc << "'";
 	}
+	if(db)
+	{
+		try
+		{
+			Tango::DbData db_data;
+			db_data.push_back((Tango::DbDatum("Host")));
+			db_data.push_back((Tango::DbDatum("Port")));
+			db->get_property("Database",db_data);
 
-	delete db;
+			db_data[0] >> host_rw;
+			db_data[1] >> port_rw;
+		}catch(Tango::DevFailed &e)
+		{
+			ERROR_STREAM << __FUNCTION__ << " Error reading Database property='" << e.errors[0].desc << "'";
+		}
+		delete db;
+	}
 #endif
 
 	ds_num = 0;				//initialize number of lines returned by read_alarm
