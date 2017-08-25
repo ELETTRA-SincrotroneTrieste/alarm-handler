@@ -810,18 +810,18 @@ void alarm_table::save_alarm_conf_db(string att_name, string name, string status
 	Tango::DbDatum dbd_enabled(ENABLED_KEY);
 
 	Tango::DbData db_data;
-	dbd_att_name << 11;                               // Eleven properties for attribute "att_name"
+	dbd_att_name << (short int)11;                               // Eleven properties for attribute "att_name"
 	dbd_name << name;
 	dbd_formula << formula;
-	dbd_on_delay << on_delay;
-	dbd_off_delay << off_delay;
+	dbd_on_delay << (Tango::DevLong)on_delay;
+	dbd_off_delay << (Tango::DevLong)off_delay;
 	dbd_level << lev;
-	dbd_silence_time << silent_time;
+	dbd_silence_time << (Tango::DevLong)silent_time;
 	dbd_group << grp;
 	dbd_message << msg;
 	dbd_oncommand << cmd_a;
 	dbd_offcommand << cmd_n;
-	dbd_enabled << (enabled ? 1 : 0);
+	dbd_enabled << (enabled ? (short int)1 : (short int)0);
 
 	db_data.push_back(dbd_att_name);
 	db_data.push_back(dbd_name);
