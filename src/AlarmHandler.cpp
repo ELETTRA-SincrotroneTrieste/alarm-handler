@@ -317,7 +317,7 @@ void AlarmHandler::delete_device()
 
 	instanceCounter--;
 	//Tango::leavefunc();
-
+	delete prepare_alm_mtx;
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::delete_device
 	delete[] attr_audibleAlarm_read;
 	delete[] attr_StatisticsResetTime_read;
@@ -351,6 +351,7 @@ void AlarmHandler::init_device()
 	int dbPortint=0;	
 	abortflag = false;	
 	instanceCounter++;
+	prepare_alm_mtx = new omni_mutex();
 	events = new event_table(this);
 	thread = new SubscribeThread(this);
 	//because of static map<string, unsigned int> grp_str and of exception while subscribing
@@ -365,15 +366,6 @@ void AlarmHandler::init_device()
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
 	alarms.set_dev(this);
-
-	normalAlarms_read.reserve(MAX_ALARMS);
-	unacknowledgedAlarms_read.reserve(MAX_ALARMS);
-	acknowledgedAlarms_read.reserve(MAX_ALARMS);
-	unacknowledgedNormalAlarms_read.reserve(MAX_ALARMS);
-	shelvedAlarms_read.reserve(MAX_ALARMS);
-	outOfServiceAlarms_read.reserve(MAX_ALARMS);
-	silencedAlarms_read.reserve(MAX_ALARMS);
-	listAlarms_read.reserve(MAX_ALARMS);
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::init_device_before
 	
@@ -394,7 +386,17 @@ void AlarmHandler::init_device()
 	attr_frequencyAlarms_read = new Tango::DevDouble[10000];
 	attr_alarmSummary_read = new Tango::DevString[10000];
 	/*----- PROTECTED REGION ID(AlarmHandler::init_device) ENABLED START -----*/
-	
+/*	for(size_t i=0; i<MAX_ALARMS; i++)
+	{
+		normalAlarms_read[i].resize(MAX_ATTR_NAME);
+		unacknowledgedAlarms_read[i].resize(MAX_ATTR_NAME);
+		acknowledgedAlarms_read[i].resize(MAX_ATTR_NAME);
+		unacknowledgedNormalAlarms_read[i].resize(MAX_ATTR_NAME);
+		shelvedAlarms_read[i].resize(MAX_ATTR_NAME);
+		outOfServiceAlarms_read[i].resize(MAX_ATTR_NAME);
+		silencedAlarms_read[i].resize(MAX_ATTR_NAME);
+		alarmSummary_read[i].resize(MAX_ATTR_SUMMARY);
+	}*/
 	//	Initialize device
 	thread->period = subscribeRetryPeriod;
 	
@@ -675,6 +677,7 @@ void AlarmHandler::init_device()
 	}
 		
 	alarms.startup_complete = gettime();			//enable actions execution in 10 seconds
+	thread->start();
 	
 	//TODO:ecb.init(&evlist);
 	for(map<string, vector<string> >::iterator al_ev_it=alarm_event.begin(); \
@@ -686,14 +689,14 @@ void AlarmHandler::init_device()
 #if 1
 			try {
 				add_event(i->second, al_ev_it->second);//moved after events->add
-				if(i->second.to_be_evaluated)
+				/*if(i->second.to_be_evaluated)		//moved after thread->start(); (subscribe thread started)
 				{
 					bei_t e;
 					e.ev_name = ALARM_THREAD_TO_BE_EVAL;
 					e.value.push_back(ALARM_THREAD_TO_BE_EVAL_VALUE);
 					e.value.push_back(ALARM_THREAD_TO_BE_EVAL_VALUE);
 					evlist.push_back(e);
-				}
+				}*/
 			} catch (string& err) {
 				WARN_STREAM << "AlarmHandler::init_device(): " << err << endl;
 				for(vector<string>::iterator j=al_ev_it->second.begin(); j!=al_ev_it->second.end(); j++)
@@ -743,10 +746,27 @@ void AlarmHandler::init_device()
 	updateloop = new update_thread(this);
 	updateloop->start();
 
-	thread->start();
+	//thread->start();
 
 	events->start_all();
 	
+	for(map<string, vector<string> >::iterator al_ev_it=alarm_event.begin(); \
+		al_ev_it!=alarm_event.end(); al_ev_it++)
+	{
+		alarm_container_t::iterator i = alarms.v_alarm.find(al_ev_it->first);
+		if(i != alarms.v_alarm.end())
+		{
+			if(i->second.to_be_evaluated)		//moved after thread->start(); (subscribe thread started)
+			{
+				bei_t e;
+				e.ev_name = ALARM_THREAD_TO_BE_EVAL;
+				e.value.push_back(ALARM_THREAD_TO_BE_EVAL_VALUE);
+				e.value.push_back(ALARM_THREAD_TO_BE_EVAL_VALUE);
+				evlist.push_back(e);
+			}
+		}
+	}
+
   	set_state(Tango::RUNNING);
 	set_status("Alarm server is running");	
 
@@ -3631,9 +3651,9 @@ void AlarmHandler::do_alarm(bei_t& e)
 			j++;
 		}
 
-		prepare_alarm_attr();
 		if(num_changed==0)
 			return;
+		prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -3656,7 +3676,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
-		push_change_event("alarmSummary",attr_alarmSummary_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -3667,7 +3687,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
-		push_archive_event("alarmSummary",attr_alarmSummary_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
 	}
 	else
 	{
@@ -3687,7 +3707,13 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 	alarm_container_t::iterator it = alarms.v_alarm.find(alm_name);
 	if(it != alarms.v_alarm.end())
 	{
-		it->second.freq_counter++;
+		if(ev_name == "FORCED_EVAL" && !it->second.to_be_evaluated)
+		{
+			alarms.vlock->readerOut();
+			return 	false;
+		}
+		if(ev_name != "FORCED_EVAL")
+				it->second.freq_counter++;
 		string tmpname=it->first;
 		try {
 			it->second.attr_values = string("");
@@ -3784,7 +3810,9 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			}
 		}
 		if(!eval_err)
+		{
 			it->second.to_be_evaluated = false;
+		}
 	}
 	else
 	{
@@ -3842,9 +3870,9 @@ void AlarmHandler::timer_update()
 		push_archive_event(it->second.attr_name, &except);*/
 	}
 
-	prepare_alarm_attr();
 	if(!changed)
 		return;
+	prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
 	try
 	{
 		if(ds_num == 0)
@@ -3869,7 +3897,7 @@ void AlarmHandler::timer_update()
 		push_change_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_change_event("audibleAlarm",attr_audibleAlarm_read);
-		push_change_event("alarmSummary",attr_alarmSummary_read);
+		push_change_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
 		push_archive_event("normalAlarms",&attr_normalAlarms_read[0], normalAlarms_sz);
 		push_archive_event("unacknowledgedAlarms",&attr_unacknowledgedAlarms_read[0], unacknowledgedAlarms_sz);
 		push_archive_event("acknowledgedAlarms",&attr_acknowledgedAlarms_read[0], acknowledgedAlarms_sz);
@@ -3880,7 +3908,7 @@ void AlarmHandler::timer_update()
 		push_archive_event("listAlarms",&attr_listAlarms_read[0], listAlarms_sz);
 		push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 		push_archive_event("audibleAlarm",attr_audibleAlarm_read);
-		push_archive_event("alarmSummary",attr_alarmSummary_read);
+		push_archive_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
 	} catch(Tango::DevFailed& e)
 	{
 		ostringstream err;
@@ -4336,12 +4364,18 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 		{
 			if(!it->valid)
 			{
-				err <<  "in node nameID(" << string(i->value.begin(), i->value.end()) << ") value not valid!" << ends;
+				if(it->ex_desc.length() > 0)
+					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+				else
+					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not valid!";
         		throw err.str();
         	}	
 			else if(it->type != Tango::DEV_STRING && it->value.empty())
 			{
-				err <<  "in node nameID(" << string(i->value.begin(), i->value.end()) << ") value not initialized!!" << ends;
+				if(it->ex_desc.length() > 0)
+					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+				else
+					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not initialized!!";
         		throw err.str();
         	}        	
 			ostringstream temp_attr_val;
@@ -4530,12 +4564,16 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 				{
 					if(!it->valid)
 					{
-						err <<  "in node equality_exprID -> nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not valid!" << ends;
+						err <<  "in node equality_exprID -> nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not valid!";
+						if(it->ex_desc.length() > 0)
+							err << " EX: '" << it->ex_desc << "'";
 						throw err.str();
 					}
 					else if(it->type != Tango::DEV_STRING && it->value.empty())
 					{
-						err <<  "in node nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not initialized!!" << ends;
+						err <<  "in node nameID(" << string(i2_1->value.begin(), i2_1->value.end()) << ") value not initialized!!";
+						if(it->ex_desc.length() > 0)
+							err << " EX: '" << it->ex_desc << "'";
 						throw err.str();
 					}
 					ostringstream temp_attr_val;
@@ -4782,18 +4820,11 @@ void AlarmHandler::eval_node_event(iter_t const& i, vector<string> & ev)
 
 void AlarmHandler::prepare_alarm_attr()
 {
+	prepare_alm_mtx->lock();
 	alarm_container_t::iterator ai;
 	vector<alarm_t>::iterator aid;
 	bool is_audible=false;
 	alarms.vlock->readerIn();
-	outOfServiceAlarms_read.clear();
-	shelvedAlarms_read.clear();
-	acknowledgedAlarms_read.clear();
-	unacknowledgedAlarms_read.clear();
-	unacknowledgedNormalAlarms_read.clear();
-	normalAlarms_read.clear();
-	silencedAlarms_read.clear();
-	listAlarms_read.clear();
 	outOfServiceAlarms_sz=0;
 	shelvedAlarms_sz=0;
 	acknowledgedAlarms_sz=0;
@@ -4803,61 +4834,112 @@ void AlarmHandler::prepare_alarm_attr()
 	silencedAlarms_sz=0;
 	listAlarms_sz=0;
 	alarmSummary_sz=0;
-	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
-		ostringstream alm_summary;
 
+	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
+#ifndef ALM_SUM_STR
+		stringstream alm_summary;
 		alm_summary << KEY(NAME_KEY) << ai->first << SEP;
+#else
+		string alm_summary;
+		alm_summary += KEY(NAME_KEY) + ai->first + SEP;
+#endif
 		if(ai->second.enabled == false)
 		{
-			outOfServiceAlarms_read.push_back(ai->second.name);
+			outOfServiceAlarms_read[outOfServiceAlarms_sz] = ai->second.name;
 			attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = const_cast<char*>(outOfServiceAlarms_read[outOfServiceAlarms_sz].c_str());
+			/*strcpy(c_outOfServiceAlarms_read[outOfServiceAlarms_sz], ai->second.name.c_str());
+			attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = c_outOfServiceAlarms_read[outOfServiceAlarms_sz];*/
+			//attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 			outOfServiceAlarms_sz++;
+#ifndef ALM_SUM_STR
 			alm_summary << KEY(VALUE_KEY) << "OOSRV" << SEP;	//TODO: string or enum value?
+#else
+			alm_summary += string(KEY(VALUE_KEY)) + "OOSRV" + SEP;	//TODO: string or enum value?
+#endif
 		}
 		else if(ai->second.shelved)
 		{
-			shelvedAlarms_read.push_back(ai->second.name);
+			shelvedAlarms_read[shelvedAlarms_sz] = ai->second.name;
 			attr_shelvedAlarms_read[shelvedAlarms_sz] = const_cast<char*>(shelvedAlarms_read[shelvedAlarms_sz].c_str());
+			/*strcpy(c_shelvedAlarms_read[shelvedAlarms_sz], ai->second.name.c_str());
+			attr_shelvedAlarms_read[shelvedAlarms_sz] = c_shelvedAlarms_read[shelvedAlarms_sz];*/
+			//attr_shelvedAlarms_read[shelvedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 			shelvedAlarms_sz++;
+#ifndef ALM_SUM_STR
 			alm_summary << KEY(VALUE_KEY) << "SHLVD" << SEP;	//TODO: string or enum value?
+#else
+			alm_summary += string(KEY(VALUE_KEY)) + "SHLVD" + SEP;	//TODO: string or enum value?
+#endif
 		}
 		else
 		{
 			if(ai->second.stat == S_ALARM && ai->second.ack == ACK)
 			{
-				acknowledgedAlarms_read.push_back(ai->second.name);
+				acknowledgedAlarms_read[acknowledgedAlarms_sz] = ai->second.name;
 				attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = const_cast<char*>(acknowledgedAlarms_read[acknowledgedAlarms_sz].c_str());
+				/*strcpy(c_acknowledgedAlarms_read[acknowledgedAlarms_sz], ai->second.name.c_str());
+				attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = c_acknowledgedAlarms_read[acknowledgedAlarms_sz];*/
+				//attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				acknowledgedAlarms_sz++;
+#ifndef ALM_SUM_STR
 				alm_summary << KEY(VALUE_KEY) << "ACKED" << SEP;	//TODO: string or enum value?
+#else
+				alm_summary += string(KEY(VALUE_KEY)) + "ACKED" + SEP;	//TODO: string or enum value?
+#endif
 			}
 			else if(ai->second.stat == S_ALARM && ai->second.ack == NOT_ACK)
 			{
-				unacknowledgedAlarms_read.push_back(ai->second.name);
+				unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = ai->second.name;
 				attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = const_cast<char*>(unacknowledgedAlarms_read[unacknowledgedAlarms_sz].c_str());
+				/*strcpy(c_unacknowledgedAlarms_read[unacknowledgedAlarms_sz], ai->second.name.c_str());
+				attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = c_unacknowledgedAlarms_read[unacknowledgedAlarms_sz];*/
+				//attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				unacknowledgedAlarms_sz++;
+#ifndef ALM_SUM_STR
 				alm_summary << KEY(VALUE_KEY) << "UNACK" << SEP;	//TODO: string or enum value?
+#else
+				alm_summary += string(KEY(VALUE_KEY)) + "UNACK" + SEP;	//TODO: string or enum value?
+#endif
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == NOT_ACK)
 			{
-				unacknowledgedNormalAlarms_read.push_back(ai->second.name);
+				unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = ai->second.name;
 				attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = const_cast<char*>(unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz].c_str());
+				/*strcpy(c_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz], ai->second.name.c_str());
+				attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = c_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz];*/
+				//attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				unacknowledgedNormalAlarms_sz++;
+#ifndef ALM_SUM_STR
 				alm_summary << KEY(VALUE_KEY) << "RTNUN" << SEP;	//TODO: string or enum value?
+#else
+				alm_summary += string(KEY(VALUE_KEY)) + "RTNUN" + SEP;	//TODO: string or enum value?
+#endif
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == ACK)
 			{
-				normalAlarms_read.push_back(ai->second.name);
+				normalAlarms_read[normalAlarms_sz] = ai->second.name;
 				attr_normalAlarms_read[normalAlarms_sz] = const_cast<char*>(normalAlarms_read[normalAlarms_sz].c_str());
+				/*strcpy(c_normalAlarms_read[normalAlarms_sz], ai->second.name.c_str());
+				attr_normalAlarms_read[normalAlarms_sz] = c_normalAlarms_read[normalAlarms_sz];*/
+				//attr_normalAlarms_read[normalAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				normalAlarms_sz++;
+#ifndef ALM_SUM_STR
 				alm_summary << KEY(VALUE_KEY) << "NORM" << SEP;	//TODO: string or enum value?
+#else
+				alm_summary += string(KEY(VALUE_KEY)) + "NORM" + SEP;	//TODO: string or enum value?
+#endif
 			}
 			if(ai->second.silenced > 0)
 			{
-				silencedAlarms_read.push_back(ai->second.name);
+				silencedAlarms_read[silencedAlarms_sz] = ai->second.name;
 				attr_silencedAlarms_read[silencedAlarms_sz] = const_cast<char*>(silencedAlarms_read[silencedAlarms_sz].c_str());
+				/*strcpy(c_silencedAlarms_read[silencedAlarms_sz], ai->second.name.c_str());
+				attr_silencedAlarms_read[silencedAlarms_sz] = c_silencedAlarms_read[silencedAlarms_sz];*/
+				//attr_silencedAlarms_read[silencedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				silencedAlarms_sz++;
 			}
 		}
+#ifndef ALM_SUM_STR
 		alm_summary << KEY(ALARM_TIME_KEY) << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec << SEP;
 		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg << SEP;	//TODO: escape ';'
 		alm_summary << KEY(ACKNOWLEDGED_KEY) << (ai->second.ack== ACK ? 1 : 0) << SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
@@ -4869,22 +4951,65 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary << KEY(OFF_COUNTER_KEY) << ai->second.off_counter << SEP;
 		alm_summary << KEY(FREQ_COUNTER_KEY) << ai->second.freq_counter << SEP;
 		alm_summary << KEY(QUALITY_KEY) << ai->second.quality << SEP;
+#else
+		stringstream sval;
+		sval << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec;
+		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
+		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg + SEP;	//TODO: escape ';'
+		alm_summary += string(KEY(ACKNOWLEDGED_KEY)) + (ai->second.ack== ACK ? "1" : "0") + SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
+		alm_summary += string(KEY(ENABLED_KEY)) + (ai->second.enabled ? "1" : "0") + SEP;
+		alm_summary += string(KEY(SHELVED_KEY)) + (ai->second.shelved ? "1" : "0") + SEP;
+		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
+		alm_summary += KEY(GROUP_KEY) + ai->second.grp2str() + SEP;
+		sval.str("");
+		sval << ai->second.on_counter;
+		alm_summary += KEY(ON_COUNTER_KEY) + sval.str() + SEP;
+		sval.str("");
+		sval << ai->second.off_counter;
+		alm_summary += KEY(OFF_COUNTER_KEY) + sval.str() + SEP;
+		sval.str("");
+		sval << ai->second.freq_counter;
+		alm_summary += KEY(FREQ_COUNTER_KEY) + sval.str() + SEP;
+		sval.str("");
+		sval << ai->second.quality;
+		alm_summary += KEY(QUALITY_KEY) + sval.str() + SEP;
+#endif
 		ostringstream tmp_ex;
-		tmp_ex.str("");
+		//tmp_ex.str("");
 		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
+		{
 			tmp_ex << "Reason: '" << ai->second.ex_reason << "' Desc: '" << ai->second.ex_desc << "' Origin: '" << ai->second.ex_origin << "'";
+			DEBUG_STREAM << __func__ << ": " << tmp_ex.str();
+		}
+#ifndef ALM_SUM_STR
 		alm_summary << KEY(EXCEPTION_KEY) << tmp_ex.str() << SEP;
+#else
+		alm_summary += KEY(EXCEPTION_KEY) + tmp_ex.str() + SEP;
+#endif
+#ifndef ALM_SUM_STR
 		alm_summary << KEY(SILENT_TIME_REMAINING_KEY) << ai->second.silenced << SEP;
+#else
+		sval.str("");
+		sval << ai->second.silenced;
+		alm_summary += KEY(SILENT_TIME_REMAINING_KEY) + sval.str() + SEP;
+#endif
 		attr_frequencyAlarms_read[listAlarms_sz] = ai->second.freq_counter;
-		listAlarms_read.push_back(ai->second.name);
+		listAlarms_read[listAlarms_sz] = ai->second.name;
 		attr_listAlarms_read[listAlarms_sz] = const_cast<char*>(listAlarms_read[listAlarms_sz].c_str());
+		/*strcpy(c_listAlarms_read[listAlarms_sz], ai->second.name.c_str());
+		attr_listAlarms_read[listAlarms_sz] = c_listAlarms_read[listAlarms_sz];*/
+		//attr_listAlarms_read[listAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 		listAlarms_sz++;
 
 		if(!is_audible && ai->second.is_new && ai->second.silenced <= 0 && ai->second.enabled && !ai->second.shelved)
 			is_audible = true;
+#ifndef ALM_SUM_STR
 		alm_summary << KEY(AUDIBLE_KEY) << (is_audible ? 1 : 0) << SEP;
 		alm_summary << KEY(ATTR_VALUES_KEY) << ai->second.attr_values << SEP;
-
+#else
+		alm_summary += string(KEY(AUDIBLE_KEY)) + (is_audible ? "1" : "0") + SEP;
+		alm_summary += KEY(ATTR_VALUES_KEY) + ai->second.attr_values + SEP;
+#endif
 		if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
 			/*
 			 * alarm status is S_ALARM
@@ -4970,13 +5095,21 @@ void AlarmHandler::prepare_alarm_attr()
 			}  /* if */
 			alarmedlock->readerOut();
 		}  /* if else if */
+#ifndef ALM_SUM_STR
 		alarmSummary_read[alarmSummary_sz] = alm_summary.str();
+#else
+		alarmSummary_read[alarmSummary_sz] = alm_summary;
+#endif
 		attr_alarmSummary_read[alarmSummary_sz] = const_cast<char*>(alarmSummary_read[alarmSummary_sz].c_str());
+		/*strncpy(c_alarmSummary_read[alarmSummary_sz], alm_summary.c_str(), MAX_SUMMARY-1);
+		c_alarmSummary_read[alarmSummary_sz][MAX_SUMMARY-1]=0;
+		attr_alarmSummary_read[alarmSummary_sz] = c_alarmSummary_read[alarmSummary_sz];*/
+		//attr_alarmSummary_read[alarmSummary_sz] = CORBA::string_dup(alm_summary.c_str());
 		alarmSummary_sz++;
 	}  /* for */
 	*attr_audibleAlarm_read = is_audible;
 	alarms.vlock->readerOut();
-
+	prepare_alm_mtx->unlock();
 	vector<string> tmp_alarm_table;
 	string is_new;
 	ostringstream os1;

@@ -126,6 +126,7 @@ class event_list : public omni_mutex {
 		const bei_t pop_front(void);
 		void clear(void);
 		list<bei_t> show(void);
+		size_t size();
 	protected:
 		list<bei_t> l_event;
 	private:

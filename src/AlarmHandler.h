@@ -45,7 +45,9 @@
 #include "event_table.h"
 #include "SubscribeThread.h"
 
-#define MAX_ALARMS	10000
+#define MAX_ALARMS	2000
+#define MAX_ATTR_NAME	1000
+#define MAX_ATTR_SUMMARY	10000
 
 //#define _USE_ELETTRA_DB_RW
 
@@ -104,15 +106,26 @@ public:
 	Tango::DevLong attr_AttributeStoppedNumber_read;
 	Tango::DevLong attr_AttributeNumber_read;
 
-	vector<string> normalAlarms_read;
-	vector<string> unacknowledgedAlarms_read;
-	vector<string> acknowledgedAlarms_read;
-	vector<string> unacknowledgedNormalAlarms_read;
-	vector<string> shelvedAlarms_read;
-	vector<string> outOfServiceAlarms_read;
-	vector<string> silencedAlarms_read;
-	vector<string> listAlarms_read;
-	string alarmSummary_read[10000];
+	string normalAlarms_read[MAX_ALARMS];
+	string unacknowledgedAlarms_read[MAX_ALARMS];
+	string acknowledgedAlarms_read[MAX_ALARMS];
+	string unacknowledgedNormalAlarms_read[MAX_ALARMS];
+	string shelvedAlarms_read[MAX_ALARMS];
+	string outOfServiceAlarms_read[MAX_ALARMS];
+	string silencedAlarms_read[MAX_ALARMS];
+	string listAlarms_read[MAX_ALARMS];
+	string alarmSummary_read[MAX_ALARMS];
+
+/*	char c_normalAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_unacknowledgedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_acknowledgedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_unacknowledgedNormalAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_shelvedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_outOfServiceAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_silencedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+	char c_listAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
+#define MAX_SUMMARY		2*MAX_ATTR_NAME		//TODO: max summary length!!!
+	char c_alarmSummary_read[MAX_ALARMS][MAX_SUMMARY];*/
 
 	size_t normalAlarms_sz;
 	size_t unacknowledgedAlarms_sz;
@@ -125,6 +138,8 @@ public:
 	size_t alarmSummary_sz;
 
 	double last_statistics_reset_time;
+
+	omni_mutex *prepare_alm_mtx;
 
 /*----- PROTECTED REGION END -----*/	//	AlarmHandler::Data Members
 

@@ -124,6 +124,16 @@ list<bei_t> event_list::show(void)
 	return(el);
 }
 
+size_t event_list::size(void)
+{
+	size_t res;
+
+	this->lock();
+	res = l_event.size();
+	this->unlock();
+	return(res);
+}
+
 
 /*
  * event class methods
