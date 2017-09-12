@@ -4834,6 +4834,7 @@ void AlarmHandler::prepare_alarm_attr()
 	silencedAlarms_sz=0;
 	listAlarms_sz=0;
 	alarmSummary_sz=0;
+	string almstate;
 
 	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
 #ifndef ALM_SUM_STR
@@ -4851,11 +4852,7 @@ void AlarmHandler::prepare_alarm_attr()
 			attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = c_outOfServiceAlarms_read[outOfServiceAlarms_sz];*/
 			//attr_outOfServiceAlarms_read[outOfServiceAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 			outOfServiceAlarms_sz++;
-#ifndef ALM_SUM_STR
-			alm_summary << KEY(VALUE_KEY) << "OOSRV" << SEP;	//TODO: string or enum value?
-#else
-			alm_summary += string(KEY(VALUE_KEY)) + "OOSRV" + SEP;	//TODO: string or enum value?
-#endif
+			almstate = "OOSRV";
 		}
 		else if(ai->second.shelved)
 		{
@@ -4865,11 +4862,7 @@ void AlarmHandler::prepare_alarm_attr()
 			attr_shelvedAlarms_read[shelvedAlarms_sz] = c_shelvedAlarms_read[shelvedAlarms_sz];*/
 			//attr_shelvedAlarms_read[shelvedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 			shelvedAlarms_sz++;
-#ifndef ALM_SUM_STR
-			alm_summary << KEY(VALUE_KEY) << "SHLVD" << SEP;	//TODO: string or enum value?
-#else
-			alm_summary += string(KEY(VALUE_KEY)) + "SHLVD" + SEP;	//TODO: string or enum value?
-#endif
+			almstate = "SHLVD";
 		}
 		else
 		{
@@ -4881,11 +4874,7 @@ void AlarmHandler::prepare_alarm_attr()
 				attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = c_acknowledgedAlarms_read[acknowledgedAlarms_sz];*/
 				//attr_acknowledgedAlarms_read[acknowledgedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				acknowledgedAlarms_sz++;
-#ifndef ALM_SUM_STR
-				alm_summary << KEY(VALUE_KEY) << "ACKED" << SEP;	//TODO: string or enum value?
-#else
-				alm_summary += string(KEY(VALUE_KEY)) + "ACKED" + SEP;	//TODO: string or enum value?
-#endif
+				almstate = "ACKED";
 			}
 			else if(ai->second.stat == S_ALARM && ai->second.ack == NOT_ACK)
 			{
@@ -4895,11 +4884,7 @@ void AlarmHandler::prepare_alarm_attr()
 				attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = c_unacknowledgedAlarms_read[unacknowledgedAlarms_sz];*/
 				//attr_unacknowledgedAlarms_read[unacknowledgedAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				unacknowledgedAlarms_sz++;
-#ifndef ALM_SUM_STR
-				alm_summary << KEY(VALUE_KEY) << "UNACK" << SEP;	//TODO: string or enum value?
-#else
-				alm_summary += string(KEY(VALUE_KEY)) + "UNACK" + SEP;	//TODO: string or enum value?
-#endif
+				almstate = "UNACK";
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == NOT_ACK)
 			{
@@ -4909,11 +4894,7 @@ void AlarmHandler::prepare_alarm_attr()
 				attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = c_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz];*/
 				//attr_unacknowledgedNormalAlarms_read[unacknowledgedNormalAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				unacknowledgedNormalAlarms_sz++;
-#ifndef ALM_SUM_STR
-				alm_summary << KEY(VALUE_KEY) << "RTNUN" << SEP;	//TODO: string or enum value?
-#else
-				alm_summary += string(KEY(VALUE_KEY)) + "RTNUN" + SEP;	//TODO: string or enum value?
-#endif
+				almstate = "RTNUN";
 			}
 			else if(ai->second.stat == S_NORMAL && ai->second.ack == ACK)
 			{
@@ -4923,11 +4904,7 @@ void AlarmHandler::prepare_alarm_attr()
 				attr_normalAlarms_read[normalAlarms_sz] = c_normalAlarms_read[normalAlarms_sz];*/
 				//attr_normalAlarms_read[normalAlarms_sz] = CORBA::string_dup(ai->second.name.c_str());
 				normalAlarms_sz++;
-#ifndef ALM_SUM_STR
-				alm_summary << KEY(VALUE_KEY) << "NORM" << SEP;	//TODO: string or enum value?
-#else
-				alm_summary += string(KEY(VALUE_KEY)) + "NORM" + SEP;	//TODO: string or enum value?
-#endif
+				almstate = "NORM";
 			}
 			if(ai->second.silenced > 0)
 			{
@@ -4939,27 +4916,49 @@ void AlarmHandler::prepare_alarm_attr()
 				silencedAlarms_sz++;
 			}
 		}
+
+		ostringstream tmp_ex;
+		//tmp_ex.str("");
+		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
+		{
+			tmp_ex << "Reason: '" << ai->second.ex_reason << "' Desc: '" << ai->second.ex_desc << "' Origin: '" << ai->second.ex_origin << "'";
+			DEBUG_STREAM << __func__ << ": " << tmp_ex.str();
+			if(almstate != "SHLVD" && almstate != "OOSRV")
+			{
+				almstate = "ERROR";
+			}
+		}
+
+
 #ifndef ALM_SUM_STR
+		alm_summary << KEY(VALUE_KEY) << almstate << SEP;	//TODO: string or enum value?
+		alm_summary << KEY(LEVEL_KEY) << ai->second.lev << SEP;
 		alm_summary << KEY(ALARM_TIME_KEY) << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec << SEP;
 		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg << SEP;	//TODO: escape ';'
+#else
+		alm_summary += string(KEY(VALUE_KEY)) + almstate + SEP;	//TODO: string or enum value?
+		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
+		stringstream sval;
+		sval << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec;
+		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
+		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg + SEP;	//TODO: escape ';'
+#endif
+
+
+#if 0
+#ifndef ALM_SUM_STR
 		alm_summary << KEY(ACKNOWLEDGED_KEY) << (ai->second.ack== ACK ? 1 : 0) << SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
 		alm_summary << KEY(ENABLED_KEY) << (ai->second.enabled ? 1 : 0) << SEP;
 		alm_summary << KEY(SHELVED_KEY) << (ai->second.shelved ? 1 : 0) << SEP;
-		alm_summary << KEY(LEVEL_KEY) << ai->second.lev << SEP;
 		alm_summary << KEY(GROUP_KEY) << ai->second.grp2str() << SEP;
 		alm_summary << KEY(ON_COUNTER_KEY) << ai->second.on_counter << SEP;
 		alm_summary << KEY(OFF_COUNTER_KEY) << ai->second.off_counter << SEP;
 		alm_summary << KEY(FREQ_COUNTER_KEY) << ai->second.freq_counter << SEP;
 		alm_summary << KEY(QUALITY_KEY) << ai->second.quality << SEP;
 #else
-		stringstream sval;
-		sval << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec;
-		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
-		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg + SEP;	//TODO: escape ';'
 		alm_summary += string(KEY(ACKNOWLEDGED_KEY)) + (ai->second.ack== ACK ? "1" : "0") + SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
 		alm_summary += string(KEY(ENABLED_KEY)) + (ai->second.enabled ? "1" : "0") + SEP;
 		alm_summary += string(KEY(SHELVED_KEY)) + (ai->second.shelved ? "1" : "0") + SEP;
-		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
 		alm_summary += KEY(GROUP_KEY) + ai->second.grp2str() + SEP;
 		sval.str("");
 		sval << ai->second.on_counter;
@@ -4974,13 +4973,9 @@ void AlarmHandler::prepare_alarm_attr()
 		sval << ai->second.quality;
 		alm_summary += KEY(QUALITY_KEY) + sval.str() + SEP;
 #endif
-		ostringstream tmp_ex;
-		//tmp_ex.str("");
-		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
-		{
-			tmp_ex << "Reason: '" << ai->second.ex_reason << "' Desc: '" << ai->second.ex_desc << "' Origin: '" << ai->second.ex_origin << "'";
-			DEBUG_STREAM << __func__ << ": " << tmp_ex.str();
-		}
+#endif
+
+#if 0
 #ifndef ALM_SUM_STR
 		alm_summary << KEY(EXCEPTION_KEY) << tmp_ex.str() << SEP;
 #else
@@ -4993,6 +4988,7 @@ void AlarmHandler::prepare_alarm_attr()
 		sval << ai->second.silenced;
 		alm_summary += KEY(SILENT_TIME_REMAINING_KEY) + sval.str() + SEP;
 #endif
+#endif
 		attr_frequencyAlarms_read[listAlarms_sz] = ai->second.freq_counter;
 		listAlarms_read[listAlarms_sz] = ai->second.name;
 		attr_listAlarms_read[listAlarms_sz] = const_cast<char*>(listAlarms_read[listAlarms_sz].c_str());
@@ -5003,12 +4999,14 @@ void AlarmHandler::prepare_alarm_attr()
 
 		if(!is_audible && ai->second.is_new && ai->second.silenced <= 0 && ai->second.enabled && !ai->second.shelved)
 			is_audible = true;
+#if 0
 #ifndef ALM_SUM_STR
 		alm_summary << KEY(AUDIBLE_KEY) << (is_audible ? 1 : 0) << SEP;
 		alm_summary << KEY(ATTR_VALUES_KEY) << ai->second.attr_values << SEP;
 #else
 		alm_summary += string(KEY(AUDIBLE_KEY)) + (is_audible ? "1" : "0") + SEP;
 		alm_summary += KEY(ATTR_VALUES_KEY) + ai->second.attr_values + SEP;
+#endif
 #endif
 		if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
 			/*
