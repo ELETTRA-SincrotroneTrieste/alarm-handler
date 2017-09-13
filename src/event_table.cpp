@@ -843,6 +843,7 @@ void event_table::subscribe_events()
 					INFO_STREAM << "event_table::subscribe_events: error adding  " << sig->name <<" err="<< e.errors[0].desc << endl;
 					v_event[i].ex_reason = e.errors[0].reason;
 					v_event[i].ex_desc = e.errors[0].desc;
+//					v_event[i].ex_desc.erase(std::remove(v_event[i].ex_desc.begin(), v_event[i].ex_desc.end(), '\n'), v_event[i].ex_desc.end());
 					v_event[i].ex_origin = e.errors[0].origin;
 					v_event[i].siglock->writerOut();
 					continue;
