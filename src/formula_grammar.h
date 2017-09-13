@@ -89,6 +89,7 @@ enum _AlarmStateEnum {
 	_SHLVD,
 	_DSUPR,
 	_OOSRV,
+	_ERROR
 } ;
 
 struct formula_grammar : public grammar<formula_grammar>
@@ -166,6 +167,7 @@ struct formula_grammar : public grammar<formula_grammar>
 		alarm_enum_states.add("SHLVD", (unsigned int)_SHLVD);
 		alarm_enum_states.add("DSUPR", (unsigned int)_DSUPR);
 		alarm_enum_states.add("OOSRV", (unsigned int)_OOSRV);
+		alarm_enum_states.add("ERROR", (unsigned int)_ERROR);
 	}   
    
     template <typename ScannerT>

@@ -400,7 +400,7 @@ CORBA::Any *StopNewClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const 
 CORBA::Any *GetAlarmInfoClass::execute(Tango::DeviceImpl *device, const CORBA::Any &in_any)
 {
 	cout2 << "GetAlarmInfoClass::execute(): arrived" << endl;
-	Tango::DevString argin;
+	const Tango::DevVarStringArray *argin;
 	extract(in_any, argin);
 	return insert((static_cast<AlarmHandler *>(device))->get_alarm_info(argin));
 }
@@ -1111,8 +1111,8 @@ void AlarmHandlerClass::command_factory()
 	//	Command GetAlarmInfo
 	GetAlarmInfoClass	*pGetAlarmInfoCmd =
 		new GetAlarmInfoClass("GetAlarmInfo",
-			Tango::DEV_STRING, Tango::DEVVAR_STRINGARRAY,
-			"Alarm name",
+			Tango::DEVVAR_STRINGARRAY, Tango::DEVVAR_STRINGARRAY,
+			"Alarm name followed optionally by wanted key names",
 			"Complete attribute info as an array of key=value",
 			Tango::OPERATOR);
 	command_list.push_back(pGetAlarmInfoCmd);

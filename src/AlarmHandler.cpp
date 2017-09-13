@@ -3008,21 +3008,29 @@ void AlarmHandler::stop_new()
  *	Command GetAlarmInfo related method
  *	Description: Returns the complete attribute info as an array of key=value
  *
- *	@param argin Alarm name
+ *	@param argin Alarm name followed optionally by wanted key names
  *	@returns Complete attribute info as an array of key=value
  */
 //--------------------------------------------------------
-Tango::DevVarStringArray *AlarmHandler::get_alarm_info(Tango::DevString argin)
+Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarStringArray *argin)
 {
 	Tango::DevVarStringArray *argout;
 	DEBUG_STREAM << "AlarmHandler::GetAlarmInfo()  - " << device_name << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::get_alarm_info) ENABLED START -----*/
 	
+	if(argin->length() < 1)
+	{
+       	Tango::Except::throw_exception( \
+				(const char*)"BAD PARAMETERS", \
+				(const char*)"At least alarm name expected", \
+				(const char*)__func__, Tango::ERR);
+	}
 	//	Add your own code
 	alarms.vlock->readerIn();
 
-	alarm_container_t::iterator it = alarms.v_alarm.find(argin);
-	vector<string> info;
+	alarm_container_t::iterator it = alarms.v_alarm.find(string((*argin)[0]));
+	map<string,string> info;
+	vector<string> complete;
 
 	if(it == alarms.v_alarm.end())
 	{
@@ -3036,7 +3044,8 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(Tango::DevString argin)
 				(const char*)__func__, Tango::ERR);
 	}
 
-	info.push_back(KEY(NAME_KEY)+it->first);
+	info.insert(make_pair(NAME_KEY,it->first));
+	complete.push_back(KEY(NAME_KEY)+it->first);
 
 	Tango::MultiAttribute *m_attr = get_device_attr();
 	int attr_ind = m_attr->get_attr_ind_by_name(it->second.attr_name.c_str());
@@ -3049,10 +3058,29 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(Tango::DevString argin)
 	else
 		tmp_val << "UNKNOWN_ENUM(" << *(it->second.attr_value) << ")";
 
-	info.push_back(KEY(VALUE_KEY)+tmp_val.str());
+	ostringstream tmp_ex;
+	tmp_ex.str("");
+	if(it->second.ex_reason.length() > 0 || it->second.ex_desc.length() > 0 || it->second.ex_origin.length() > 0)
+	{
+		tmp_ex << "Reason: '" << it->second.ex_reason << "' Desc: '" << it->second.ex_desc << "' Origin: '" << it->second.ex_origin << "'";
+		info.insert(make_pair(VALUE_KEY,string("ERROR")));
+		complete.push_back(KEY(VALUE_KEY)+tmp_val.str());
+		info.insert(make_pair(FORMULA_KEY,it->second.formula));
+		complete.push_back(KEY(FORMULA_KEY)+it->second.formula);
+		info.insert(make_pair(ATTR_VALUES_KEY,tmp_ex.str()));
+		complete.push_back(KEY(ATTR_VALUES_KEY)+it->second.attr_values);
+	}
+	else
+	{
+		info.insert(make_pair(VALUE_KEY,tmp_val.str()));
+		complete.push_back(KEY(VALUE_KEY)+tmp_val.str());
+		info.insert(make_pair(FORMULA_KEY,it->second.formula));
+		complete.push_back(KEY(FORMULA_KEY)+it->second.formula);
+		info.insert(make_pair(ATTR_VALUES_KEY,it->second.attr_values));
+		complete.push_back(KEY(ATTR_VALUES_KEY)+it->second.attr_values);
+	}
 
-	info.push_back(KEY(FORMULA_KEY)+it->second.formula);
-	info.push_back(KEY(ATTR_VALUES_KEY)+it->second.attr_values);
+
 
 	ostringstream tmp_qual;
 	/*size_t siz = formula_grammar.attr_quality.size();
@@ -3060,56 +3088,99 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(Tango::DevString argin)
 		tmp_qual << formula_grammar.attr_quality[it->second.quality];
 	 */
 	tmp_qual << it->second.quality;
-	info.push_back(KEY(QUALITY_KEY)+tmp_qual.str());
-	ostringstream tmp_ex;
-	tmp_ex.str("");
-	if(it->second.ex_reason.length() > 0 || it->second.ex_desc.length() > 0 || it->second.ex_origin.length() > 0)
-		tmp_ex << "Reason: '" << it->second.ex_reason << "' Desc: '" << it->second.ex_desc << "' Origin: '" << it->second.ex_origin << "'";
-	info.push_back(KEY(EXCEPTION_KEY)+tmp_ex.str());
+	info.insert(make_pair(QUALITY_KEY,tmp_qual.str()));	//TODO: enum label ATTR_VALID, ...
+	complete.push_back(KEY(QUALITY_KEY)+tmp_qual.str());//TODO: enum label ATTR_VALID, ...
 	ostringstream tmp;
+#if 0
 	tmp.str("");
-	tmp << (it->second.enabled ? "true" : "false");
-	info.push_back(KEY(ENABLED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
+	tmp << (it->second.enabled ? "1" : "0");
+	info.insert(make_pair(ENABLED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
+	complete.push_back(KEY(ENABLED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
 	tmp.str("");
-	tmp << (it->second.shelved ? "true" : "false");
-	info.push_back(KEY(SHELVED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
-	info.push_back(KEY(ACKNOWLEDGED_KEY)+it->second.ack);	//TODO: redundant, information already in attr_value
+	tmp << (it->second.shelved ? "1" : "0");
+	info.insert(make_pair(SHELVED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
+	complete.push_back(KEY(SHELVED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
+	info.insert(make_pair(ACKNOWLEDGED_KEY,it->second.ack));	//TODO: redundant, information already in attr_value
+	complete.push_back(KEY(ACKNOWLEDGED_KEY)+it->second.ack);	//TODO: redundant, information already in attr_value
+#endif
 	tmp.str("");
-	tmp << (it->second.is_new ? "true" : "false");
-	info.push_back(KEY(AUDIBLE_KEY)+tmp.str());
+	tmp << (it->second.is_new ? "1" : "0");
+	info.insert(make_pair(AUDIBLE_KEY,tmp.str()));
+	complete.push_back(KEY(AUDIBLE_KEY)+tmp.str());
 	tmp.str("");
-	tmp << (it->second.on_counter);
-	info.push_back(KEY(ON_COUNTER_KEY)+tmp.str());
-	tmp.str("");
-	tmp << (it->second.off_counter);
-	info.push_back(KEY(OFF_COUNTER_KEY)+tmp.str());
+	if(it->second.stat == S_ALARM)
+	{
+		tmp << (it->second.on_counter);
+	}
+	else
+	{
+		tmp << (it->second.off_counter);
+	}
+	info.insert(make_pair(COUNTER_KEY,tmp.str()));
+	complete.push_back(KEY(COUNTER_KEY)+tmp.str());
 	tmp.str("");
 	tmp << (it->second.freq_counter);
-	info.push_back(KEY(FREQ_COUNTER_KEY)+tmp.str());
+	info.insert(make_pair(FREQ_COUNTER_KEY,tmp.str()));
+	complete.push_back(KEY(FREQ_COUNTER_KEY)+tmp.str());
 
 	tmp.str("");
 	tmp << (it->second.on_delay);
-	info.push_back(KEY(ONDELAY_KEY)+tmp.str());
+	info.insert(make_pair(ONDELAY_KEY,tmp.str()));
+	complete.push_back(KEY(ONDELAY_KEY)+tmp.str());
 	tmp.str("");
 	tmp << (it->second.on_delay);
-	info.push_back(KEY(OFFDELAY_KEY)+tmp.str());
-	info.push_back(KEY(LEVEL_KEY)+it->second.lev);
+	info.insert(make_pair(OFFDELAY_KEY,tmp.str()));
+	complete.push_back(KEY(OFFDELAY_KEY)+tmp.str());
+	info.insert(make_pair(LEVEL_KEY,it->second.lev));
+	complete.push_back(KEY(LEVEL_KEY)+it->second.lev);
 	tmp.str("");
 	tmp << (it->second.silent_time);
-	info.push_back(KEY(SILENT_TIME_KEY)+tmp.str());
+	info.insert(make_pair(SILENT_TIME_KEY,tmp.str()));
+	complete.push_back(KEY(SILENT_TIME_KEY)+tmp.str());
 	tmp.str("");
 	tmp << (it->second.silenced);
-	info.push_back(KEY(SILENT_TIME_REMAINING_KEY)+tmp.str());
-	info.push_back(KEY(GROUP_KEY)+it->second.grp2str());
-	info.push_back(KEY(MESSAGE_KEY)+it->second.msg);
-	info.push_back(KEY(ON_COMMAND_KEY)+it->second.cmd_name_a);
-	info.push_back(KEY(OFF_COMMAND_KEY)+it->second.cmd_name_n);
+	info.insert(make_pair(SILENT_TIME_REMAINING_KEY,tmp.str()));
+	complete.push_back(KEY(SILENT_TIME_REMAINING_KEY)+tmp.str());
+	info.insert(make_pair(GROUP_KEY,it->second.grp2str()));
+	complete.push_back(KEY(GROUP_KEY)+it->second.grp2str());
+	tmp.str("");
+	tmp << "\"" << it->second.msg << "\"";
+	info.insert(make_pair(MESSAGE_KEY,tmp.str()));
+	complete.push_back(KEY(MESSAGE_KEY)+tmp.str());
+	info.insert(make_pair(ON_COMMAND_KEY,it->second.cmd_name_a));
+	complete.push_back(KEY(ON_COMMAND_KEY)+it->second.cmd_name_a);
+	info.insert(make_pair(OFF_COMMAND_KEY,it->second.cmd_name_n));
+	complete.push_back(KEY(OFF_COMMAND_KEY)+it->second.cmd_name_n);
 
 	alarms.vlock->readerOut();
 	argout = new Tango::DevVarStringArray();
-	argout->length(info.size());
-	for(size_t i=0; i<info.size(); i++)
-		(*argout)[i] = Tango::string_dup(info[i].c_str());
+	if(argin->length() == 1)
+	{
+		argout->length(complete.size());
+		for(size_t i=0; i<complete.size(); i++)
+			(*argout)[i] = Tango::string_dup(complete[i].c_str());
+	}
+	else
+	{
+		vector<string> out;
+		//out.push_back(NAME_KEY + string("=") + it->first);
+		for(size_t arg_i=0; arg_i < argin->length()-1; arg_i++)
+		{
+			map<string,string>::iterator it2 = info.find(string((*argin)[arg_i+1]));
+			if(it2 != info.end())
+			{
+				out.push_back(it2->first + string("=") + it2->second);
+			}
+		}
+		argout->length(out.size()/*+1*/);
+		vector<string>::iterator it3;
+		size_t i=0;
+		for(it3=out.begin(); it3!=out.end(); it3++)
+		{
+			(*argout)[i] = Tango::string_dup(it3->c_str());
+			i++;
+		}
+	}
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::get_alarm_info
 	return argout;
 }
@@ -4934,19 +5005,20 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary << KEY(VALUE_KEY) << almstate << SEP;	//TODO: string or enum value?
 		alm_summary << KEY(LEVEL_KEY) << ai->second.lev << SEP;
 		alm_summary << KEY(ALARM_TIME_KEY) << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec << SEP;
-		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg << SEP;	//TODO: escape ';'
+		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg;	//TODO: escape ';'
 #else
 		alm_summary += string(KEY(VALUE_KEY)) + almstate + SEP;	//TODO: string or enum value?
 		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
 		stringstream sval;
 		sval << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec;
 		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
-		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg + SEP;	//TODO: escape ';'
+		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg;	//TODO: escape ';'
 #endif
 
 
 #if 0
 #ifndef ALM_SUM_STR
+		alm_summary << SEP;
 		alm_summary << KEY(ACKNOWLEDGED_KEY) << (ai->second.ack== ACK ? 1 : 0) << SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
 		alm_summary << KEY(ENABLED_KEY) << (ai->second.enabled ? 1 : 0) << SEP;
 		alm_summary << KEY(SHELVED_KEY) << (ai->second.shelved ? 1 : 0) << SEP;
@@ -4956,6 +5028,7 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary << KEY(FREQ_COUNTER_KEY) << ai->second.freq_counter << SEP;
 		alm_summary << KEY(QUALITY_KEY) << ai->second.quality << SEP;
 #else
+		alm_summary += string(SEP);
 		alm_summary += string(KEY(ACKNOWLEDGED_KEY)) + (ai->second.ack== ACK ? "1" : "0") + SEP;	//TODO: 1/0 or ACK, NOT_ACK ?
 		alm_summary += string(KEY(ENABLED_KEY)) + (ai->second.enabled ? "1" : "0") + SEP;
 		alm_summary += string(KEY(SHELVED_KEY)) + (ai->second.shelved ? "1" : "0") + SEP;

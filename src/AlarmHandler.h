@@ -82,6 +82,7 @@ enum _AlarmStateEnum {
 	_SHLVD,
 	_DSUPR,
 	_OOSRV,
+	_ERROR,
 } ;
 typedef _AlarmStateEnum AlarmStateEnum;
 
@@ -488,10 +489,10 @@ public:
 	 *	Command GetAlarmInfo related method
 	 *	Description: Returns the complete attribute info as an array of key=value
 	 *
-	 *	@param argin Alarm name
+	 *	@param argin Alarm name followed optionally by wanted key names
 	 *	@returns Complete attribute info as an array of key=value
 	 */
-	virtual Tango::DevVarStringArray *get_alarm_info(Tango::DevString argin);
+	virtual Tango::DevVarStringArray *get_alarm_info(const Tango::DevVarStringArray *argin);
 	virtual bool is_GetAlarmInfo_allowed(const CORBA::Any &any);
 
 

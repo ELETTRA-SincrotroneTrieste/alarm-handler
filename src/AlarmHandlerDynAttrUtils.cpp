@@ -107,6 +107,7 @@ void AlarmHandler::add_AlarmState_dynamic_attribute(string attname)
 		labels.push_back("SHLVD");
 		labels.push_back("DSUPR");
 		labels.push_back("OOSRV");
+		labels.push_back("ERROR");
 		alarmstate_prop.set_enum_labels(labels);
 	}
 	alarmstate->set_default_properties(alarmstate_prop);
