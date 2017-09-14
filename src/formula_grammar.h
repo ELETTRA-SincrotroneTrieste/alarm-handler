@@ -92,6 +92,8 @@ enum _AlarmStateEnum {
 	_ERROR
 } ;
 
+static vector<string> quality_labels;
+
 struct formula_grammar : public grammar<formula_grammar>
 {
 
@@ -154,11 +156,17 @@ struct formula_grammar : public grammar<formula_grammar>
 		tango_states.add("DISABLE", (unsigned int)Tango::DISABLE);
 		tango_states.add("UNKNOWN", (unsigned int)Tango::UNKNOWN);
 
-		attr_quality.add("ATTR_VALID", (unsigned int)Tango::ATTR_VALID);
-		attr_quality.add("ATTR_INVALID", (unsigned int)Tango::ATTR_INVALID);
-		attr_quality.add("ATTR_ALARM", (unsigned int)Tango::ATTR_ALARM);
-		attr_quality.add("ATTR_CHANGING", (unsigned int)Tango::ATTR_CHANGING);
-		attr_quality.add("ATTR_WARNING", (unsigned int)Tango::ATTR_WARNING);
+		quality_labels.push_back("ATTR_VALID");
+		attr_quality.add(quality_labels.back().c_str(), (unsigned int)Tango::ATTR_VALID);
+		quality_labels.push_back("ATTR_INVALID");
+		attr_quality.add(quality_labels.back().c_str(), (unsigned int)Tango::ATTR_INVALID);
+		quality_labels.push_back("ATTR_ALARM");
+		attr_quality.add(quality_labels.back().c_str(), (unsigned int)Tango::ATTR_ALARM);
+		quality_labels.push_back("ATTR_CHANGING");
+		attr_quality.add(quality_labels.back().c_str(), (unsigned int)Tango::ATTR_CHANGING);
+		quality_labels.push_back("ATTR_WARNING");
+		attr_quality.add(quality_labels.back().c_str(), (unsigned int)Tango::ATTR_WARNING);
+
 
 		alarm_enum_states.add("NORM", (unsigned int)_NORM);
 		alarm_enum_states.add("UNACK", (unsigned int)_UNACK);

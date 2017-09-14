@@ -3083,15 +3083,17 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 
 
 	ostringstream tmp_qual;
-	/*size_t siz = formula_grammar.attr_quality.size();
-	if((it->second.quality) >= 0 && (it->second.quality) < siz)
-		tmp_qual << formula_grammar.attr_quality[it->second.quality];
-	 */
-	tmp_qual << it->second.quality;
-	info.insert(make_pair(QUALITY_KEY,tmp_qual.str()));	//TODO: enum label ATTR_VALID, ...
-	complete.push_back(KEY(QUALITY_KEY)+tmp_qual.str());//TODO: enum label ATTR_VALID, ...
+	try
+	{
+		tmp_qual << quality_labels.at(it->second.quality);
+	} catch(std::out_of_range& ex)
+	{
+		tmp_qual << it->second.quality;
+	}
+	info.insert(make_pair(QUALITY_KEY,tmp_qual.str()));
+	complete.push_back(KEY(QUALITY_KEY)+tmp_qual.str());
 	ostringstream tmp;
-#if 0
+//#if 0
 	tmp.str("");
 	tmp << (it->second.enabled ? "1" : "0");
 	info.insert(make_pair(ENABLED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
@@ -3100,9 +3102,11 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	tmp << (it->second.shelved ? "1" : "0");
 	info.insert(make_pair(SHELVED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
 	complete.push_back(KEY(SHELVED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
-	info.insert(make_pair(ACKNOWLEDGED_KEY,it->second.ack));	//TODO: redundant, information already in attr_value
-	complete.push_back(KEY(ACKNOWLEDGED_KEY)+it->second.ack);	//TODO: redundant, information already in attr_value
-#endif
+	tmp.str("");
+	tmp << ((it->second.ack == "ACK") ? "1" : "0");
+	info.insert(make_pair(ACKNOWLEDGED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
+	complete.push_back(KEY(ACKNOWLEDGED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
+//#endif
 	tmp.str("");
 	tmp << (it->second.is_new ? "1" : "0");
 	info.insert(make_pair(AUDIBLE_KEY,tmp.str()));
@@ -5005,18 +5009,26 @@ void AlarmHandler::prepare_alarm_attr()
 			}
 		}
 
+		tm time_tm;
+		time_t time_sec= ai->second.ts.tv_sec;
+		//gmtime_r(&time_sec,&time_tm); //-> UTC
+		localtime_r(&time_sec,&time_tm);
+		char time_buf[64];
+		strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &time_tm);
 
 #ifndef ALM_SUM_STR
 		alm_summary << KEY(VALUE_KEY) << almstate << SEP;	//TODO: string or enum value?
 		alm_summary << KEY(LEVEL_KEY) << ai->second.lev << SEP;
-		alm_summary << KEY(ALARM_TIME_KEY) << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec << SEP;
+		alm_summary << KEY(ALARM_TIME_KEY) << time_buf << "." << ai->second.ts.tv_usec << SEP;
+		alm_summary << KEY(FORMULA_KEY) << ai->second.formula << SEP;
 		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg;	//TODO: escape ';'
 #else
 		alm_summary += string(KEY(VALUE_KEY)) + almstate + SEP;	//TODO: string or enum value?
 		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
 		stringstream sval;
-		sval << ai->second.ts.tv_sec << "." << ai->second.ts.tv_usec;
+		sval << time_buf << "." << ai->second.ts.tv_usec;
 		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
+		alm_summary += KEY(FORMULA_KEY) + ai->second.formula + SEP;
 		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg;	//TODO: escape ';'
 #endif
 
