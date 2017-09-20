@@ -56,6 +56,20 @@ void alarm_thread::run(void *)
 	//int period = 5; //seconds
 	int awaken = 0;
 	vector<string> alm_to_be_eval;
+	bool starting = true;
+	timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	double last_eval = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
+
+	while(starting)
+	{
+		starting = Tango::Util::instance()->is_svr_starting();
+		usleep(200000);
+	}
+
+	alm_to_be_eval = p_Alarm->alarms.to_be_evaluated_list();
+	to_be_evaluated = alm_to_be_eval.size();
+
 	while (true) {
 		/*
 		 * pop_front() will wait() on condition variable
@@ -64,39 +78,45 @@ void alarm_thread::run(void *)
 		{
 			if(to_be_evaluated > 0)
 			{
-				bool changed = true;
-				int num_changed = 0;
-				if(alm_to_be_eval.size() > 0)
+				clock_gettime(CLOCK_MONOTONIC, &now);
+				double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
+				if(dnow - last_eval > 10)	//TODO: configurable
 				{
-					for(vector<string>::iterator i = alm_to_be_eval.begin(); i != alm_to_be_eval.end(); i++)
+					last_eval = dnow;
+					bool changed = true;
+					int num_changed = 0;
+					if(alm_to_be_eval.size() > 0)
 					{
-						changed = p_Alarm->do_alarm_eval(*i, "FORCED_EVAL", gettime());
-						if(changed)
-							num_changed++;
-					}
+						for(vector<string>::iterator i = alm_to_be_eval.begin(); i != alm_to_be_eval.end(); i++)
+						{
+							changed = p_Alarm->do_alarm_eval(*i, "FORCED_EVAL", gettime());
+							if(changed)
+								num_changed++;
+						}
 #if 0	//TODO
-					prepare_alarm_attr();
-					if(num_changed==0)
-						return;
-					if(ds_num == 0)
-					{
-						//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
-						struct timeval now;
-						gettimeofday(&now,NULL);
-						push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+						prepare_alarm_attr();
+						if(num_changed==0)
+							return;
+						if(ds_num == 0)
+						{
+							//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+							struct timeval now;
+							gettimeofday(&now,NULL);
+							push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+						}
+						else
+							//attr.set_value(ds, ds_num, 0, false);
+							push_change_event("alarm",ds, ds_num, 0, false);
+#endif
 					}
-					else
-						//attr.set_value(ds, ds_num, 0, false);
-						push_change_event("alarm",ds, ds_num, 0, false);
-#endif
-				}
-#if 0
-				alm_to_be_eval = p_Alarm->alarms.to_be_evaluated_list();
-				to_be_evaluated = alm_to_be_eval.size();
+#if 1
+					alm_to_be_eval = p_Alarm->alarms.to_be_evaluated_list();
+					to_be_evaluated = alm_to_be_eval.size();
 #else
-				to_be_evaluated = 0;
+					to_be_evaluated = 0;
 #endif
-				usleep(200000);	//TODO
+					//usleep(200000);	//TODO
+				}
 			}
 			bei_t e;
 			{
