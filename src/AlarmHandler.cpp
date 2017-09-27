@@ -675,8 +675,7 @@ void AlarmHandler::init_device()
 			}						
 		}		
 	}
-		
-	alarms.startup_complete = gettime();			//enable actions execution in 10 seconds
+
 	thread->start();
 	
 	//TODO:ecb.init(&evlist);
@@ -769,7 +768,7 @@ void AlarmHandler::init_device()
 
   	set_state(Tango::RUNNING);
 	set_status("Alarm server is running");	
-
+	alarms.startup_complete = gettime();			//enable actions execution in 10 seconds
 	//
 
 //	for (int i=0; i< MAX_ALARMS ; i++) ds[i]=0;
@@ -1587,9 +1586,8 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 //--------------------------------------------------------
 void AlarmHandler::load(Tango::DevString argin)
 {
-	DEBUG_STREAM << "AlarmHandler::Load()  - " << device_name << endl;
+	DEBUG_STREAM << "AlarmHandler::Load()  - " << argin << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::load) ENABLED START -----*/
-	
 	//	Add your own code
 	string s;
 	alarm_t alm;
@@ -3212,7 +3210,7 @@ void AlarmHandler::add_dynamic_commands()
  */
 void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> &evn)
 {	
-	DEBUG_STREAM << "AlarmHandler::load_alarm(): Creating Spirit Parser..." << endl;
+	DEBUG_STREAM << "AlarmHandler::load_alarm(): Creating Spirit Parser... ->" << alarm_string << endl;
 	alarm_parse al_gr(alm);    //  Construct Spirit grammar		
 	alm.name.clear();
 	alm.attr_name.clear();
@@ -3727,7 +3725,22 @@ void AlarmHandler::do_alarm(bei_t& e)
 		}
 
 		if(num_changed==0)
+		{
+			prepare_alm_mtx->lock();
+			alarms.vlock->readerIn();
+			alarm_container_t::iterator ai;
+			size_t freq_ind = 0;
+			for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++)
+			{
+				attr_frequencyAlarms_read[freq_ind] = ai->second.freq_counter;
+				freq_ind++;
+			}
+			alarms.vlock->readerOut();
+			prepare_alm_mtx->unlock();
+			push_change_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
+			push_archive_event("frequencyAlarms",&attr_frequencyAlarms_read[0], listAlarms_sz);
 			return;
+		}
 		prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
 		if(ds_num == 0)
 		{
@@ -3948,7 +3961,9 @@ void AlarmHandler::timer_update()
 	}
 
 	if(!changed)
+	{
 		return;
+	}
 	prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
 	try
 	{
