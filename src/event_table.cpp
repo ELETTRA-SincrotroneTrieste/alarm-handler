@@ -758,11 +758,13 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 		else if(found && start)
 		{
 			signal = sig;
+#if 0
 			signal->siglock->writerIn();
 			signal->ex_reason = "NOT_connected";
 			signal->ex_desc = "Attribute not subscribed";
 			signal->ex_origin = "...";
 			signal->siglock->writerOut();
+#endif
 			//DEBUG_STREAM << "created proxy to " << signame << endl;
 			//	create Attribute proxy
 			signal->attr = new Tango::AttributeProxy(signal->name);	//TODO: OK out of siglock? accessed only inside the same thread?
