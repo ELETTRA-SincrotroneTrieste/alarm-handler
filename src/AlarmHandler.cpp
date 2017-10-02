@@ -3911,24 +3911,26 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 		o << (alm_name) << ": not found formula in alarm table";
 		WARN_STREAM << "AlarmHandler::"<<__func__<<": " << o.str() << endl;
 		set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
+#if 0	//TODO: attribute not existing -> cannot notify error pushing exception
 		try
 		{	//DevFailed for push events
 			Tango::DevErrorList errors(1);
 			errors.length(1);
-			it->second.ex_reason = string("NOT_FOUND");
-			it->second.ex_desc = ev_name + ": " + o.str();
-			it->second.ex_origin = ev_name;
-			errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+			string ex_reason = string("NOT_FOUND");
+			string ex_desc = ev_name + ": " + o.str();
+			string ex_origin = ev_name;
+			errors[0].desc = CORBA::string_dup(ex_desc.c_str());
 			errors[0].severity = Tango::ERR;
-			errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
-			errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+			errors[0].reason = CORBA::string_dup(ex_reason.c_str());
+			errors[0].origin = CORBA::string_dup(ex_origin.c_str());
 			Tango::DevFailed except(errors);
-			push_change_event(it->second.attr_name, &except);
-			push_archive_event(it->second.attr_name, &except);
+			//push_change_event(it->second.attr_name, &except);
+			//push_archive_event(it->second.attr_name, &except);
 		} catch(Tango::DevFailed & ex)
 		{
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 		}
+#endif
 	}
 	alarms.vlock->readerOut();
 	return 	changed;
