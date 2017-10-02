@@ -72,7 +72,7 @@
 #define ONDELAY_KEY			"on_delay"
 #define OFFDELAY_KEY		"off_delay"
 #define LEVEL_KEY			"priority"
-#define SILENT_TIME_KEY		"silent_time"
+#define SILENT_TIME_KEY		"shlvd_time"
 #define GROUP_KEY			"group"
 #define MESSAGE_KEY			"message"
 #define ON_COMMAND_KEY		"on_command"
