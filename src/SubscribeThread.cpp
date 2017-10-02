@@ -53,7 +53,7 @@ namespace AlarmHandler_ns
 SubscribeThread::SubscribeThread(AlarmHandler *dev):Tango::LogAdapter(dev)
 {
 	alarm_dev = dev;
-	period = 1;
+	period = 10;	//TODO: configurable
 	shared  = dev->events;
 }
 //=============================================================================
@@ -70,6 +70,7 @@ void *SubscribeThread::run_undetached(void *ptr)
 	while(shared->get_if_stop()==false)
 	{
 		//	Try to subscribe
+		usleep(500000);		//TODO: try to delay a bit subscribe_events
 		DEBUG_STREAM << "SubscribeThread::"<<__func__<<": AWAKE"<<endl;
 		updateProperty();
 		alarm_dev->events->subscribe_events();
