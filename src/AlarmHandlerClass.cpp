@@ -621,31 +621,31 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Add your own code
 	
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandlerClass::attribute_factory_before
-	//	Attribute : audibleAlarm
-	audibleAlarmAttrib	*audiblealarm = new audibleAlarmAttrib();
-	Tango::UserDefaultAttrProp	audiblealarm_prop;
-	audiblealarm_prop.set_description("True if there is at least one alarm that needs audible indication on the GUI");
-	//	label	not set for audibleAlarm
-	//	unit	not set for audibleAlarm
-	//	standard_unit	not set for audibleAlarm
-	//	display_unit	not set for audibleAlarm
-	//	format	not set for audibleAlarm
-	//	max_value	not set for audibleAlarm
-	//	min_value	not set for audibleAlarm
-	//	max_alarm	not set for audibleAlarm
-	//	min_alarm	not set for audibleAlarm
-	//	max_warning	not set for audibleAlarm
-	//	min_warning	not set for audibleAlarm
-	//	delta_t	not set for audibleAlarm
-	//	delta_val	not set for audibleAlarm
+	//	Attribute : alarmAudible
+	alarmAudibleAttrib	*alarmaudible = new alarmAudibleAttrib();
+	Tango::UserDefaultAttrProp	alarmaudible_prop;
+	alarmaudible_prop.set_description("True if there is at least one alarm that needs audible indication on the GUI");
+	//	label	not set for alarmAudible
+	//	unit	not set for alarmAudible
+	//	standard_unit	not set for alarmAudible
+	//	display_unit	not set for alarmAudible
+	//	format	not set for alarmAudible
+	//	max_value	not set for alarmAudible
+	//	min_value	not set for alarmAudible
+	//	max_alarm	not set for alarmAudible
+	//	min_alarm	not set for alarmAudible
+	//	max_warning	not set for alarmAudible
+	//	min_warning	not set for alarmAudible
+	//	delta_t	not set for alarmAudible
+	//	delta_val	not set for alarmAudible
 	
-	audiblealarm->set_default_properties(audiblealarm_prop);
+	alarmaudible->set_default_properties(alarmaudible_prop);
 	//	Not Polled
-	audiblealarm->set_disp_level(Tango::OPERATOR);
+	alarmaudible->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	audiblealarm->set_change_event(true, false);
-	audiblealarm->set_archive_event(true, false);
-	att_list.push_back(audiblealarm);
+	alarmaudible->set_change_event(true, false);
+	alarmaudible->set_archive_event(true, false);
+	att_list.push_back(alarmaudible);
 
 	//	Attribute : StatisticsResetTime
 	StatisticsResetTimeAttrib	*statisticsresettime = new StatisticsResetTimeAttrib();
@@ -695,239 +695,239 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Not Memorized
 	att_list.push_back(alarm);
 
-	//	Attribute : normalAlarms
-	normalAlarmsAttrib	*normalalarms = new normalAlarmsAttrib();
-	Tango::UserDefaultAttrProp	normalalarms_prop;
-	normalalarms_prop.set_description("List of alarms in normal state");
-	//	label	not set for normalAlarms
-	//	unit	not set for normalAlarms
-	//	standard_unit	not set for normalAlarms
-	//	display_unit	not set for normalAlarms
-	//	format	not set for normalAlarms
-	//	max_value	not set for normalAlarms
-	//	min_value	not set for normalAlarms
-	//	max_alarm	not set for normalAlarms
-	//	min_alarm	not set for normalAlarms
-	//	max_warning	not set for normalAlarms
-	//	min_warning	not set for normalAlarms
-	//	delta_t	not set for normalAlarms
-	//	delta_val	not set for normalAlarms
+	//	Attribute : alarmNormal
+	alarmNormalAttrib	*alarmnormal = new alarmNormalAttrib();
+	Tango::UserDefaultAttrProp	alarmnormal_prop;
+	alarmnormal_prop.set_description("List of alarms in normal state");
+	//	label	not set for alarmNormal
+	//	unit	not set for alarmNormal
+	//	standard_unit	not set for alarmNormal
+	//	display_unit	not set for alarmNormal
+	//	format	not set for alarmNormal
+	//	max_value	not set for alarmNormal
+	//	min_value	not set for alarmNormal
+	//	max_alarm	not set for alarmNormal
+	//	min_alarm	not set for alarmNormal
+	//	max_warning	not set for alarmNormal
+	//	min_warning	not set for alarmNormal
+	//	delta_t	not set for alarmNormal
+	//	delta_val	not set for alarmNormal
 	
-	normalalarms->set_default_properties(normalalarms_prop);
+	alarmnormal->set_default_properties(alarmnormal_prop);
 	//	Not Polled
-	normalalarms->set_disp_level(Tango::OPERATOR);
+	alarmnormal->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	normalalarms->set_change_event(true, true);
-	normalalarms->set_archive_event(true, true);
-	att_list.push_back(normalalarms);
+	alarmnormal->set_change_event(true, true);
+	alarmnormal->set_archive_event(true, true);
+	att_list.push_back(alarmnormal);
 
-	//	Attribute : unacknowledgedAlarms
-	unacknowledgedAlarmsAttrib	*unacknowledgedalarms = new unacknowledgedAlarmsAttrib();
-	Tango::UserDefaultAttrProp	unacknowledgedalarms_prop;
-	unacknowledgedalarms_prop.set_description("List of alarms in unacknowledged state");
-	//	label	not set for unacknowledgedAlarms
-	//	unit	not set for unacknowledgedAlarms
-	//	standard_unit	not set for unacknowledgedAlarms
-	//	display_unit	not set for unacknowledgedAlarms
-	//	format	not set for unacknowledgedAlarms
-	//	max_value	not set for unacknowledgedAlarms
-	//	min_value	not set for unacknowledgedAlarms
-	//	max_alarm	not set for unacknowledgedAlarms
-	//	min_alarm	not set for unacknowledgedAlarms
-	//	max_warning	not set for unacknowledgedAlarms
-	//	min_warning	not set for unacknowledgedAlarms
-	//	delta_t	not set for unacknowledgedAlarms
-	//	delta_val	not set for unacknowledgedAlarms
+	//	Attribute : alarmUnacknowledged
+	alarmUnacknowledgedAttrib	*alarmunacknowledged = new alarmUnacknowledgedAttrib();
+	Tango::UserDefaultAttrProp	alarmunacknowledged_prop;
+	alarmunacknowledged_prop.set_description("List of alarms in unacknowledged state");
+	//	label	not set for alarmUnacknowledged
+	//	unit	not set for alarmUnacknowledged
+	//	standard_unit	not set for alarmUnacknowledged
+	//	display_unit	not set for alarmUnacknowledged
+	//	format	not set for alarmUnacknowledged
+	//	max_value	not set for alarmUnacknowledged
+	//	min_value	not set for alarmUnacknowledged
+	//	max_alarm	not set for alarmUnacknowledged
+	//	min_alarm	not set for alarmUnacknowledged
+	//	max_warning	not set for alarmUnacknowledged
+	//	min_warning	not set for alarmUnacknowledged
+	//	delta_t	not set for alarmUnacknowledged
+	//	delta_val	not set for alarmUnacknowledged
 	
-	unacknowledgedalarms->set_default_properties(unacknowledgedalarms_prop);
+	alarmunacknowledged->set_default_properties(alarmunacknowledged_prop);
 	//	Not Polled
-	unacknowledgedalarms->set_disp_level(Tango::OPERATOR);
+	alarmunacknowledged->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	unacknowledgedalarms->set_change_event(true, true);
-	unacknowledgedalarms->set_archive_event(true, true);
-	att_list.push_back(unacknowledgedalarms);
+	alarmunacknowledged->set_change_event(true, true);
+	alarmunacknowledged->set_archive_event(true, true);
+	att_list.push_back(alarmunacknowledged);
 
-	//	Attribute : acknowledgedAlarms
-	acknowledgedAlarmsAttrib	*acknowledgedalarms = new acknowledgedAlarmsAttrib();
-	Tango::UserDefaultAttrProp	acknowledgedalarms_prop;
-	acknowledgedalarms_prop.set_description("List of alarms in acknowledged state");
-	//	label	not set for acknowledgedAlarms
-	//	unit	not set for acknowledgedAlarms
-	//	standard_unit	not set for acknowledgedAlarms
-	//	display_unit	not set for acknowledgedAlarms
-	//	format	not set for acknowledgedAlarms
-	//	max_value	not set for acknowledgedAlarms
-	//	min_value	not set for acknowledgedAlarms
-	//	max_alarm	not set for acknowledgedAlarms
-	//	min_alarm	not set for acknowledgedAlarms
-	//	max_warning	not set for acknowledgedAlarms
-	//	min_warning	not set for acknowledgedAlarms
-	//	delta_t	not set for acknowledgedAlarms
-	//	delta_val	not set for acknowledgedAlarms
+	//	Attribute : alarmAcknowledged
+	alarmAcknowledgedAttrib	*alarmacknowledged = new alarmAcknowledgedAttrib();
+	Tango::UserDefaultAttrProp	alarmacknowledged_prop;
+	alarmacknowledged_prop.set_description("List of alarms in acknowledged state");
+	//	label	not set for alarmAcknowledged
+	//	unit	not set for alarmAcknowledged
+	//	standard_unit	not set for alarmAcknowledged
+	//	display_unit	not set for alarmAcknowledged
+	//	format	not set for alarmAcknowledged
+	//	max_value	not set for alarmAcknowledged
+	//	min_value	not set for alarmAcknowledged
+	//	max_alarm	not set for alarmAcknowledged
+	//	min_alarm	not set for alarmAcknowledged
+	//	max_warning	not set for alarmAcknowledged
+	//	min_warning	not set for alarmAcknowledged
+	//	delta_t	not set for alarmAcknowledged
+	//	delta_val	not set for alarmAcknowledged
 	
-	acknowledgedalarms->set_default_properties(acknowledgedalarms_prop);
+	alarmacknowledged->set_default_properties(alarmacknowledged_prop);
 	//	Not Polled
-	acknowledgedalarms->set_disp_level(Tango::OPERATOR);
+	alarmacknowledged->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	acknowledgedalarms->set_change_event(true, true);
-	acknowledgedalarms->set_archive_event(true, true);
-	att_list.push_back(acknowledgedalarms);
+	alarmacknowledged->set_change_event(true, true);
+	alarmacknowledged->set_archive_event(true, true);
+	att_list.push_back(alarmacknowledged);
 
-	//	Attribute : unacknowledgedNormalAlarms
-	unacknowledgedNormalAlarmsAttrib	*unacknowledgednormalalarms = new unacknowledgedNormalAlarmsAttrib();
-	Tango::UserDefaultAttrProp	unacknowledgednormalalarms_prop;
-	unacknowledgednormalalarms_prop.set_description("List of alarms in unacknowledged normal state");
-	//	label	not set for unacknowledgedNormalAlarms
-	//	unit	not set for unacknowledgedNormalAlarms
-	//	standard_unit	not set for unacknowledgedNormalAlarms
-	//	display_unit	not set for unacknowledgedNormalAlarms
-	//	format	not set for unacknowledgedNormalAlarms
-	//	max_value	not set for unacknowledgedNormalAlarms
-	//	min_value	not set for unacknowledgedNormalAlarms
-	//	max_alarm	not set for unacknowledgedNormalAlarms
-	//	min_alarm	not set for unacknowledgedNormalAlarms
-	//	max_warning	not set for unacknowledgedNormalAlarms
-	//	min_warning	not set for unacknowledgedNormalAlarms
-	//	delta_t	not set for unacknowledgedNormalAlarms
-	//	delta_val	not set for unacknowledgedNormalAlarms
+	//	Attribute : alarmUnacknowledgedNormal
+	alarmUnacknowledgedNormalAttrib	*alarmunacknowledgednormal = new alarmUnacknowledgedNormalAttrib();
+	Tango::UserDefaultAttrProp	alarmunacknowledgednormal_prop;
+	alarmunacknowledgednormal_prop.set_description("List of alarms in unacknowledged normal state");
+	//	label	not set for alarmUnacknowledgedNormal
+	//	unit	not set for alarmUnacknowledgedNormal
+	//	standard_unit	not set for alarmUnacknowledgedNormal
+	//	display_unit	not set for alarmUnacknowledgedNormal
+	//	format	not set for alarmUnacknowledgedNormal
+	//	max_value	not set for alarmUnacknowledgedNormal
+	//	min_value	not set for alarmUnacknowledgedNormal
+	//	max_alarm	not set for alarmUnacknowledgedNormal
+	//	min_alarm	not set for alarmUnacknowledgedNormal
+	//	max_warning	not set for alarmUnacknowledgedNormal
+	//	min_warning	not set for alarmUnacknowledgedNormal
+	//	delta_t	not set for alarmUnacknowledgedNormal
+	//	delta_val	not set for alarmUnacknowledgedNormal
 	
-	unacknowledgednormalalarms->set_default_properties(unacknowledgednormalalarms_prop);
+	alarmunacknowledgednormal->set_default_properties(alarmunacknowledgednormal_prop);
 	//	Not Polled
-	unacknowledgednormalalarms->set_disp_level(Tango::OPERATOR);
+	alarmunacknowledgednormal->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	unacknowledgednormalalarms->set_change_event(true, true);
-	unacknowledgednormalalarms->set_archive_event(true, true);
-	att_list.push_back(unacknowledgednormalalarms);
+	alarmunacknowledgednormal->set_change_event(true, true);
+	alarmunacknowledgednormal->set_archive_event(true, true);
+	att_list.push_back(alarmunacknowledgednormal);
 
-	//	Attribute : shelvedAlarms
-	shelvedAlarmsAttrib	*shelvedalarms = new shelvedAlarmsAttrib();
-	Tango::UserDefaultAttrProp	shelvedalarms_prop;
-	shelvedalarms_prop.set_description("List of alarms in shelved state");
-	//	label	not set for shelvedAlarms
-	//	unit	not set for shelvedAlarms
-	//	standard_unit	not set for shelvedAlarms
-	//	display_unit	not set for shelvedAlarms
-	//	format	not set for shelvedAlarms
-	//	max_value	not set for shelvedAlarms
-	//	min_value	not set for shelvedAlarms
-	//	max_alarm	not set for shelvedAlarms
-	//	min_alarm	not set for shelvedAlarms
-	//	max_warning	not set for shelvedAlarms
-	//	min_warning	not set for shelvedAlarms
-	//	delta_t	not set for shelvedAlarms
-	//	delta_val	not set for shelvedAlarms
+	//	Attribute : alarmShelved
+	alarmShelvedAttrib	*alarmshelved = new alarmShelvedAttrib();
+	Tango::UserDefaultAttrProp	alarmshelved_prop;
+	alarmshelved_prop.set_description("List of alarms in shelved state");
+	//	label	not set for alarmShelved
+	//	unit	not set for alarmShelved
+	//	standard_unit	not set for alarmShelved
+	//	display_unit	not set for alarmShelved
+	//	format	not set for alarmShelved
+	//	max_value	not set for alarmShelved
+	//	min_value	not set for alarmShelved
+	//	max_alarm	not set for alarmShelved
+	//	min_alarm	not set for alarmShelved
+	//	max_warning	not set for alarmShelved
+	//	min_warning	not set for alarmShelved
+	//	delta_t	not set for alarmShelved
+	//	delta_val	not set for alarmShelved
 	
-	shelvedalarms->set_default_properties(shelvedalarms_prop);
+	alarmshelved->set_default_properties(alarmshelved_prop);
 	//	Not Polled
-	shelvedalarms->set_disp_level(Tango::OPERATOR);
+	alarmshelved->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	shelvedalarms->set_change_event(true, true);
-	shelvedalarms->set_archive_event(true, true);
-	att_list.push_back(shelvedalarms);
+	alarmshelved->set_change_event(true, true);
+	alarmshelved->set_archive_event(true, true);
+	att_list.push_back(alarmshelved);
 
-	//	Attribute : outOfServiceAlarms
-	outOfServiceAlarmsAttrib	*outofservicealarms = new outOfServiceAlarmsAttrib();
-	Tango::UserDefaultAttrProp	outofservicealarms_prop;
-	outofservicealarms_prop.set_description("List of alarms in out of service state");
-	//	label	not set for outOfServiceAlarms
-	//	unit	not set for outOfServiceAlarms
-	//	standard_unit	not set for outOfServiceAlarms
-	//	display_unit	not set for outOfServiceAlarms
-	//	format	not set for outOfServiceAlarms
-	//	max_value	not set for outOfServiceAlarms
-	//	min_value	not set for outOfServiceAlarms
-	//	max_alarm	not set for outOfServiceAlarms
-	//	min_alarm	not set for outOfServiceAlarms
-	//	max_warning	not set for outOfServiceAlarms
-	//	min_warning	not set for outOfServiceAlarms
-	//	delta_t	not set for outOfServiceAlarms
-	//	delta_val	not set for outOfServiceAlarms
+	//	Attribute : alarmOutOfService
+	alarmOutOfServiceAttrib	*alarmoutofservice = new alarmOutOfServiceAttrib();
+	Tango::UserDefaultAttrProp	alarmoutofservice_prop;
+	alarmoutofservice_prop.set_description("List of alarms in out of service state");
+	//	label	not set for alarmOutOfService
+	//	unit	not set for alarmOutOfService
+	//	standard_unit	not set for alarmOutOfService
+	//	display_unit	not set for alarmOutOfService
+	//	format	not set for alarmOutOfService
+	//	max_value	not set for alarmOutOfService
+	//	min_value	not set for alarmOutOfService
+	//	max_alarm	not set for alarmOutOfService
+	//	min_alarm	not set for alarmOutOfService
+	//	max_warning	not set for alarmOutOfService
+	//	min_warning	not set for alarmOutOfService
+	//	delta_t	not set for alarmOutOfService
+	//	delta_val	not set for alarmOutOfService
 	
-	outofservicealarms->set_default_properties(outofservicealarms_prop);
+	alarmoutofservice->set_default_properties(alarmoutofservice_prop);
 	//	Not Polled
-	outofservicealarms->set_disp_level(Tango::OPERATOR);
+	alarmoutofservice->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	outofservicealarms->set_change_event(true, true);
-	outofservicealarms->set_archive_event(true, true);
-	att_list.push_back(outofservicealarms);
+	alarmoutofservice->set_change_event(true, true);
+	alarmoutofservice->set_archive_event(true, true);
+	att_list.push_back(alarmoutofservice);
 
-	//	Attribute : silencedAlarms
-	silencedAlarmsAttrib	*silencedalarms = new silencedAlarmsAttrib();
-	Tango::UserDefaultAttrProp	silencedalarms_prop;
-	silencedalarms_prop.set_description("List of alarms in silenced state");
-	//	label	not set for silencedAlarms
-	//	unit	not set for silencedAlarms
-	//	standard_unit	not set for silencedAlarms
-	//	display_unit	not set for silencedAlarms
-	//	format	not set for silencedAlarms
-	//	max_value	not set for silencedAlarms
-	//	min_value	not set for silencedAlarms
-	//	max_alarm	not set for silencedAlarms
-	//	min_alarm	not set for silencedAlarms
-	//	max_warning	not set for silencedAlarms
-	//	min_warning	not set for silencedAlarms
-	//	delta_t	not set for silencedAlarms
-	//	delta_val	not set for silencedAlarms
+	//	Attribute : alarmSilenced
+	alarmSilencedAttrib	*alarmsilenced = new alarmSilencedAttrib();
+	Tango::UserDefaultAttrProp	alarmsilenced_prop;
+	alarmsilenced_prop.set_description("List of alarms in silenced state");
+	//	label	not set for alarmSilenced
+	//	unit	not set for alarmSilenced
+	//	standard_unit	not set for alarmSilenced
+	//	display_unit	not set for alarmSilenced
+	//	format	not set for alarmSilenced
+	//	max_value	not set for alarmSilenced
+	//	min_value	not set for alarmSilenced
+	//	max_alarm	not set for alarmSilenced
+	//	min_alarm	not set for alarmSilenced
+	//	max_warning	not set for alarmSilenced
+	//	min_warning	not set for alarmSilenced
+	//	delta_t	not set for alarmSilenced
+	//	delta_val	not set for alarmSilenced
 	
-	silencedalarms->set_default_properties(silencedalarms_prop);
+	alarmsilenced->set_default_properties(alarmsilenced_prop);
 	//	Not Polled
-	silencedalarms->set_disp_level(Tango::OPERATOR);
+	alarmsilenced->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	silencedalarms->set_change_event(true, true);
-	silencedalarms->set_archive_event(true, true);
-	att_list.push_back(silencedalarms);
+	alarmsilenced->set_change_event(true, true);
+	alarmsilenced->set_archive_event(true, true);
+	att_list.push_back(alarmsilenced);
 
-	//	Attribute : listAlarms
-	listAlarmsAttrib	*listalarms = new listAlarmsAttrib();
-	Tango::UserDefaultAttrProp	listalarms_prop;
-	listalarms_prop.set_description("List of all alarms");
-	//	label	not set for listAlarms
-	//	unit	not set for listAlarms
-	//	standard_unit	not set for listAlarms
-	//	display_unit	not set for listAlarms
-	//	format	not set for listAlarms
-	//	max_value	not set for listAlarms
-	//	min_value	not set for listAlarms
-	//	max_alarm	not set for listAlarms
-	//	min_alarm	not set for listAlarms
-	//	max_warning	not set for listAlarms
-	//	min_warning	not set for listAlarms
-	//	delta_t	not set for listAlarms
-	//	delta_val	not set for listAlarms
+	//	Attribute : alarmList
+	alarmListAttrib	*alarmlist = new alarmListAttrib();
+	Tango::UserDefaultAttrProp	alarmlist_prop;
+	alarmlist_prop.set_description("List of all alarms");
+	//	label	not set for alarmList
+	//	unit	not set for alarmList
+	//	standard_unit	not set for alarmList
+	//	display_unit	not set for alarmList
+	//	format	not set for alarmList
+	//	max_value	not set for alarmList
+	//	min_value	not set for alarmList
+	//	max_alarm	not set for alarmList
+	//	min_alarm	not set for alarmList
+	//	max_warning	not set for alarmList
+	//	min_warning	not set for alarmList
+	//	delta_t	not set for alarmList
+	//	delta_val	not set for alarmList
 	
-	listalarms->set_default_properties(listalarms_prop);
+	alarmlist->set_default_properties(alarmlist_prop);
 	//	Not Polled
-	listalarms->set_disp_level(Tango::OPERATOR);
+	alarmlist->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	listalarms->set_change_event(true, true);
-	listalarms->set_archive_event(true, true);
-	att_list.push_back(listalarms);
+	alarmlist->set_change_event(true, true);
+	alarmlist->set_archive_event(true, true);
+	att_list.push_back(alarmlist);
 
-	//	Attribute : frequencyAlarms
-	frequencyAlarmsAttrib	*frequencyalarms = new frequencyAlarmsAttrib();
-	Tango::UserDefaultAttrProp	frequencyalarms_prop;
-	frequencyalarms_prop.set_description("List of frequency of evaluation of all alarms");
-	//	label	not set for frequencyAlarms
-	//	unit	not set for frequencyAlarms
-	//	standard_unit	not set for frequencyAlarms
-	//	display_unit	not set for frequencyAlarms
-	//	format	not set for frequencyAlarms
-	//	max_value	not set for frequencyAlarms
-	//	min_value	not set for frequencyAlarms
-	//	max_alarm	not set for frequencyAlarms
-	//	min_alarm	not set for frequencyAlarms
-	//	max_warning	not set for frequencyAlarms
-	//	min_warning	not set for frequencyAlarms
-	//	delta_t	not set for frequencyAlarms
-	//	delta_val	not set for frequencyAlarms
+	//	Attribute : alarmFrequency
+	alarmFrequencyAttrib	*alarmfrequency = new alarmFrequencyAttrib();
+	Tango::UserDefaultAttrProp	alarmfrequency_prop;
+	alarmfrequency_prop.set_description("List of frequency of evaluation of all alarms");
+	//	label	not set for alarmFrequency
+	//	unit	not set for alarmFrequency
+	//	standard_unit	not set for alarmFrequency
+	//	display_unit	not set for alarmFrequency
+	//	format	not set for alarmFrequency
+	//	max_value	not set for alarmFrequency
+	//	min_value	not set for alarmFrequency
+	//	max_alarm	not set for alarmFrequency
+	//	min_alarm	not set for alarmFrequency
+	//	max_warning	not set for alarmFrequency
+	//	min_warning	not set for alarmFrequency
+	//	delta_t	not set for alarmFrequency
+	//	delta_val	not set for alarmFrequency
 	
-	frequencyalarms->set_default_properties(frequencyalarms_prop);
+	alarmfrequency->set_default_properties(alarmfrequency_prop);
 	//	Not Polled
-	frequencyalarms->set_disp_level(Tango::OPERATOR);
+	alarmfrequency->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	frequencyalarms->set_change_event(true, true);
-	frequencyalarms->set_archive_event(true, true);
-	att_list.push_back(frequencyalarms);
+	alarmfrequency->set_change_event(true, true);
+	alarmfrequency->set_archive_event(true, true);
+	att_list.push_back(alarmfrequency);
 
 	//	Attribute : alarmSummary
 	alarmSummaryAttrib	*alarmsummary = new alarmSummaryAttrib();

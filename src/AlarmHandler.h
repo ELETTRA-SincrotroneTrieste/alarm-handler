@@ -155,18 +155,18 @@ public:
 
 //	Attribute data members
 public:
-	Tango::DevBoolean	*attr_audibleAlarm_read;
+	Tango::DevBoolean	*attr_alarmAudible_read;
 	Tango::DevDouble	*attr_StatisticsResetTime_read;
 	Tango::DevString	*attr_alarm_read;
-	Tango::DevString	*attr_normalAlarms_read;
-	Tango::DevString	*attr_unacknowledgedAlarms_read;
-	Tango::DevString	*attr_acknowledgedAlarms_read;
-	Tango::DevString	*attr_unacknowledgedNormalAlarms_read;
-	Tango::DevString	*attr_shelvedAlarms_read;
-	Tango::DevString	*attr_outOfServiceAlarms_read;
-	Tango::DevString	*attr_silencedAlarms_read;
-	Tango::DevString	*attr_listAlarms_read;
-	Tango::DevDouble	*attr_frequencyAlarms_read;
+	Tango::DevString	*attr_alarmNormal_read;
+	Tango::DevString	*attr_alarmUnacknowledged_read;
+	Tango::DevString	*attr_alarmAcknowledged_read;
+	Tango::DevString	*attr_alarmUnacknowledgedNormal_read;
+	Tango::DevString	*attr_alarmShelved_read;
+	Tango::DevString	*attr_alarmOutOfService_read;
+	Tango::DevString	*attr_alarmSilenced_read;
+	Tango::DevString	*attr_alarmList_read;
+	Tango::DevDouble	*attr_alarmFrequency_read;
 	Tango::DevString	*attr_alarmSummary_read;
 
 //	Constructors and destructors
@@ -230,14 +230,14 @@ public:
 	virtual void read_attr_hardware(vector<long> &attr_list);
 
 /**
- *	Attribute audibleAlarm related methods
+ *	Attribute alarmAudible related methods
  *	Description: True if there is at least one alarm that needs audible indication on the GUI
  *
  *	Data type:	Tango::DevBoolean
  *	Attr type:	Scalar
  */
-	virtual void read_audibleAlarm(Tango::Attribute &attr);
-	virtual bool is_audibleAlarm_allowed(Tango::AttReqType type);
+	virtual void read_alarmAudible(Tango::Attribute &attr);
+	virtual bool is_alarmAudible_allowed(Tango::AttReqType type);
 /**
  *	Attribute StatisticsResetTime related methods
  *	Description: Time elapsed in seconds since last Resetstatistics
@@ -257,86 +257,86 @@ public:
 	virtual void read_alarm(Tango::Attribute &attr);
 	virtual bool is_alarm_allowed(Tango::AttReqType type);
 /**
- *	Attribute normalAlarms related methods
+ *	Attribute alarmNormal related methods
  *	Description: List of alarms in normal state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_normalAlarms(Tango::Attribute &attr);
-	virtual bool is_normalAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmNormal(Tango::Attribute &attr);
+	virtual bool is_alarmNormal_allowed(Tango::AttReqType type);
 /**
- *	Attribute unacknowledgedAlarms related methods
+ *	Attribute alarmUnacknowledged related methods
  *	Description: List of alarms in unacknowledged state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_unacknowledgedAlarms(Tango::Attribute &attr);
-	virtual bool is_unacknowledgedAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmUnacknowledged(Tango::Attribute &attr);
+	virtual bool is_alarmUnacknowledged_allowed(Tango::AttReqType type);
 /**
- *	Attribute acknowledgedAlarms related methods
+ *	Attribute alarmAcknowledged related methods
  *	Description: List of alarms in acknowledged state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_acknowledgedAlarms(Tango::Attribute &attr);
-	virtual bool is_acknowledgedAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmAcknowledged(Tango::Attribute &attr);
+	virtual bool is_alarmAcknowledged_allowed(Tango::AttReqType type);
 /**
- *	Attribute unacknowledgedNormalAlarms related methods
+ *	Attribute alarmUnacknowledgedNormal related methods
  *	Description: List of alarms in unacknowledged normal state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_unacknowledgedNormalAlarms(Tango::Attribute &attr);
-	virtual bool is_unacknowledgedNormalAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmUnacknowledgedNormal(Tango::Attribute &attr);
+	virtual bool is_alarmUnacknowledgedNormal_allowed(Tango::AttReqType type);
 /**
- *	Attribute shelvedAlarms related methods
+ *	Attribute alarmShelved related methods
  *	Description: List of alarms in shelved state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_shelvedAlarms(Tango::Attribute &attr);
-	virtual bool is_shelvedAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmShelved(Tango::Attribute &attr);
+	virtual bool is_alarmShelved_allowed(Tango::AttReqType type);
 /**
- *	Attribute outOfServiceAlarms related methods
+ *	Attribute alarmOutOfService related methods
  *	Description: List of alarms in out of service state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_outOfServiceAlarms(Tango::Attribute &attr);
-	virtual bool is_outOfServiceAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmOutOfService(Tango::Attribute &attr);
+	virtual bool is_alarmOutOfService_allowed(Tango::AttReqType type);
 /**
- *	Attribute silencedAlarms related methods
+ *	Attribute alarmSilenced related methods
  *	Description: List of alarms in silenced state
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_silencedAlarms(Tango::Attribute &attr);
-	virtual bool is_silencedAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmSilenced(Tango::Attribute &attr);
+	virtual bool is_alarmSilenced_allowed(Tango::AttReqType type);
 /**
- *	Attribute listAlarms related methods
+ *	Attribute alarmList related methods
  *	Description: List of all alarms
  *
  *	Data type:	Tango::DevString
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_listAlarms(Tango::Attribute &attr);
-	virtual bool is_listAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmList(Tango::Attribute &attr);
+	virtual bool is_alarmList_allowed(Tango::AttReqType type);
 /**
- *	Attribute frequencyAlarms related methods
+ *	Attribute alarmFrequency related methods
  *	Description: List of frequency of evaluation of all alarms
  *
  *	Data type:	Tango::DevDouble
  *	Attr type:	Spectrum max = 10000
  */
-	virtual void read_frequencyAlarms(Tango::Attribute &attr);
-	virtual bool is_frequencyAlarms_allowed(Tango::AttReqType type);
+	virtual void read_alarmFrequency(Tango::Attribute &attr);
+	virtual bool is_alarmFrequency_allowed(Tango::AttReqType type);
 /**
  *	Attribute alarmSummary related methods
  *	Description: 

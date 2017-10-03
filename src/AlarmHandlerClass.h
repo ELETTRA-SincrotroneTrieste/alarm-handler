@@ -54,17 +54,17 @@ namespace AlarmHandler_ns
 //=========================================
 //	Define classes for attributes
 //=========================================
-//	Attribute audibleAlarm class definition
-class audibleAlarmAttrib: public Tango::Attr
+//	Attribute alarmAudible class definition
+class alarmAudibleAttrib: public Tango::Attr
 {
 public:
-	audibleAlarmAttrib():Attr("audibleAlarm",
+	alarmAudibleAttrib():Attr("alarmAudible",
 			Tango::DEV_BOOLEAN, Tango::READ) {};
-	~audibleAlarmAttrib() {};
+	~alarmAudibleAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_audibleAlarm(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmAudible(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_audibleAlarm_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmAudible_allowed(ty);}
 };
 
 //	Attribute StatisticsResetTime class definition
@@ -93,121 +93,121 @@ public:
 		{return (static_cast<AlarmHandler *>(dev))->is_alarm_allowed(ty);}
 };
 
-//	Attribute normalAlarms class definition
-class normalAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmNormal class definition
+class alarmNormalAttrib: public Tango::SpectrumAttr
 {
 public:
-	normalAlarmsAttrib():SpectrumAttr("normalAlarms",
+	alarmNormalAttrib():SpectrumAttr("alarmNormal",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~normalAlarmsAttrib() {};
+	~alarmNormalAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_normalAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmNormal(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_normalAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmNormal_allowed(ty);}
 };
 
-//	Attribute unacknowledgedAlarms class definition
-class unacknowledgedAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmUnacknowledged class definition
+class alarmUnacknowledgedAttrib: public Tango::SpectrumAttr
 {
 public:
-	unacknowledgedAlarmsAttrib():SpectrumAttr("unacknowledgedAlarms",
+	alarmUnacknowledgedAttrib():SpectrumAttr("alarmUnacknowledged",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~unacknowledgedAlarmsAttrib() {};
+	~alarmUnacknowledgedAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_unacknowledgedAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmUnacknowledged(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_unacknowledgedAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmUnacknowledged_allowed(ty);}
 };
 
-//	Attribute acknowledgedAlarms class definition
-class acknowledgedAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmAcknowledged class definition
+class alarmAcknowledgedAttrib: public Tango::SpectrumAttr
 {
 public:
-	acknowledgedAlarmsAttrib():SpectrumAttr("acknowledgedAlarms",
+	alarmAcknowledgedAttrib():SpectrumAttr("alarmAcknowledged",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~acknowledgedAlarmsAttrib() {};
+	~alarmAcknowledgedAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_acknowledgedAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmAcknowledged(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_acknowledgedAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmAcknowledged_allowed(ty);}
 };
 
-//	Attribute unacknowledgedNormalAlarms class definition
-class unacknowledgedNormalAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmUnacknowledgedNormal class definition
+class alarmUnacknowledgedNormalAttrib: public Tango::SpectrumAttr
 {
 public:
-	unacknowledgedNormalAlarmsAttrib():SpectrumAttr("unacknowledgedNormalAlarms",
+	alarmUnacknowledgedNormalAttrib():SpectrumAttr("alarmUnacknowledgedNormal",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~unacknowledgedNormalAlarmsAttrib() {};
+	~alarmUnacknowledgedNormalAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_unacknowledgedNormalAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmUnacknowledgedNormal(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_unacknowledgedNormalAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmUnacknowledgedNormal_allowed(ty);}
 };
 
-//	Attribute shelvedAlarms class definition
-class shelvedAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmShelved class definition
+class alarmShelvedAttrib: public Tango::SpectrumAttr
 {
 public:
-	shelvedAlarmsAttrib():SpectrumAttr("shelvedAlarms",
+	alarmShelvedAttrib():SpectrumAttr("alarmShelved",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~shelvedAlarmsAttrib() {};
+	~alarmShelvedAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_shelvedAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmShelved(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_shelvedAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmShelved_allowed(ty);}
 };
 
-//	Attribute outOfServiceAlarms class definition
-class outOfServiceAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmOutOfService class definition
+class alarmOutOfServiceAttrib: public Tango::SpectrumAttr
 {
 public:
-	outOfServiceAlarmsAttrib():SpectrumAttr("outOfServiceAlarms",
+	alarmOutOfServiceAttrib():SpectrumAttr("alarmOutOfService",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~outOfServiceAlarmsAttrib() {};
+	~alarmOutOfServiceAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_outOfServiceAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmOutOfService(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_outOfServiceAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmOutOfService_allowed(ty);}
 };
 
-//	Attribute silencedAlarms class definition
-class silencedAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmSilenced class definition
+class alarmSilencedAttrib: public Tango::SpectrumAttr
 {
 public:
-	silencedAlarmsAttrib():SpectrumAttr("silencedAlarms",
+	alarmSilencedAttrib():SpectrumAttr("alarmSilenced",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~silencedAlarmsAttrib() {};
+	~alarmSilencedAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_silencedAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmSilenced(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_silencedAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmSilenced_allowed(ty);}
 };
 
-//	Attribute listAlarms class definition
-class listAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmList class definition
+class alarmListAttrib: public Tango::SpectrumAttr
 {
 public:
-	listAlarmsAttrib():SpectrumAttr("listAlarms",
+	alarmListAttrib():SpectrumAttr("alarmList",
 			Tango::DEV_STRING, Tango::READ, 10000) {};
-	~listAlarmsAttrib() {};
+	~alarmListAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_listAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmList(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_listAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmList_allowed(ty);}
 };
 
-//	Attribute frequencyAlarms class definition
-class frequencyAlarmsAttrib: public Tango::SpectrumAttr
+//	Attribute alarmFrequency class definition
+class alarmFrequencyAttrib: public Tango::SpectrumAttr
 {
 public:
-	frequencyAlarmsAttrib():SpectrumAttr("frequencyAlarms",
+	alarmFrequencyAttrib():SpectrumAttr("alarmFrequency",
 			Tango::DEV_DOUBLE, Tango::READ, 10000) {};
-	~frequencyAlarmsAttrib() {};
+	~alarmFrequencyAttrib() {};
 	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
-		{(static_cast<AlarmHandler *>(dev))->read_frequencyAlarms(att);}
+		{(static_cast<AlarmHandler *>(dev))->read_alarmFrequency(att);}
 	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
-		{return (static_cast<AlarmHandler *>(dev))->is_frequencyAlarms_allowed(ty);}
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmFrequency_allowed(ty);}
 };
 
 //	Attribute alarmSummary class definition

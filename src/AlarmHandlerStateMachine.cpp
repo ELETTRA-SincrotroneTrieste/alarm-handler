@@ -46,17 +46,17 @@ namespace AlarmHandler_ns
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_audibleAlarm_allowed()
- *	Description : Execution allowed for audibleAlarm attribute
+ *	Method      : AlarmHandler::is_alarmAudible_allowed()
+ *	Description : Execution allowed for alarmAudible attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_audibleAlarm_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmAudible_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for audibleAlarm attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::audibleAlarmStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmAudible attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmAudibleStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::audibleAlarmStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmAudibleStateAllowed_READ
 	return true;
 }
 
@@ -94,145 +94,145 @@ bool AlarmHandler::is_alarm_allowed(TANGO_UNUSED(Tango::AttReqType type))
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_normalAlarms_allowed()
- *	Description : Execution allowed for normalAlarms attribute
+ *	Method      : AlarmHandler::is_alarmNormal_allowed()
+ *	Description : Execution allowed for alarmNormal attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_normalAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmNormal_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for normalAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::normalAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmNormal attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmNormalStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::normalAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmNormalStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_unacknowledgedAlarms_allowed()
- *	Description : Execution allowed for unacknowledgedAlarms attribute
+ *	Method      : AlarmHandler::is_alarmUnacknowledged_allowed()
+ *	Description : Execution allowed for alarmUnacknowledged attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_unacknowledgedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmUnacknowledged_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for unacknowledgedAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::unacknowledgedAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmUnacknowledged attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmUnacknowledgedStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::unacknowledgedAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmUnacknowledgedStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_acknowledgedAlarms_allowed()
- *	Description : Execution allowed for acknowledgedAlarms attribute
+ *	Method      : AlarmHandler::is_alarmAcknowledged_allowed()
+ *	Description : Execution allowed for alarmAcknowledged attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_acknowledgedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmAcknowledged_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for acknowledgedAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::acknowledgedAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmAcknowledged attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmAcknowledgedStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::acknowledgedAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmAcknowledgedStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_unacknowledgedNormalAlarms_allowed()
- *	Description : Execution allowed for unacknowledgedNormalAlarms attribute
+ *	Method      : AlarmHandler::is_alarmUnacknowledgedNormal_allowed()
+ *	Description : Execution allowed for alarmUnacknowledgedNormal attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_unacknowledgedNormalAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmUnacknowledgedNormal_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for unacknowledgedNormalAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::unacknowledgedNormalAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmUnacknowledgedNormal attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmUnacknowledgedNormalStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::unacknowledgedNormalAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmUnacknowledgedNormalStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_shelvedAlarms_allowed()
- *	Description : Execution allowed for shelvedAlarms attribute
+ *	Method      : AlarmHandler::is_alarmShelved_allowed()
+ *	Description : Execution allowed for alarmShelved attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_shelvedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmShelved_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for shelvedAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::shelvedAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmShelved attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmShelvedStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::shelvedAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmShelvedStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_outOfServiceAlarms_allowed()
- *	Description : Execution allowed for outOfServiceAlarms attribute
+ *	Method      : AlarmHandler::is_alarmOutOfService_allowed()
+ *	Description : Execution allowed for alarmOutOfService attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_outOfServiceAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmOutOfService_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for outOfServiceAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::outOfServiceAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmOutOfService attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmOutOfServiceStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::outOfServiceAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmOutOfServiceStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_silencedAlarms_allowed()
- *	Description : Execution allowed for silencedAlarms attribute
+ *	Method      : AlarmHandler::is_alarmSilenced_allowed()
+ *	Description : Execution allowed for alarmSilenced attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_silencedAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmSilenced_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for silencedAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::silencedAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmSilenced attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmSilencedStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::silencedAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmSilencedStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_listAlarms_allowed()
- *	Description : Execution allowed for listAlarms attribute
+ *	Method      : AlarmHandler::is_alarmList_allowed()
+ *	Description : Execution allowed for alarmList attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_listAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmList_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for listAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::listAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmList attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmListStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::listAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmListStateAllowed_READ
 	return true;
 }
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandler::is_frequencyAlarms_allowed()
- *	Description : Execution allowed for frequencyAlarms attribute
+ *	Method      : AlarmHandler::is_alarmFrequency_allowed()
+ *	Description : Execution allowed for alarmFrequency attribute
  */
 //--------------------------------------------------------
-bool AlarmHandler::is_frequencyAlarms_allowed(TANGO_UNUSED(Tango::AttReqType type))
+bool AlarmHandler::is_alarmFrequency_allowed(TANGO_UNUSED(Tango::AttReqType type))
 {
 
-	//	Not any excluded states for frequencyAlarms attribute in read access.
-	/*----- PROTECTED REGION ID(AlarmHandler::frequencyAlarmsStateAllowed_READ) ENABLED START -----*/
+	//	Not any excluded states for alarmFrequency attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmFrequencyStateAllowed_READ) ENABLED START -----*/
 	
-	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::frequencyAlarmsStateAllowed_READ
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmFrequencyStateAllowed_READ
 	return true;
 }
 
