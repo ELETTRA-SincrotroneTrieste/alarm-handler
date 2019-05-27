@@ -83,7 +83,14 @@ typedef parse_tree_match_t::tree_iterator iter_t;
 #define LEV_LOG			"log"
 #define LEV_WARNING		"warning"
 #define LEV_FAULT		"fault"
-#define LEV_DEFAULT	LEV_FAULT
+//#define LEV_DEFAULT	LEV_FAULT
+
+#define LEV_LOWEST		"lowest"
+#define LEV_LOW			"low"
+#define LEV_MEDIUM		"medium"
+#define LEV_HIGH		"high"
+#define LEV_HIGHEST		"highest"
+#define LEV_DEFAULT		LEV_HIGH
 
 class alarm_t;
 class alarm_table;

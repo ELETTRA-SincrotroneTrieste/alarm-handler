@@ -2309,7 +2309,8 @@ void AlarmHandler::modify(Tango::DevString argin)
 			if ((alm.name.empty() == false) && \
 					(alm.formula.empty() == false) && \
 					((alm.lev==LEV_LOG)||(alm.lev==LEV_WARNING)|| \
-					(alm.lev==LEV_FAULT)||(alm.lev.empty() == true))) {
+					(alm.lev==LEV_FAULT)||(alm.lev==LEV_LOWEST)||(alm.lev==LEV_LOW)|| \
+					(alm.lev==LEV_MEDIUM)||(alm.lev==LEV_HIGH)||(alm.lev==LEV_HIGHEST)||(alm.lev.empty() == true))) {
 				i->second.stat = S_NORMAL;
 				i->second.ack = ACK;
 				i->second.done = false;
@@ -3331,7 +3332,8 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	if ((alm.name.empty() == false) && \
 			(alm.formula.empty() == false) && \
 			((alm.lev==LEV_LOG)||(alm.lev==LEV_WARNING)|| \
-			(alm.lev==LEV_FAULT)||(alm.lev.empty() == true))) {
+			(alm.lev==LEV_FAULT)||(alm.lev==LEV_LOWEST)||(alm.lev==LEV_LOW)|| \
+			(alm.lev==LEV_MEDIUM)||(alm.lev==LEV_HIGH)||(alm.lev==LEV_HIGHEST)||(alm.lev.empty() == true))) {
 		alm.stat = S_NORMAL;
 		alm.ack = ACK;
 		alm.done = false;
@@ -4233,7 +4235,7 @@ void AlarmHandler::set_internal_alarm(string name, Tango::TimeVal t, string msg,
 		else
 			alm.grp = GR_DEFAULT;
 		//alm.lev = LEV_DEFAULT;	
-		alm.lev = LEV_LOG;	
+		alm.lev = LEV_LOWEST;
 		internal.push_back(alm);
 	}
 	internallock->writerOut();
