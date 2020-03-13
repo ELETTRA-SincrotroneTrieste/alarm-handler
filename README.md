@@ -1,10 +1,10 @@
 # alarm
-Elettra AlarmHandler
+Elettra alarm-handler Tango device
 
 
 ## building
-git clone --recursive http://github.com/ELETTRA-SincrotroneTrieste/alarmhandler.git
+git clone --recursive http://github.com/ELETTRA-SincrotroneTrieste/alarm-handler.git
 
-cd alarmhandler
+cd alarm-handler
 
 make
