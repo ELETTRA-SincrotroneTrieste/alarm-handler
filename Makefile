@@ -7,4 +7,4 @@ CXXFLAGS +=  -D_USE_ELETTRA_DB_RW
 
 LDFLAGS +=  -lboost_thread
 
-include ./.makefiles/Make-9.3.3.in
+include ../makefiles/Make-9.3.3.in
