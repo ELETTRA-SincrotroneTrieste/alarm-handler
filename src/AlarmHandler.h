@@ -34,7 +34,6 @@
 #define AlarmHandler_H
 
 #include <tango.h>
-#include <mysql.h>
 
 #include <boost/version.hpp>
 #if BOOST_VERSION  >= 103600
