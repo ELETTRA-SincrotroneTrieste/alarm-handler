@@ -1134,7 +1134,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 			e.ev_name = ev->attr_name;
 #endif
 			e.ts = ev->attr_value->time;
-			extract_values(ev->attr_value, e.value, e.value_string, e.type);
+			extract_values(ev->attr_value, e.value, e.value_string, e.type, e.read_size);
 		} else {
 #if 0//TANGO_VER >= 711
  			string ev_name_str(ev->attr_name);
@@ -1195,7 +1195,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 	static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->evlist.push_back(e);
 }  /* push_event() */
 
-void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type)
+void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type, int &read_size)
 {
 	Tango::DevState stval;
 	vector<Tango::DevState> v_st;
@@ -1211,6 +1211,26 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 	vector<Tango::DevULong64> v_ulo64;
 	vector<string> v_string;
 	val_string = string("");
+
+	//Tango::AttributeDimension attr_w_dim;
+	Tango::AttributeDimension attr_r_dim;
+
+        //attr_value->reset_exceptions(Tango::DeviceAttribute::isempty_flag); //disable is_empty exception //commented to throw exceptions if empty
+        if(!attr_value->is_empty())
+        {
+                //attr_w_dim = data->attr_value->get_w_dimension();
+                attr_r_dim = attr_value->get_r_dimension();
+        }
+        else
+        {
+                attr_r_dim.dim_x = 0;
+                //attr_w_dim.dim_x = 0;
+                attr_r_dim.dim_y = 0;
+                //attr_w_dim.dim_y = 0;
+        }
+        read_size = attr_r_dim.dim_x;
+        if(attr_r_dim.dim_y > 1)
+                read_size *= attr_r_dim.dim_y;
 
 	if (attr_value->get_type() == Tango::DEV_UCHAR) {
 		*(attr_value) >> v_uch;

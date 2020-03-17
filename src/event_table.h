@@ -57,6 +57,7 @@ class event {
 		string ex_origin;
 		Tango::TimeVal ts;		/* event timestamp */
 		int type,							/* attribute data type */
+				read_size,                                      /* attribute size of read part */
 				counter,					/* molteplicita' */
 				err_counter;					/* molteplicita' errore */				
 		//map<string, string> m_alarm;
@@ -109,6 +110,7 @@ typedef struct basic_event_info_s {
 	string ex_desc;
 	string ex_origin;
 	int type;
+	int read_size;
 	Tango::TimeVal ts;
 	string msg;
 } bei_t;
@@ -193,7 +195,7 @@ class EventCallBack : public Tango::CallBack, public Tango::LogAdapter
 		~EventCallBack(void);
 		void push_event(Tango::EventData* ev);
 		//void init(event_list* e);
-		void extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type);
+		void extract_values(Tango::DeviceAttribute *attr_value, vector<double> &val, string &val_string, int &type, int &read_size);
 	private:
 		//event_list* e_ptr;
 		Tango::DeviceImpl *mydev;

@@ -3512,7 +3512,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 				try {
 					Tango::DeviceAttribute attr_value;
 					attr_value = k->dp->read_attribute(k->attribute);
-					ecb.extract_values(&attr_value, k->value, k->type);
+					ecb.extract_values(&attr_value, k->value, k->type, k->read_size);
 					k->valid = true;
 					ostringstream msg;
 					msg << "AlarmHandler::add_event(): initial values of " << k->name << " = ";
@@ -3521,7 +3521,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 					msg << ", valid=" << k->valid << ends;
 					DEBUG_STREAM << msg.str() << endl;
 					//delete attr_value;
-				} catch(Tango::DevFailed& e)
+				} catch(Tango::DevFailed& e
 				{
 					TangoSys_MemStream out_stream;
 					out_stream << "Failed to read initial value of " << k->name << " = " << e.errors[0].desc << ends;
@@ -3715,6 +3715,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		found->valid = true;
 		found->ts = e.ts;
 		found->type = e.type;
+		found->read_size = e.read_size;
 		found->err_counter = 0;
 		vector<string>::iterator j = found->m_alarm.begin();
 		while (j != found->m_alarm.end()) 
@@ -4769,38 +4770,115 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 		DEBUG_STREAM << "		node function: " << string(i->value.begin(), i->value.end()) << endl;
 		if(i->children.size() != 1)		
 		{
-        	err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size();
-        	throw err.str(); 
-        }
+			err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") children=" << i->children.size();
+			throw err.str(); 
+		}
 		formula_res_t res;
-		res = eval_expression(i->children.begin(), attr_values);
 
 		if (string(i->value.begin(), i->value.end()) == string("abs"))
 		{
+			res = eval_expression(i->children.begin(), attr_values);
 			res.value = fabs(res.value);
 			return res;
 		}
 		else if (string(i->value.begin(), i->value.end()) == string("cos"))
 		{
+			res = eval_expression(i->children.begin(), attr_values);
 			res.value = cos(res.value);
 			return res;
 		}
 		else if (string(i->value.begin(), i->value.end()) == string("sin"))
 		{
+			res = eval_expression(i->children.begin(), attr_values);
 			res.value = sin(res.value);
 			return res;
 		}
 		else if (string(i->value.begin(), i->value.end()) == string("quality"))
 		{
+			res = eval_expression(i->children.begin(), attr_values);
 			res.value = res.quality;
 			return res;
+		}
+		else if ((string(i->value.begin(), i->value.end()) == string("AND") || string(i->value.begin(), i->value.end()) == string("OR")) && i->children.begin()->value.id() == formula_grammar::nameID)
+		{
+			vector<event>::iterator it = events->v_event.begin();
+			string s(i->children.begin()->value.begin(), i->children.begin()->value.end());
+			std::transform(s.begin(), s.end(), s.begin(), (int(*)(int))tolower);            //transform to lowercase
+			DEBUG_STREAM << "                       -> " << string(i->value.begin(), i->value.end()) << "(" << s << ")" << endl;
+			while ((it != events->v_event.end()) && (it->name != s))
+				it++;
+			if (it != events->v_event.end())
+			{
+				if(!it->valid)
+				{
+					err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << "), (" << s << ") value not valid!" << ends;
+					if(it->ex_desc.length() > 0)
+						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+					else
+						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not valid!";
+					throw err.str();
+				}
+				else if(it->type != Tango::DEV_STRING && it->value.empty())
+				{
+					if(it->ex_desc.length() > 0)
+						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+					else
+						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not initialized!!";
+					throw err.str();
+				}     
+
+				ostringstream temp_attr_val;
+				bool result;
+				if (string(i->value.begin(), i->value.end()) == string("AND"))
+					result = true;
+				else if (string(i->value.begin(), i->value.end()) == string("OR"))
+					result = false;
+
+				temp_attr_val << "\"" << it->name << "\":";
+				if(it->read_size > 1)
+					temp_attr_val << "[";
+				for(int att_ind = 0; att_ind < it->read_size && att_ind < it->value.size(); att_ind++)
+				{
+					temp_attr_val << it->value.at(att_ind);
+					if (string(i->value.begin(), i->value.end()) == string("AND"))
+					{
+						result = result && (bool)it->value.at(att_ind);
+						if(!result)     //comment to have all array values in attr_values
+							break;  //comment to have all array values in attr_values
+					}
+					else if (string(i->value.begin(), i->value.end()) == string("OR"))
+					{
+						result = result || (bool)it->value.at(att_ind);
+						if(result)      //comment to have all array values in attr_values
+							break;  //comment to have all array values in attr_values
+					}
+					if(att_ind < it->read_size-1 && att_ind < it->value.size()-1)
+						temp_attr_val << ",";
+				}
+				if(it->read_size > 1)
+					temp_attr_val << "]";
+				temp_attr_val << ",";
+				attr_values += temp_attr_val.str();
+				res.quality = it->quality;
+				res.ex_reason = it->ex_reason;
+				res.ex_desc = it->ex_desc;
+				res.ex_origin = it->ex_origin;
+				DEBUG_STREAM << "               node name -> " << temp_attr_val.str() << " quality=" << res.quality << endl;
+				res.value = result;
+				return res;    
+			}
+			else
+			{
+				err <<  "in function " << string(i->value.begin(), i->value.end()) << " event (" << s << ") not found in event table" << ends;
+				throw err.str();
+			}
 		}
 		else
 		{
 			err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << ") value not allowed";
 			throw err.str();
 		}
-    }  
+	}
 	else if (i->value.id() == formula_grammar::func_dualID)
 	{
 		DEBUG_STREAM << "		node function dual: " << string(i->value.begin(), i->value.end()) << endl;

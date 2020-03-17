@@ -356,7 +356,9 @@ struct formula_grammar : public grammar<formula_grammar>
             	=	( root_node_d[str_p("abs")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
             		| root_node_d[str_p("cos")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
             		| root_node_d[str_p("sin")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
-					| root_node_d[str_p("quality")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("quality")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("AND")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
+            		| root_node_d[str_p("OR")] >> (discard_node_d[ch_p('(')] >> cond_expr >> discard_node_d[ch_p(')')])	//TODO: ? not expr_atom ?
             		)
             	;
             function_dual
