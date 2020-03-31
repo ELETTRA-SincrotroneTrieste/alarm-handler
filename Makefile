@@ -2,7 +2,7 @@ NAME_SRV = alarm-handler-srv
 
 
 
-CXXFLAGS +=  -D_USE_ELETTRA_DB_RW
+CXXFLAGS +=
 
 
 LDFLAGS +=  -lboost_thread
