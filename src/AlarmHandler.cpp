@@ -3660,7 +3660,6 @@ void AlarmHandler::do_alarm(bei_t& e)
 		return;
 	}	
 	DEBUG_STREAM << "AlarmHandler::"<<__func__<<": arrived event=" << e.ev_name << endl;
-	
 	formula_res_t res;
 	vector<event>::iterator found = \
 			find(events->v_event.begin(), events->v_event.end(), e.ev_name);
@@ -3726,7 +3725,6 @@ void AlarmHandler::do_alarm(bei_t& e)
 				num_changed++;
 			j++;
 		}
-
 		if(num_changed==0)
 		{
 			prepare_alm_mtx->lock();
@@ -3790,6 +3788,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 {
 	bool changed = true;
 	bool eval_err = false;
+	bool prev_error = false;
 	formula_res_t res;
 	//alarm_container_t::iterator it = alarms.v_alarm.find(j->first);
 	DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before lock name=" << alm_name<< " ev=" << ev_name << endl;
@@ -3800,12 +3799,18 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 	{
 		if(ev_name == "FORCED_EVAL" && !it->second.to_be_evaluated)
 		{
+			DEBUG_STREAM << __func__ << ": ev_name=" << ev_name << " -> FORCED_EVAL && !it->second.to_be_evaluated -> changed=false" << endl;
 			alarms.vlock->readerOut();
 			return 	false;
 		}
 		if(ev_name != "FORCED_EVAL")
 				it->second.freq_counter++;
 		string tmpname=it->first;
+		if(it->second.ex_reason.length() > 0 || it->second.ex_desc.length() > 0 || it->second.ex_origin.length() > 0)
+		{
+			prev_error = true;
+			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before evaluating exception {"<<it->second.ex_reason<<","<<it->second.ex_desc.length()<<","<<it->second.ex_origin<<"}"<<endl;
+		}
 		try {
 			it->second.attr_values = string("{");
 			res = eval_formula(it->second.formula_tree, it->second.attr_values);
@@ -3813,6 +3818,8 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			it->second.attr_values += string("}");
 			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
 			changed = alarms.update(tmpname, ts, res, it->second.attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
+			changed = changed || prev_error;
+			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": changed=" << (int)changed << endl;
 			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
 			if(!it->second.enabled)
 				*attr_value = _OOSRV;
@@ -3853,6 +3860,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			}
 		} catch(std::out_of_range& ex)
 		{
+			changed = !prev_error;
 			eval_err = true;
 			ostringstream o;
 			o << tmpname << ": in formula array index out of range!";
@@ -3878,6 +3886,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			}
 		} catch(string & ex)
 		{
+			changed = !prev_error;
 			eval_err = true;
 			ostringstream o;
 			o << tmpname << ": in formula err=" << ex;
@@ -4997,6 +5006,7 @@ void AlarmHandler::eval_node_event(iter_t const& i, vector<string> & ev)
 
 void AlarmHandler::prepare_alarm_attr()
 {
+cout << __func__ << ": entering.." << endl;
 	prepare_alm_mtx->lock();
 	alarm_container_t::iterator ai;
 	vector<alarm_t>::iterator aid;
@@ -5099,7 +5109,8 @@ void AlarmHandler::prepare_alarm_attr()
 		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
 		{
 			tmp_ex << "{\"Reason\":\"" << ai->second.ex_reason << "\",\"Desc\":\"" << ai->second.ex_desc << "\",\"Origin\":\"" << ai->second.ex_origin << "\"}";
-			DEBUG_STREAM << __func__ << ": " << tmp_ex.str();
+			DEBUG_STREAM << __func__ << ": " << ai->first << " -> " << tmp_ex.str();
+cout << __func__ << ": alm:"<<ai->first<<" ERROR because " << tmp_ex.str() << endl;
 			if(almstate != "SHLVD" && almstate != "OOSRV")
 			{
 				almstate = "ERROR";

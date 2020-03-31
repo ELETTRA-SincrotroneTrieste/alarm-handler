@@ -826,6 +826,7 @@ void event_table::subscribe_events()
 	}*/
 	//omni_mutex_lock sync(*this);
 	veclock.readerIn();
+cout << "event_table::" << __func__ << ": going to subscribe " << v_event.size() << " attributes" << endl;
 	for (unsigned int i=0 ; i<v_event.size() ; i++)
 	{
 		event	*sig = &v_event[i];
