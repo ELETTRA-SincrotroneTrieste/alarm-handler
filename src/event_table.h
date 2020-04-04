@@ -28,10 +28,25 @@ using namespace std;
 #define INTERNAL_ERROR	"internal_error"
 #define TYPE_TANGO_ERR		-2
 #define TYPE_GENERIC_ERR	-3		
-
 #define		SUB_ERR			-1
 #define		NOTHING		0
 #define		UPDATE_PROP	1
+
+class alarm_list {
+	public:
+		alarm_list(void) {}
+		alarm_list(const alarm_list& la) {l_alarm = la.l_alarm;}
+		~alarm_list(void) {}
+		void push(string& a);
+		void pop(const string &a);
+		void clear(void);
+		list<string> show(void);
+		bool empty();
+		alarm_list& operator=(const alarm_list& other) {if (this != &other) {l_alarm = other.l_alarm;} return *this;}
+	protected:
+		list<string> l_alarm;
+		omni_mutex l;
+};
 
 class event;
 class event_list;
@@ -61,7 +76,8 @@ class event {
 				counter,					/* molteplicita' */
 				err_counter;					/* molteplicita' errore */				
 		//map<string, string> m_alarm;
-		vector<string> m_alarm;
+		//vector<string> m_alarm;
+		alarm_list m_alarm;
 		bool valid;	//TODO: old
 		bool 	first;//TODO: new
 		bool 	first_err;//TODO: new
@@ -89,8 +105,8 @@ class event {
 		event(string& s);
 		event() {}
 		~event() {}
-		void push_alarm(string& n);
-		void pop_alarm(string& n);
+		//void push_alarm(string& n);
+		//void pop_alarm(string& n);
 //		bool event::operator==(const event& e);		//TODO: gcc 4 problem??
 		bool operator==(const event& e);
 //		bool event::operator==(const string& s);	//TODO: gcc 4 problem??

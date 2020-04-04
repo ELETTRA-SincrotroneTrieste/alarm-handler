@@ -136,6 +136,55 @@ size_t event_list::size(void)
 
 
 /*
+ * alarm_list class methods
+ */
+void alarm_list::push(string& a)
+{
+	l.lock();
+	l_alarm.push_back(a);			
+	l.unlock();
+}
+
+void alarm_list::pop(const string& a)
+{
+	l.lock();
+	list<string>::iterator it = find(l_alarm.begin(), l_alarm.end(), a);
+	if(it != l_alarm.end())
+		l_alarm.erase(it);
+	else
+		cout << "alarm_list::"<<__func__<< ": ALARM '"<< a << "' NOT FOUND!"<< endl;	
+
+	l.unlock();
+	return;
+}
+
+void alarm_list::clear(void)
+{
+	l.lock();
+	l_alarm.clear();
+	l.unlock();
+}
+
+list<string> alarm_list::show(void)
+{
+	list<string> al;
+	l.lock();
+	al = l_alarm;
+	l.unlock();
+	return(al);
+}
+
+bool alarm_list::empty(void)
+{
+	bool res;
+	l.lock();
+	res = l_alarm.empty();
+	l.unlock();
+	return(res);
+}
+
+
+/*
  * event class methods
  */
 event::event(string& s, value_t& v, Tango::TimeVal& t) : \
@@ -181,21 +230,6 @@ event::event(string& s) : name(s)
 	event_id = SUB_ERR;
 	err_counter = 0;
 	valid = false;	
-}
-
-void event::push_alarm(string& n)
-{
-	m_alarm.push_back(n);
-}
-
-void event::pop_alarm(string& n)
-{
-	vector<string>::iterator it = find(m_alarm.begin(), m_alarm.end(), n);
-	if(it != m_alarm.end())
-		m_alarm.erase(it);
-	else
-		cout << "event::"<<__func__<< ": event="<<name<<" ALARM '"<< n << "' NOT FOUND!"<< endl;
-	
 }
 
 bool event::operator==(const event& e)

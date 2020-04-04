@@ -705,7 +705,7 @@ void AlarmHandler::init_device()
 						find(events->v_event.begin(), events->v_event.end(), *j);
 					if (k != events->v_event.end())
 					{
-						k->pop_alarm(i->second.name);		//remove alarm/formula just added to event
+						k->m_alarm.pop(i->second.name);		//remove alarm/formula just added to event
 						DEBUG_STREAM << "AlarmHandler::init_device(): Removed!!!! alarm=" << i->second.name << " from event=" << *j << endl;
 						if(k->m_alarm.empty())
 						{
@@ -1589,6 +1589,7 @@ void AlarmHandler::load(Tango::DevString argin)
 	DEBUG_STREAM << "AlarmHandler::Load()  - " << device_name << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::load) ENABLED START -----*/
 	//	Add your own code
+	DEBUG_STREAM << "AlarmHandler::LOAD ENTERING alm=" << argin << endl;
 	string s;
 	alarm_t alm;
 	vector<string> evn;
@@ -1670,7 +1671,7 @@ void AlarmHandler::load(Tango::DevString argin)
 					find(events->v_event.begin(), events->v_event.end(), *j);
 				if (k != events->v_event.end())
 				{
-					k->pop_alarm(i->second.name);		//remove alarm/formula just added to event
+					k->m_alarm.pop(i->second.name);		//remove alarm/formula just added to event
 					DEBUG_STREAM << "AlarmHandler::"<<__func__<<": Removed!!!! alarm=" << i->second.name << " from event=" << *j << endl;
 					if(k->m_alarm.empty())
 					{
@@ -1783,7 +1784,7 @@ void AlarmHandler::load(Tango::DevString argin)
 		INFO_STREAM << __func__<<": " << err.str() << endl;
 	}
 #endif
-
+DEBUG_STREAM << "AlarmHandler::LOAD EXITING alm=" << argin << endl;
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::load
 }
 //--------------------------------------------------------
@@ -3383,7 +3384,7 @@ void AlarmHandler::init_alarms(map< string,vector<string> > &alarm_events)
 				if (found != events->v_event.end())
 				{
 					i->second.insert(found->name);
-					found->push_alarm(i->second.name);
+					found->m_alarm.push(i->second.name);
 					DEBUG_STREAM << "AlarmHandler::init_alarms(): found Event= " << found->name << " <- Alarm= " << i->second.name << endl;
 					//break;		???
 				}  /* if */
@@ -3459,7 +3460,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			 * the event already exist; push alarm name
 			 * into the per-event alarm list
 			 */
-			k->push_alarm(a.name);
+			k->m_alarm.push(a.name);
 			a.to_be_evaluated = true;
 			DEBUG_STREAM << "AlarmHandler::add_event(): '" << *j << "' found, added " \
 									 << " alarm '"  << a.name << "' to list, valid=" << k->valid << endl;
@@ -3506,7 +3507,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			k = find(events->v_event.begin(), events->v_event.end(), *j);
 			if (k != events->v_event.end())
 			{
-				k->push_alarm(a.name);
+				k->m_alarm.push(a.name);
 #if 0
 				//now initialize value of this attribute
 				try {
@@ -3527,7 +3528,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 					out_stream << "Failed to read initial value of " << k->name << " = " << e.errors[0].desc << ends;
 					k->valid = false;
 #if TANGO_VER < 611		//if using subscribe stateless, alarm is not removed if it fails the subscription					
-					k->pop_alarm(a.name);		//remove alarm/formula just added to event
+					k->m_alarm.pop(a.name);		//remove alarm/formula just added to event
 					//events->v_event.pop_back();
 					events->v_event.erase(k);	//remove event just added to event_table
 					//delete attr_value;
@@ -3537,7 +3538,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 				{
 					TangoSys_MemStream out_stream;
 					out_stream << "Error reading initial value of " << k->name << " = " << e << ends;
-					k->pop_alarm(a.name);		//remove alarm/formula just added to event
+					k->m_alarm.pop(a.name);		//remove alarm/formula just added to event
 					//events->v_event.pop_back();
 					events->v_event.erase(k);	//remove event just added to event_table
 					//delete attr_value;					
@@ -3625,8 +3626,9 @@ void AlarmHandler::do_alarm(bei_t& e)
 			found_ev->ex_desc = o.str();
 			found_ev->ex_origin = e.ev_name;
 			//LOOP ALARMS IN WHICH THIS EVENT IS USED
-			vector<string>::iterator j = found_ev->m_alarm.begin();
-			while (j != found_ev->m_alarm.end())
+			list<string> m_alarm=found_ev->m_alarm.show();
+			list<string>::iterator j = m_alarm.begin();
+			while (j != m_alarm.end())
 			{
 				alarms.vlock->readerIn();
 				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
@@ -3716,8 +3718,9 @@ void AlarmHandler::do_alarm(bei_t& e)
 		found->type = e.type;
 		found->read_size = e.read_size;
 		found->err_counter = 0;
-		vector<string>::iterator j = found->m_alarm.begin();
-		while (j != found->m_alarm.end()) 
+		list<string> m_alarm=found->m_alarm.show();
+		list<string>::iterator j = m_alarm.begin();
+		while (j != m_alarm.end()) 
 		{
 			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before do_alarm_eval name=" << *j << " ev=" << e.ev_name << endl;
 			changed = do_alarm_eval(*j, e.ev_name, found->ts);
@@ -3787,7 +3790,6 @@ void AlarmHandler::do_alarm(bei_t& e)
 bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts)
 {
 	bool changed = true;
-	bool eval_err = false;
 	bool prev_error = false;
 	formula_res_t res;
 	//alarm_container_t::iterator it = alarms.v_alarm.find(j->first);
@@ -3797,6 +3799,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 	alarm_container_t::iterator it = alarms.v_alarm.find(alm_name);
 	if(it != alarms.v_alarm.end())
 	{
+		string attr_name = it->second.attr_name;
 		if(ev_name == "FORCED_EVAL" && !it->second.to_be_evaluated)
 		{
 			DEBUG_STREAM << __func__ << ": ev_name=" << ev_name << " -> FORCED_EVAL && !it->second.to_be_evaluated -> changed=false" << endl;
@@ -3806,21 +3809,25 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 		if(ev_name != "FORCED_EVAL")
 				it->second.freq_counter++;
 		string tmpname=it->first;
-		if(it->second.ex_reason.length() > 0 || it->second.ex_desc.length() > 0 || it->second.ex_origin.length() > 0)
+		string ex_reason = it->second.ex_reason;
+		string ex_desc = it->second.ex_desc;
+		string ex_origin = it->second.ex_origin;
+		if(ex_reason.length() > 0 || ex_desc.length() > 0 || ex_origin.length() > 0)
 		{
 			prev_error = true;
-			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before evaluating exception {"<<it->second.ex_reason<<","<<it->second.ex_desc.length()<<","<<it->second.ex_origin<<"}"<<endl;
+			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before evaluating exception {"<<ex_reason<<","<<ex_desc.length()<<","<<ex_origin<<"}"<<endl;
 		}
 		try {
 			it->second.attr_values = string("{");
 			res = eval_formula(it->second.formula_tree, it->second.attr_values);
+			it->second.to_be_evaluated = false;
 			it->second.attr_values.erase(it->second.attr_values.size()-1);
 			it->second.attr_values += string("}");
 			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": Evaluation of " << it->second.formula << "; result=" << res.value << " quality=" << res.quality << endl;
 			changed = alarms.update(tmpname, ts, res, it->second.attr_values, it->second.grp2str(), it->second.msg, it->second.formula); 		//update internal structure and log to db
 			changed = changed || prev_error;
 			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": changed=" << (int)changed << endl;
-			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(it->second.attr_name);
+			Tango::DevEnum *attr_value = get_AlarmState_data_ptr(attr_name);
 			if(!it->second.enabled)
 				*attr_value = _OOSRV;
 			else if(it->second.shelved && it->second.silenced > 0)
@@ -3833,35 +3840,40 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				*attr_value = _ACKED;
 			else if((it->second.stat == S_NORMAL) && it->second.ack == NOT_ACK)
 				*attr_value = _RTNUN;
+			Tango::AttrQuality quality = (Tango::AttrQuality)it->second.quality;
+			ex_reason = it->second.ex_reason; //TODO: check if copying again is needed
+			ex_desc = it->second.ex_desc;
+			ex_origin = it->second.ex_origin;
+			alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
 			try
 			{	//DevFailed for push events
-				if(it->second.ex_reason.length() == 0)
+				if(ex_reason.length() == 0) //TODO: and res.ex_reason is ignored ?
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
-					push_change_event(it->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
-					push_archive_event(it->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)it->second.quality, 1/*size*/, 0, false);
+					push_change_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
+					push_archive_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
 				}
 				else
 				{
 					Tango::DevErrorList errors(1);
 					errors.length(1);
-					errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+					errors[0].desc = CORBA::string_dup(ex_desc.c_str());
 					errors[0].severity = Tango::ERR;
-					errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
-					errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+					errors[0].reason = CORBA::string_dup(ex_reason.c_str());
+					errors[0].origin = CORBA::string_dup(ex_origin.c_str());
 					Tango::DevFailed except(errors);
-					push_change_event(it->second.attr_name, &except);
-					push_archive_event(it->second.attr_name, &except);
+					push_change_event(attr_name, &except);
+					push_archive_event(attr_name, &except);
 				}
 			} catch(Tango::DevFailed & ex)
 			{
-				WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+				WARN_STREAM << "AlarmHandler::"<<__func__<<": " << attr_name << " - EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 			}
 		} catch(std::out_of_range& ex)
 		{
 			changed = !prev_error;
-			eval_err = true;
+			it->second.to_be_evaluated = true;
 			ostringstream o;
 			o << tmpname << ": in formula array index out of range!";
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": " << o.str() << endl;
@@ -3878,16 +3890,17 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
 				errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
 				Tango::DevFailed except(errors);
-				push_change_event(it->second.attr_name, &except);
-				push_archive_event(it->second.attr_name, &except);
+				alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
+				push_change_event(attr_name, &except);
+				push_archive_event(attr_name, &except);
 			} catch(Tango::DevFailed & ex)
 			{
-				WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+				WARN_STREAM << "AlarmHandler::"<<__func__<<": " << attr_name << " - EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 			}
 		} catch(string & ex)
 		{
 			changed = !prev_error;
-			eval_err = true;
+			it->second.to_be_evaluated = true;
 			ostringstream o;
 			o << tmpname << ": in formula err=" << ex;
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": " << o.str() << endl;
@@ -3904,16 +3917,13 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
 				errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
 				Tango::DevFailed except(errors);
-				push_change_event(it->second.attr_name, &except);
-				push_archive_event(it->second.attr_name, &except);
+				alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
+				push_change_event(attr_name, &except);
+				push_archive_event(attr_name, &except);
 			} catch(Tango::DevFailed & ex)
 			{
-				WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
+				WARN_STREAM << "AlarmHandler::"<<__func__<<": " << attr_name << " - EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 			}
-		}
-		if(!eval_err)
-		{
-			it->second.to_be_evaluated = false;
 		}
 	}
 	else
@@ -3944,7 +3954,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 		}
 #endif
 	}
-	alarms.vlock->readerOut();
+	//alarms.vlock->readerOut();
 	return 	changed;
 }
 
@@ -4045,8 +4055,8 @@ bool AlarmHandler::remove_alarm(string& s) throw(string&)
 				/*
 				 * remove alarm
 				 */			 
-				k->pop_alarm(i->second.name);
-				DEBUG_STREAM << "AlarmHandler::"<<__func__<<": after pop_alarm" << endl;
+				k->m_alarm.pop(i->second.name);
+				DEBUG_STREAM << "AlarmHandler::"<<__func__<<": after m_alarm.pop" << endl;
 				if (k->m_alarm.empty()) {
 					/*
 					 * no more alarms associated to this event, unsubscribe
@@ -5006,7 +5016,6 @@ void AlarmHandler::eval_node_event(iter_t const& i, vector<string> & ev)
 
 void AlarmHandler::prepare_alarm_attr()
 {
-cout << __func__ << ": entering.." << endl;
 	prepare_alm_mtx->lock();
 	alarm_container_t::iterator ai;
 	vector<alarm_t>::iterator aid;
@@ -5110,7 +5119,6 @@ cout << __func__ << ": entering.." << endl;
 		{
 			tmp_ex << "{\"Reason\":\"" << ai->second.ex_reason << "\",\"Desc\":\"" << ai->second.ex_desc << "\",\"Origin\":\"" << ai->second.ex_origin << "\"}";
 			DEBUG_STREAM << __func__ << ": " << ai->first << " -> " << tmp_ex.str();
-cout << __func__ << ": alm:"<<ai->first<<" ERROR because " << tmp_ex.str() << endl;
 			if(almstate != "SHLVD" && almstate != "OOSRV")
 			{
 				almstate = "ERROR";
