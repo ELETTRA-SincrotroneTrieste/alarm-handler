@@ -3841,13 +3841,13 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			else if((it->second.stat == S_NORMAL) && it->second.ack == NOT_ACK)
 				*attr_value = _RTNUN;
 			Tango::AttrQuality quality = (Tango::AttrQuality)it->second.quality;
-			ex_reason = it->second.ex_reason; //TODO: check if copying again is needed
+			ex_reason = it->second.ex_reason;	//copying again because updated with formula result res.ex_reason in alarms.update
 			ex_desc = it->second.ex_desc;
 			ex_origin = it->second.ex_origin;
 			alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
 			try
 			{	//DevFailed for push events
-				if(ex_reason.length() == 0) //TODO: and res.ex_reason is ignored ?
+				if(ex_reason.length() == 0)
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
