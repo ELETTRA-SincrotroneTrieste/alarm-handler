@@ -80,6 +80,7 @@ AlarmHandlerClass::AlarmHandlerClass(string &s):Tango::DeviceClass(s)
 {
 	cout2 << "Entering AlarmHandlerClass constructor" << endl;
 	set_default_property();
+	get_class_property();
 	write_class_property();
 
 	/*----- PROTECTED REGION ID(AlarmHandlerClass::constructor) ENABLED START -----*/
@@ -454,6 +455,73 @@ Tango::DbDatum AlarmHandlerClass::get_default_class_property(string &prop_name)
 	return Tango::DbDatum(prop_name);
 }
 
+//--------------------------------------------------------
+/**
+ *	Method      : AlarmHandlerClass::get_class_property()
+ *	Description : Read database to initialize class property data members.
+ */
+//--------------------------------------------------------
+void AlarmHandlerClass::get_class_property()
+{
+	/*----- PROTECTED REGION ID(AlarmHandlerClass::get_class_property_before) ENABLED START -----*/
+	
+	//	Initialize class property data members
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandlerClass::get_class_property_before
+	//	Read class properties from database.
+	cl_prop.push_back(Tango::DbDatum("GroupNames"));
+	cl_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
+	cl_prop.push_back(Tango::DbDatum("StatisticsTimeWindow"));
+	
+	//	Call database and extract values
+	if (Tango::Util::instance()->_UseDb==true)
+		get_db_class()->get_property(cl_prop);
+	Tango::DbDatum	def_prop;
+	int	i = -1;
+
+	//	Try to extract GroupNames value
+	if (cl_prop[++i].is_empty()==false)	cl_prop[i]  >>  groupNames;
+	else
+	{
+		//	Check default value for GroupNames
+		def_prop = get_default_class_property(cl_prop[i].name);
+		if (def_prop.is_empty()==false)
+		{
+			def_prop    >>  groupNames;
+			cl_prop[i]  <<  groupNames;
+		}
+	}
+	//	Try to extract SubscribeRetryPeriod value
+	if (cl_prop[++i].is_empty()==false)	cl_prop[i]  >>  subscribeRetryPeriod;
+	else
+	{
+		//	Check default value for SubscribeRetryPeriod
+		def_prop = get_default_class_property(cl_prop[i].name);
+		if (def_prop.is_empty()==false)
+		{
+			def_prop    >>  subscribeRetryPeriod;
+			cl_prop[i]  <<  subscribeRetryPeriod;
+		}
+	}
+	//	Try to extract StatisticsTimeWindow value
+	if (cl_prop[++i].is_empty()==false)	cl_prop[i]  >>  statisticsTimeWindow;
+	else
+	{
+		//	Check default value for StatisticsTimeWindow
+		def_prop = get_default_class_property(cl_prop[i].name);
+		if (def_prop.is_empty()==false)
+		{
+			def_prop    >>  statisticsTimeWindow;
+			cl_prop[i]  <<  statisticsTimeWindow;
+		}
+	}
+	/*----- PROTECTED REGION ID(AlarmHandlerClass::get_class_property_after) ENABLED START -----*/
+	
+	//	Check class property data members init
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandlerClass::get_class_property_after
+
+}
 
 //--------------------------------------------------------
 /**
@@ -472,6 +540,47 @@ void AlarmHandlerClass::set_default_property()
 	vector<string>	vect_data;
 
 	//	Set Default Class Properties
+	prop_name = "GroupNames";
+	prop_desc = "Labels for Group mask, first is for mask 0x00";
+	prop_def  = "";
+	vect_data.clear();
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		cl_def_prop.push_back(data);
+		add_wiz_class_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_class_prop(prop_name, prop_desc);
+	prop_name = "SubscribeRetryPeriod";
+	prop_desc = "Retry subscription period in seconds";
+	prop_def  = "30";
+	vect_data.clear();
+	vect_data.push_back("30");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		cl_def_prop.push_back(data);
+		add_wiz_class_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_class_prop(prop_name, prop_desc);
+	prop_name = "StatisticsTimeWindow";
+	prop_desc = "Time window to compute statistics in seconds";
+	prop_def  = "60";
+	vect_data.clear();
+	vect_data.push_back("60");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		cl_def_prop.push_back(data);
+		add_wiz_class_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_class_prop(prop_name, prop_desc);
 
 	//	Set Default device Properties
 	prop_name = "GroupNames";
@@ -1195,7 +1304,7 @@ void AlarmHandlerClass::erase_dynamic_attributes(const Tango::DevVarStringArray 
 
 //--------------------------------------------------------
 /**
- *	Method      : AlarmHandlerClass::get_attr_by_name()
+ *	Method      : AlarmHandlerClass::get_attr_object_by_name()
  *	Description : returns Tango::Attr * object found by name
  */
 //--------------------------------------------------------

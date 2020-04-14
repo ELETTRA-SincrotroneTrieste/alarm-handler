@@ -574,6 +574,14 @@ class AlarmHandlerClass : public Tango::DeviceClass
 	
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandlerClass::Additionnal DServer data members
 
+	//	Class properties data members
+	public:
+		//	GroupNames:	Labels for Group mask, first is for mask 0x00
+		vector<string>	groupNames;
+		//	SubscribeRetryPeriod:	Retry subscription period in seconds
+		Tango::DevLong	subscribeRetryPeriod;
+		//	StatisticsTimeWindow:	Time window to compute statistics in seconds
+		vector<Tango::DevLong>	statisticsTimeWindow;
 	public:
 		//	write class properties data members
 		Tango::DbData	cl_prop;

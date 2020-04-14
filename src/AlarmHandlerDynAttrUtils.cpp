@@ -128,7 +128,7 @@ void AlarmHandler::add_AlarmState_dynamic_attribute(string attname)
 //--------------------------------------------------------
 void AlarmHandler::remove_AlarmState_dynamic_attribute(string attname)
 {
-	remove_attribute(attname, true);
+	remove_attribute(attname, true, Tango::Util::instance()->_UseDb);
 	map<string,Tango::DevEnum>::iterator ite;
     if ((ite=AlarmState_data.find(attname))!=AlarmState_data.end())
     {
@@ -189,7 +189,7 @@ void AlarmHandler::add_AlarmFormula_dynamic_attribute(string attname)
 //--------------------------------------------------------
 void AlarmHandler::remove_AlarmFormula_dynamic_attribute(string attname)
 {
-	remove_attribute(attname, true);
+	remove_attribute(attname, true, Tango::Util::instance()->_UseDb);
 	map<string,Tango::DevString>::iterator ite;
     if ((ite=AlarmFormula_data.find(attname))!=AlarmFormula_data.end())
     {
