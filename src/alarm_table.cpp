@@ -568,7 +568,7 @@ bool alarm_table::timer_update()
 		// - from S_ALARM to S_NORMAL considering also off delay
 		//or
 		// - from shelved to not shelved
-		if(status_on_delay && (i->second.stat == S_NORMAL) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved))
+		if((status_on_delay && (i->second.stat == S_NORMAL)) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved))
 		{
 			ret_changed = true;
 
