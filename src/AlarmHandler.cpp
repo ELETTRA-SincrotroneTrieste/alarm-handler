@@ -1430,6 +1430,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 	vector<string> str;
 	str << (*argin);
 	vector<string>::iterator si;
+	alarm_t localalarmed, localv_alarm;
 	
 	for (si = str.begin(); si != str.end(); si++) {
 		alarms.vlock->readerIn();
@@ -1454,57 +1455,65 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 				alarms.vlock->readerOut();
 				continue;
 			}
-
 			//update alarm ack in alarm table
 			i->second.ack = ACK;
 			//update alarm status from alarm table
 			found->stat = i->second.stat;
 
-			if(found->ack == NOT_ACK)
+			localalarmed = *found; //NOTE: copy before updating ack
+			localv_alarm = i->second;
+
+			found->ack = ACK;
+			alarmedlock->readerOut();
+			alarms.vlock->readerOut();
+
+			if(localalarmed.ack == NOT_ACK)
 			{
-				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
-				if(!i->second.enabled)
+				Tango::DevEnum *attr_value = get_AlarmState_data_ptr(localv_alarm.attr_name);
+				if(!localv_alarm.enabled)
 					*attr_value = _OOSRV;
-				else if(i->second.shelved && i->second.silenced > 0)
+				else if(localv_alarm.shelved && localv_alarm.silenced > 0)
 					*attr_value = _SHLVD;
-				else if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
+				else if((localv_alarm.stat == S_NORMAL) && localv_alarm.ack == ACK)
 					*attr_value = _NORM;
-				else if((i->second.stat == S_ALARM) && i->second.ack == NOT_ACK)
+				else if((localv_alarm.stat == S_ALARM) && localv_alarm.ack == NOT_ACK)
 					*attr_value = _UNACK;
-				else if((i->second.stat == S_ALARM) && i->second.ack == ACK)
+				else if((localv_alarm.stat == S_ALARM) && localv_alarm.ack == ACK)
 					*attr_value = _ACKED;
-				else if((i->second.stat == S_NORMAL) && i->second.ack == NOT_ACK)
+				else if((localv_alarm.stat == S_NORMAL) && localv_alarm.ack == NOT_ACK)
 					*attr_value = _RTNUN;
 				try
 				{	//DevFailed for push events
-					if(i->second.ex_reason.length() == 0)
+					if(localv_alarm.ex_reason.length() == 0)
 					{
 						timeval now;
 						gettimeofday(&now, NULL);
-						push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-						push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+						push_change_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
+						push_archive_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
 					}
 					else
 					{
 						Tango::DevErrorList errors(1);
 						errors.length(1);
-						errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+						errors[0].desc = CORBA::string_dup(localv_alarm.ex_desc.c_str());
 						errors[0].severity = Tango::ERR;
-						errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
-						errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+						errors[0].reason = CORBA::string_dup(localv_alarm.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(localv_alarm.ex_origin.c_str());
 						Tango::DevFailed except(errors);
-						push_change_event(i->second.attr_name, &except);
-						push_archive_event(i->second.attr_name, &except);
+						push_change_event(localv_alarm.attr_name, &except);
+						push_archive_event(localv_alarm.attr_name, &except);
 					}
 				} catch(Tango::DevFailed & ex)
 				{
 					WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 				}
 			}
-			found->ack = ACK;
 		}
-		alarmedlock->readerOut();
-		alarms.vlock->readerOut();
+		else //not found in alarmed
+		{
+			alarmedlock->readerOut();
+			alarms.vlock->readerOut();
+		}
 	}
 	/*
 	 * remove S_NORMAL status ACKnowledged alarms
@@ -1612,7 +1621,7 @@ void AlarmHandler::load(Tango::DevString argin)
 	
 	try {
 		add_alarm(alm);
-	} catch (string& err) {
+	} catch (string& err) {	//TODO: not throwing string exception
 		WARN_STREAM << "AlarmHandler::load(): " << err << endl;
 		Tango::Except::throw_exception( \
 				(const char*)"AlarmHandler::load()", \
@@ -2298,7 +2307,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 	//2: if alarm already exist and
 	//   formula is not changed
 	//------------------------------
-	alarms.vlock->writerIn();
+	alarms.vlock->writerIn(); //TODO: use readerIn instead?
 	alarm_container_t::iterator i = alarms.v_alarm.find(alm.name);
 	if (i != alarms.v_alarm.end())
 	{
@@ -2421,10 +2430,10 @@ void AlarmHandler::modify(Tango::DevString argin)
 	else
 	{
 		alarms.vlock->writerOut();
-       	ostringstream o;
-       	o << "Alarm '"<<alm.name<<"' not found";
-       	DEBUG_STREAM << o.str() << endl;
-       	Tango::Except::throw_exception( \
+		ostringstream o;
+		o << "Alarm '"<<alm.name<<"' not found";
+		DEBUG_STREAM << o.str() << endl;
+		Tango::Except::throw_exception( \
 				(const char*)"Not found", \
 				(const char*)o.str().c_str(), \
 				(const char*)__func__, Tango::ERR);
@@ -2575,7 +2584,10 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		alarms.vlock->readerIn();
 		alarm_container_t::iterator i = alarms.v_alarm.find(*si);
 		if(i == alarms.v_alarm.end())
+		{
+			alarms.vlock->readerOut();
 			continue;
+		}
 		i->second.shelved = true;
 
 		//load silent time
@@ -2590,37 +2602,37 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 			alarmed.erase(found);
 		}
 		alarmedlock->writerOut();
-
-
-		Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+		alarm_t alm = i->second;
+		alarms.vlock->readerOut();
+		Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
 
 		*attr_value = _SHLVD;
 		try
 		{	//DevFailed for push events
-			if(i->second.ex_reason.length() == 0)
+			if(alm.ex_reason.length() == 0)
 			{
 				timeval now;
 				gettimeofday(&now, NULL);
-				push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-				push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
 			}
 			else
 			{
 				Tango::DevErrorList errors(1);
 				errors.length(1);
-				errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+				errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
 				errors[0].severity = Tango::ERR;
-				errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
-				errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+				errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
+				errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
 				Tango::DevFailed except(errors);
-				push_change_event(i->second.attr_name, &except);
-				push_archive_event(i->second.attr_name, &except);
+				push_change_event(alm.attr_name, &except);
+				push_archive_event(alm.attr_name, &except);
 			}
 		} catch(Tango::DevFailed & ex)
 		{
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 		}
-		alarms.vlock->readerOut();
+
 	}
 
 	prepare_alarm_attr();
@@ -2698,44 +2710,43 @@ void AlarmHandler::enable(Tango::DevString argin)
 
 	i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silenced
 	i->second.shelved = false;
+	alarm_t alm = i->second;
+	alarms.vlock->readerOut();
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
 
-	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
-
-	if((i->second.stat == S_NORMAL) && i->second.ack == ACK)
+	if((alm.stat == S_NORMAL) && alm.ack == ACK)
 		*attr_value = _NORM;
-	else if((i->second.stat == S_ALARM) && i->second.ack == NOT_ACK)
+	else if((alm.stat == S_ALARM) && alm.ack == NOT_ACK)
 		*attr_value = _UNACK;
-	else if((i->second.stat == S_ALARM) && i->second.ack == ACK)
+	else if((alm.stat == S_ALARM) && alm.ack == ACK)
 		*attr_value = _ACKED;
-	else if((i->second.stat == S_NORMAL) && i->second.ack == NOT_ACK)
+	else if((alm.stat == S_NORMAL) && alm.ack == NOT_ACK)
 		*attr_value = _RTNUN;
 	try
 	{	//DevFailed for push events
-		if(i->second.ex_reason.length() == 0)
+		if(alm.ex_reason.length() == 0)
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
-			push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-			push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+			push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
 		}
 		else
 		{
 			Tango::DevErrorList errors(1);
 			errors.length(1);
-			errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+			errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
 			errors[0].severity = Tango::ERR;
-			errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
-			errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+			errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
+			errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
 			Tango::DevFailed except(errors);
-			push_change_event(i->second.attr_name, &except);
-			push_archive_event(i->second.attr_name, &except);
+			push_change_event(alm.attr_name, &except);
+			push_archive_event(alm.attr_name, &except);
 		}
 	} catch(Tango::DevFailed & ex)
 	{
 		WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 	}
-
-	alarms.vlock->readerOut();
 
 	prepare_alarm_attr();
 	try
@@ -2813,37 +2824,36 @@ void AlarmHandler::disable(Tango::DevString argin)
 
 	i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silenced
 	i->second.shelved = false;
-
-	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(i->second.attr_name);
+	alarm_t alm = i->second;
+	alarms.vlock->readerOut();
+	Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
 
 	*attr_value = _OOSRV;
 	try
 	{	//DevFailed for push events
-		if(i->second.ex_reason.length() == 0)
+		if(alm.ex_reason.length() == 0)
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
-			push_change_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-			push_archive_event(i->second.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+			push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
 		}
 		else
 		{
 			Tango::DevErrorList errors(1);
 			errors.length(1);
-			errors[0].desc = CORBA::string_dup(i->second.ex_desc.c_str());
+			errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
 			errors[0].severity = Tango::ERR;
-			errors[0].reason = CORBA::string_dup(i->second.ex_reason.c_str());
-			errors[0].origin = CORBA::string_dup(i->second.ex_origin.c_str());
+			errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
+			errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
 			Tango::DevFailed except(errors);
-			push_change_event(i->second.attr_name, &except);
-			push_archive_event(i->second.attr_name, &except);
+			push_change_event(alm.attr_name, &except);
+			push_archive_event(alm.attr_name, &except);
 		}
 	} catch(Tango::DevFailed & ex)
 	{
 		WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
 	}
-
-	alarms.vlock->readerOut();
 
 	/*
 	 * remove from alarmed
@@ -2928,11 +2938,11 @@ void AlarmHandler::reset_statistics()
 	{
 		i->second.freq_counter = 0;
 	}
+	alarms.vlock->readerOut();
 	timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	double dnow = (now.tv_sec) + ((double)(now.tv_nsec))/1000000000;
 	last_statistics_reset_time = dnow;
-	alarms.vlock->readerOut();
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::reset_statistics
 }
 //--------------------------------------------------------
@@ -3410,13 +3420,14 @@ void AlarmHandler::init_events(vector<string> &evn)
 		}
 	}  /* if */
 }
-void AlarmHandler::add_alarm(alarm_t& a, bool starting) throw(string&)
+void AlarmHandler::add_alarm(alarm_t& a, bool starting)
 {
-	alarms.push_back(a);
+	alarms.push_back(a);	//take and release writer vlock
 	DEBUG_STREAM << "AlarmHandler::add_alarm(): added alarm '" \
 							 << a.name << "'" << endl;
 	if(!starting)
 	{
+		alarms.vlock->readerIn();
 		alarm_container_t::iterator italm = alarms.v_alarm.find(a.name);
 		add_AlarmState_dynamic_attribute(italm->second.attr_name);
 		Tango::DevEnum *attr_value = get_AlarmState_data_ptr(italm->second.attr_name);
@@ -3429,6 +3440,7 @@ void AlarmHandler::add_alarm(alarm_t& a, bool starting) throw(string&)
 		*attr_value_formula = Tango::string_dup(italm->second.formula.c_str());
 		italm->second.attr_value_formula = attr_value_formula;
 #endif
+		alarms.vlock->readerOut();
 	}
 
 }
@@ -3634,29 +3646,34 @@ void AlarmHandler::do_alarm(bei_t& e)
 				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
 				if(it != alarms.v_alarm.end())
 				{
+					if(e.type == TYPE_TANGO_ERR)
+						it->second.ex_reason = found_ev->ex_reason;
+					else
+						it->second.ex_reason = found_ev->ex_reason;
+					it->second.ex_desc = found_ev->ex_desc;
+					it->second.ex_origin = found_ev->ex_origin;
+					alarm_t alm = it->second;
+					alarms.vlock->readerOut();
 					try
 					{
-						if(e.type == TYPE_TANGO_ERR)
-							it->second.ex_reason = found_ev->ex_reason;
-						else
-							it->second.ex_reason = found_ev->ex_reason;
-						it->second.ex_desc = found_ev->ex_desc;
-						it->second.ex_origin = found_ev->ex_origin;
 						Tango::DevErrorList errors(1);
 						errors.length(1);
-						errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
+						errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
 						errors[0].severity = Tango::ERR;
-						errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
-						errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
+						errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
+						errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
 						Tango::DevFailed except(errors);
-						DEBUG_STREAM << "AlarmHandler::"<<__func__<<": PUSHING EXCEPTION FOR " << it->second.attr_name << " " << it->second.ex_desc << "-" << it->second.ex_reason << "-" << it->second.ex_origin << endl;
-						push_change_event(it->second.attr_name, &except);
-						push_archive_event(it->second.attr_name, &except);
+						DEBUG_STREAM << "AlarmHandler::"<<__func__<<": PUSHING EXCEPTION FOR " << alm.attr_name << " " << alm.ex_desc << "-" << alm.ex_reason << "-" << alm.ex_origin << endl;
+						push_change_event(alm.attr_name, &except);
+						push_archive_event(alm.attr_name, &except);
 					}catch(Tango::DevFailed &ex)
 					{}
 				}
-          		alarms.vlock->readerOut();
-          		j++;
+				else
+				{
+					alarms.vlock->readerOut();
+				}
+				j++;
 			}
 		}
 		return;
@@ -3961,7 +3978,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 void AlarmHandler::timer_update()
 {
 	bool changed=true;
-	//DEBUG_STREAM << "AlarmHandler::timer_update(): entering..." << endl;
+	DEBUG_STREAM << "AlarmHandler::timer_update(): entering..." << endl;
 	try {
 		changed=alarms.timer_update();
 	} catch(string & e)
@@ -4125,8 +4142,8 @@ bool AlarmHandler::remove_alarm(string& s) throw(string&)
 		/*
 		 * remove this alarm from alarm table
 		 */
-		alarms.erase(i);
 		alarms.vlock->writerOut();
+		alarms.erase(i); //takes vlock writer lock
 		return true;
 	}
 	else
@@ -5432,12 +5449,11 @@ bool AlarmHandler::compare_without_domain(string str1, string str2)
 void AlarmHandler::put_signal_property()
 {
 	vector<string> prop;
-	alarms.vlock->readerIn();
+	alarms.vlock->readerIn();//TODO: avoid keeping lock
 	alarm_container_t::iterator it;
 	for(it = alarms.v_alarm.begin(); it != alarms.v_alarm.end(); it++)
 	{
 		prop.push_back(it->first);
-
 		string conf_str;
 		it->second.confstr(conf_str);
 		map<string,string>::iterator itmap = saved_alarms.find(it->first);
@@ -5463,20 +5479,27 @@ void AlarmHandler::put_signal_property()
 			}
 		}
 	}
+	alarms.vlock->readerOut();
 	map<string, string>::iterator it2=saved_alarms.begin();
 	while(it2 != saved_alarms.end())
 	{
+		alarms.vlock->readerIn();
 		alarm_container_t::iterator found = alarms.v_alarm.find(it2->first);
 		if (found == alarms.v_alarm.end())
 		{
+			alarms.vlock->readerOut();
 			DEBUG_STREAM << __func__<<": DELETING " << it2->first << endl;
 			alarms.delete_alarm_conf_db(it2->first);
 			saved_alarms.erase(it2);
 		}
+		else
+		{
+			alarms.vlock->readerOut();
+		}
 		if(it2 != saved_alarms.end())
 			it2++;
 	}
-	alarms.vlock->readerOut();
+
 
 
 	Tango::DbData	data;
