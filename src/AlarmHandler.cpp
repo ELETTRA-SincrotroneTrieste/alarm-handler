@@ -3978,7 +3978,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 void AlarmHandler::timer_update()
 {
 	bool changed=true;
-	DEBUG_STREAM << "AlarmHandler::timer_update(): entering..." << endl;
+	//DEBUG_STREAM << "AlarmHandler::timer_update(): entering..." << endl;
 	try {
 		changed=alarms.timer_update();
 	} catch(string & e)

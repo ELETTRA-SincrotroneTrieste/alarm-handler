@@ -531,7 +531,7 @@ bool alarm_table::timer_update()
 		bool status_on_delay=false;
 		bool status_off_delay=false;
 		if(i->second.on_delay == 0 && i->second.off_delay == 0 && !i->second.shelved && i->second.silenced <=0)
-			continue;	//if not enabled on or off delay, nothing to do in timer
+			continue;	//if not enabled on or off delay or not shelved, nothing to do in timer
 		if(i->second.on_delay > 0)		//if enabled on delay
 			status_on_delay = (i->second.on_counter >= 1) && ((ts.tv_sec - i->second.on_delay) > i->second.ts_on_delay.tv_sec);	//waiting for on delay has passed
 		if(i->second.off_delay > 0)		//if enabled off delay
@@ -561,7 +561,10 @@ bool alarm_table::timer_update()
 		//if just ended silence time, set ret_changed to true so to push events
 		//TODO: not interested in executing commands?
 		if(old_silenced>0 && i->second.silenced == 0)
+		{
 			ret_changed = true;
+
+		}
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also on delay
 		//or
@@ -570,6 +573,11 @@ bool alarm_table::timer_update()
 		// - from shelved to not shelved
 		if((status_on_delay && (i->second.stat == S_NORMAL)) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved))
 		{
+			if(old_shelved && !i->second.shelved)	//TODO: ok to execute on command and off command after shelving ends?
+			{
+				status_on_delay = i->second.stat == S_ALARM;
+				status_off_delay = i->second.stat == S_NORMAL;
+			}
 			ret_changed = true;
 
 			if(status_on_delay)
