@@ -484,6 +484,21 @@ bool AlarmHandler::is_GetAlarmInfo_allowed(TANGO_UNUSED(const CORBA::Any &any))
 	return true;
 }
 
+//--------------------------------------------------------
+/**
+ *	Method      : AlarmHandler::is_ReLoadAll_allowed()
+ *	Description : Execution allowed for ReLoadAll attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_ReLoadAll_allowed(TANGO_UNUSED(const CORBA::Any &any))
+{
+	//	Not any excluded states for ReLoadAll command.
+	/*----- PROTECTED REGION ID(AlarmHandler::ReLoadAllStateAllowed) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::ReLoadAllStateAllowed
+	return true;
+}
+
 
 /*----- PROTECTED REGION ID(AlarmHandler::AlarmHandlerStateAllowed.AdditionalMethods) ENABLED START -----*/
 

@@ -493,6 +493,13 @@ public:
 	 */
 	virtual Tango::DevVarStringArray *get_alarm_info(const Tango::DevVarStringArray *argin);
 	virtual bool is_GetAlarmInfo_allowed(const CORBA::Any &any);
+	/**
+	 *	Command ReLoadAll related method
+	 *	Description: Re Load all alarms.
+	 *
+	 */
+	virtual void re_load_all();
+	virtual bool is_ReLoadAll_allowed(const CORBA::Any &any);
 
 
 	//--------------------------------------------------------

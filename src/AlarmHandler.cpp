@@ -108,6 +108,7 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.29 $";
 //  ResetStatistics  |  reset_statistics
 //  StopNew          |  stop_new
 //  GetAlarmInfo     |  get_alarm_info
+//  ReLoadAll        |  re_load_all
 //================================================================
 
 //================================================================
@@ -927,7 +928,7 @@ void AlarmHandler::read_alarmAudible(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_StatisticsResetTime) ENABLED START -----*/
 	timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -3197,6 +3198,36 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	}
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::get_alarm_info
 	return argout;
+}
+//--------------------------------------------------------
+/**
+ *	Command ReLoadAll related method
+ *	Description: Re Load all alarms.
+ *
+ */
+//--------------------------------------------------------
+void AlarmHandler::re_load_all()
+{
+	DEBUG_STREAM << "AlarmHandler::ReLoadAll()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(AlarmHandler::re_load_all) ENABLED START -----*/
+	//	Add your own code
+	vector<string> tmp_alm_vec;
+
+	alarms.get_alarm_list_db(tmp_alm_vec, saved_alarms);
+	for(vector<string>::iterator it_al = tmp_alm_vec.begin(); it_al!= tmp_alm_vec.end(); it_al++)
+	{
+		Tango::DevString arg = Tango::string_dup(it_al->c_str());
+		try
+		{
+			modify(arg);
+		}
+		catch(Tango::DevFailed &e)
+		{
+			DEBUG_STREAM << __func__ << ": Exception modifying alarm " << *it_al << " err=" << e.errors[0].desc<<endl;
+		}
+		Tango::string_free(arg);
+	}	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::re_load_all
 }
 //--------------------------------------------------------
 /**

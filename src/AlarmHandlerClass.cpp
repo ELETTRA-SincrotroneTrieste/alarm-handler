@@ -406,6 +406,24 @@ CORBA::Any *GetAlarmInfoClass::execute(Tango::DeviceImpl *device, const CORBA::A
 	return insert((static_cast<AlarmHandler *>(device))->get_alarm_info(argin));
 }
 
+//--------------------------------------------------------
+/**
+ * method : 		ReLoadAllClass::execute()
+ * description : 	method to trigger the execution of the command.
+ *
+ * @param	device	The device on which the command must be executed
+ * @param	in_any	The command input data
+ *
+ *	returns The command output data (packed in the Any object)
+ */
+//--------------------------------------------------------
+CORBA::Any *ReLoadAllClass::execute(Tango::DeviceImpl *device, TANGO_UNUSED(const CORBA::Any &in_any))
+{
+	cout2 << "ReLoadAllClass::execute(): arrived" << endl;
+	((static_cast<AlarmHandler *>(device))->re_load_all());
+	return new CORBA::Any();
+}
+
 
 //===================================================================
 //	Properties management
@@ -1225,6 +1243,15 @@ void AlarmHandlerClass::command_factory()
 			"Complete attribute info as an array of key=value",
 			Tango::OPERATOR);
 	command_list.push_back(pGetAlarmInfoCmd);
+
+	//	Command ReLoadAll
+	ReLoadAllClass	*pReLoadAllCmd =
+		new ReLoadAllClass("ReLoadAll",
+			Tango::DEV_VOID, Tango::DEV_VOID,
+			"",
+			"",
+			Tango::OPERATOR);
+	command_list.push_back(pReLoadAllCmd);
 
 	/*----- PROTECTED REGION ID(AlarmHandlerClass::command_factory_after) ENABLED START -----*/
 	

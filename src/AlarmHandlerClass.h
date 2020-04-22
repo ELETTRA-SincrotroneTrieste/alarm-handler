@@ -558,6 +558,29 @@ public:
 	{return (static_cast<AlarmHandler *>(dev))->is_GetAlarmInfo_allowed(any);}
 };
 
+//	Command ReLoadAll class definition
+class ReLoadAllClass : public Tango::Command
+{
+public:
+	ReLoadAllClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out,
+				   const char        *in_desc,
+				   const char        *out_desc,
+				   Tango::DispLevel  level)
+	:Command(name,in,out,in_desc,out_desc, level)	{};
+
+	ReLoadAllClass(const char   *name,
+	               Tango::CmdArgType in,
+				   Tango::CmdArgType out)
+	:Command(name,in,out)	{};
+	~ReLoadAllClass() {};
+	
+	virtual CORBA::Any *execute (Tango::DeviceImpl *dev, const CORBA::Any &any);
+	virtual bool is_allowed (Tango::DeviceImpl *dev, const CORBA::Any &any)
+	{return (static_cast<AlarmHandler *>(dev))->is_ReLoadAll_allowed(any);}
+};
+
 
 /**
  *	The AlarmHandlerClass singleton definition
