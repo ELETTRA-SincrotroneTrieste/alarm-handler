@@ -3047,7 +3047,7 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	{
 		alarms.vlock->readerOut();
        	ostringstream o;
-		o << "Alarm '" << argin << "' not found";
+		o << "Alarm '" << string((*argin)[0]) << "' not found";
        	DEBUG_STREAM <<__func__ << ": " << o.str() << endl;
        	Tango::Except::throw_exception( \
 				(const char*)"NOT FOUND", \
