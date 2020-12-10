@@ -246,7 +246,7 @@ struct alarm_parse : public grammar<alarm_parse>
 				=	discard_node_d[str_p(KEY(LEVEL_KEY))] >>
 					//lexeme_d[(+alnum_p)]		//match only possible levels?? (fault, log, ...)
 					//(+(alnum_p-'\t'))
-					(str_p("highest") | str_p("high") | str_p("medium") | str_p("low") | str_p("lowest") | str_p("fault") | str_p("warning") | str_p("log"))//TODO
+					(str_p("highest") | str_p("high") | str_p("medium") | str_p("lowest") | str_p("low") | str_p("fault") | str_p("warning") | str_p("log"))//TODO
 					[
 						assign_a(self.m_alarm.lev)		//save level in alarm_t
 					]
