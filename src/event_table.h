@@ -157,7 +157,7 @@ class event_list : public omni_mutex {
 class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 	public:
 		event_table(Tango::DeviceImpl *s);//:Tango::LogAdapter(s) {mydev = s;}
-		~event_table(void) {}
+		~event_table(void) {stop_thread();}
 		//void push_back(event e);
 		void show(void);
 		unsigned int size(void);
