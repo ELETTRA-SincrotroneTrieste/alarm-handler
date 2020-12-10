@@ -108,6 +108,7 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.29 $";
 //  ResetStatistics  |  reset_statistics
 //  StopNew          |  stop_new
 //  GetAlarmInfo     |  get_alarm_info
+//  ReLoadAll        |  re_load_all
 //================================================================
 
 //================================================================
@@ -314,7 +315,7 @@ void AlarmHandler::delete_device()
 	delete internallock;
 	delete dslock;
 	delete events;
-
+	
 	instanceCounter--;
 	//Tango::leavefunc();
 	delete prepare_alm_mtx;
@@ -927,7 +928,7 @@ void AlarmHandler::read_alarmAudible(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_StatisticsResetTime) ENABLED START -----*/
 	timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -949,7 +950,7 @@ void AlarmHandler::read_StatisticsResetTime(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_alarm(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_alarm(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_alarm(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_alarm) ENABLED START -----*/
 	// Add your own code here
 #if 0
@@ -1289,7 +1290,7 @@ void AlarmHandler::read_alarmFrequency(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_alarmSummary(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_alarmSummary(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_alarmSummary(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_alarmSummary) ENABLED START -----*/
 	//	Set the attribute value
 	attr.set_value(attr_alarmSummary_read, alarmSummary_sz);
@@ -1308,7 +1309,7 @@ void AlarmHandler::read_alarmSummary(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_AlarmState(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_AlarmState(Tango::Attribute &attr) entering... " << endl;
 	Tango::DevEnum	*att_value = get_AlarmState_data_ptr(attr.get_name());
 	/*----- PROTECTED REGION ID(AlarmHandler::read_AlarmState) ENABLED START -----*/
 	string reason("");
@@ -1365,7 +1366,7 @@ void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 //--------------------------------------------------------
 void AlarmHandler::read_AlarmFormula(Tango::Attribute &attr)
 {
-	DEBUG_STREAM << "AlarmHandler::read_AlarmFormula(Tango::Attribute &attr) entering... " << endl;
+	//DEBUG_STREAM << "AlarmHandler::read_AlarmFormula(Tango::Attribute &attr) entering... " << endl;
 	Tango::DevString	*att_value = get_AlarmFormula_data_ptr(attr.get_name());
 	/*----- PROTECTED REGION ID(AlarmHandler::read_AlarmFormula) ENABLED START -----*/
 	//	Set the attribute value
@@ -2202,6 +2203,7 @@ void AlarmHandler::silence(const Tango::DevVarStringArray *argin)
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::silence
 }
+
 //--------------------------------------------------------
 /**
  *	Command Modify related method
@@ -2223,84 +2225,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 	//------------------------------
 	string alarm_string(argin);
 	alarm_t alm;
-	alarm_parse al_gr(alm);    //  Construct Spirit grammar
-	alm.name.clear();
-	alm.attr_name.clear();
-	alm.quality = Tango::ATTR_VALID;
-	alm.ex_reason.clear();
-	alm.ex_desc.clear();
-	alm.ex_origin.clear();
-	alm.formula.clear();
-	alm.msg.clear();
-	alm.lev.clear();
-	alm.grp=0;
-	alm.to_be_evaluated = false;
-	alm.on_delay = 0;
-	alm.off_delay = 0;
-	alm.silent_time = -1;
-	alm.silenced = -1;
-	alm.cmd_name_a.clear();
-	alm.cmd_dp_a.clear();
-	alm.cmd_action_a.clear();
-	alm.send_arg_a = false;
-	alm.dp_a = NULL;
-	alm.cmd_name_n.clear();
-	alm.cmd_dp_n.clear();
-	alm.cmd_action_n.clear();
-	alm.send_arg_n = false;
-	alm.dp_n = NULL;
-	alm.enabled=true;
-	alm.shelved=false;
-
-	alm.formula_tree =
-	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
-	ast_parse<factory_t>(alarm_string.begin(), alarm_string.end(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
-	if (alm.formula_tree.full)
-	{
-    	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
-    	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written upercase
-    	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
-
-    	if(alm.cmd_name_a.length() > 0)
-    	{
-			const char *c = alm.cmd_name_a.c_str();
-			int j = 0;
-			while (*c) {
-				if (*c == '/')
-					j++;
-				if (j < 3)
-					alm.cmd_dp_a.push_back(*c);
-				else if (*c != '/')
-					alm.cmd_action_a.push_back(*c);
-				c++;
-			}
-    	}
-    	if(alm.cmd_name_n.length() > 0)
-    	{
-			const char *c = alm.cmd_name_n.c_str();
-			int j = 0;
-			while (*c) {
-				if (*c == '/')
-					j++;
-				if (j < 3)
-					alm.cmd_dp_n.push_back(*c);
-				else if (*c != '/')
-					alm.cmd_action_n.push_back(*c);
-				c++;
-			}
-    	}
-
-	}
-    else
-    {
-       	ostringstream o;
-		o << __func__<<": Parsing Failed, parsed up to '" << string(alarm_string.begin(), alm.formula_tree.stop) << "' not parsed '" << string(alm.formula_tree.stop, alarm_string.end()) << "'"; //TODO
-       	DEBUG_STREAM << o.str() << endl;
-       	Tango::Except::throw_exception( \
-				(const char*)"Parsing Failed!", \
-				(const char*)o.str().c_str(), \
-				(const char*)__func__, Tango::ERR);
-    }
+	parse_alarm(alarm_string, alm);
 
 	DEBUG_STREAM << "AlarmHandler::Modify: parsing ended: alm name=" << alm.name << endl;
 	//------------------------------
@@ -3197,6 +3122,46 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	}
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::get_alarm_info
 	return argout;
+}
+//--------------------------------------------------------
+/**
+ *	Command ReLoadAll related method
+ *	Description: Re Load all alarms.
+ *
+ */
+//--------------------------------------------------------
+void AlarmHandler::re_load_all()
+{
+	DEBUG_STREAM << "AlarmHandler::ReLoadAll()  - " << device_name << endl;
+	/*----- PROTECTED REGION ID(AlarmHandler::re_load_all) ENABLED START -----*/
+	//	Add your own code
+	vector<string> tmp_alm_vec;
+	alarms.get_alarm_list_db(tmp_alm_vec, saved_alarms);
+	for(const auto &it_al : tmp_alm_vec)
+	{
+		bool modify_err=false;
+		try
+		{
+			modify((Tango::DevString)it_al.c_str());
+		}
+		catch(Tango::DevFailed &e)
+		{
+			INFO_STREAM << __func__ << ": error modifying '" << it_al << "' err='" << e.errors[0].desc << "'";
+			modify_err=true;		
+		}
+		if(modify_err)
+		{
+			try
+			{
+				load((Tango::DevString)it_al.c_str());
+			}
+			catch(Tango::DevFailed &e)
+			{
+				INFO_STREAM << __func__ << ": error loading '" << it_al << "' err='" << e.errors[0].desc << "'";
+			}
+		}
+	}
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::re_load_all
 }
 //--------------------------------------------------------
 /**
@@ -5558,6 +5523,89 @@ void AlarmHandler::remove_AlarmState_dynamic_attribute_no_clean_db(string attnam
     {
     	DEBUG_STREAM << __func__<<": entering name="<<attname;
 		AlarmState_data.erase(ite);
+	}
+}
+
+
+void AlarmHandler::parse_alarm(string &alarm_string, alarm_t &alm)
+{
+	alarm_parse al_gr(alm);    //  Construct Spirit grammar
+	alm.name.clear();
+	alm.attr_name.clear();
+	alm.quality = Tango::ATTR_VALID;
+	alm.ex_reason.clear();
+	alm.ex_desc.clear();
+	alm.ex_origin.clear();
+	alm.formula.clear();
+	alm.msg.clear();
+	alm.lev.clear();
+	alm.grp=0;
+	alm.to_be_evaluated = false;
+	alm.on_delay = 0;
+	alm.off_delay = 0;
+	alm.silent_time = -1;
+	alm.silenced = -1;
+	alm.cmd_name_a.clear();
+	alm.cmd_dp_a.clear();
+	alm.cmd_action_a.clear();
+	alm.send_arg_a = false;
+	alm.dp_a = NULL;
+	alm.cmd_name_n.clear();
+	alm.cmd_dp_n.clear();
+	alm.cmd_action_n.clear();
+	alm.send_arg_n = false;
+	alm.dp_n = NULL;
+	alm.enabled=true;
+	alm.shelved=false;
+
+	alm.formula_tree =
+	//boost::spirit::tree_parse_info< std::string::iterator, factory_t> tmp =
+	ast_parse<factory_t>(alarm_string.begin(), alarm_string.end(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
+	if (alm.formula_tree.full)
+	{
+    	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
+    	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written upercase
+    	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
+
+    	if(alm.cmd_name_a.length() > 0)
+    	{
+			const char *c = alm.cmd_name_a.c_str();
+			int j = 0;
+			while (*c) {
+				if (*c == '/')
+					j++;
+				if (j < 3)
+					alm.cmd_dp_a.push_back(*c);
+				else if (*c != '/')
+					alm.cmd_action_a.push_back(*c);
+				c++;
+			}
+    	}
+    	if(alm.cmd_name_n.length() > 0)
+    	{
+			const char *c = alm.cmd_name_n.c_str();
+			int j = 0;
+			while (*c) {
+				if (*c == '/')
+					j++;
+				if (j < 3)
+					alm.cmd_dp_n.push_back(*c);
+				else if (*c != '/')
+					alm.cmd_action_n.push_back(*c);
+				c++;
+			}
+    	}
+
+	}
+	else
+	{
+		ostringstream o;
+		o << __func__<<": Parsing Failed, parsed up to '" << string(alarm_string.begin(), alm.formula_tree.stop) << "' not parsed '" << string(alm.formula_tree.stop, alarm_string.end()) << "'"; //TODO
+		DEBUG_STREAM << o.str() << endl;
+		Tango::Except::throw_exception( \
+			(const char*)"Parsing Failed!", \
+			(const char*)o.str().c_str(), \
+			(const char*)__func__, Tango::ERR);
 	}
 }
 

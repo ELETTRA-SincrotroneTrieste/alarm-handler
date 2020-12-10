@@ -493,6 +493,13 @@ public:
 	 */
 	virtual Tango::DevVarStringArray *get_alarm_info(const Tango::DevVarStringArray *argin);
 	virtual bool is_GetAlarmInfo_allowed(const CORBA::Any &any);
+	/**
+	 *	Command ReLoadAll related method
+	 *	Description: Re Load all alarms.
+	 *
+	 */
+	virtual void re_load_all();
+	virtual bool is_ReLoadAll_allowed(const CORBA::Any &any);
 
 
 	//--------------------------------------------------------
@@ -561,6 +568,8 @@ private:
 	void prepare_alarm_attr();	//for read attribute alarm and push_change_event
 
 	void remove_AlarmState_dynamic_attribute_no_clean_db(string attname);
+
+	void parse_alarm(string &alarm_string, alarm_t &alm);
 
 	SubscribeThread *thread;
 
