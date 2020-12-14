@@ -69,6 +69,7 @@ typedef parse_tree_match_t::tree_iterator iter_t;
 
 #define S_NORMAL	"NORMAL"
 #define S_ALARM		"ALARM"
+#define S_ERROR		"ERROR"
 
 #define NOT_ACK		"NACK"
 #define ACK		"ACK"

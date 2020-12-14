@@ -876,13 +876,26 @@ void event_table::subscribe_events()
 				}
 				catch (Tango::DevFailed &e)
 				{
-					//Tango::Except::print_exception(e);
-					INFO_STREAM << "event_table::subscribe_events: error adding  " << sig->name <<" err="<< e.errors[0].desc << endl;
+					ostringstream o;
+					o << "Error adding'" \
+					<< sig->name << "' error=" << e.errors[0].desc << ends;
+					INFO_STREAM << "event_table::subscribe_events: " << o.str() << endl;
 					v_event[i].ex_reason = e.errors[0].reason;
 					v_event[i].ex_desc = e.errors[0].desc;
 //					v_event[i].ex_desc.erase(std::remove(v_event[i].ex_desc.begin(), v_event[i].ex_desc.end(), '\n'), v_event[i].ex_desc.end());
 					v_event[i].ex_origin = e.errors[0].origin;
 					v_event[i].siglock->writerOut();
+					//TODO: since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures ?
+					bei_t ex;
+					ex.ev_name = sig->name;
+					ex.quality = Tango::ATTR_INVALID;
+					ex.ex_reason = e.errors[0].reason;
+					ex.ex_desc = e.errors[0].desc;
+					ex.ex_origin = e.errors[0].origin;
+					ex.type = TYPE_TANGO_ERR;
+					ex.ts = gettime();
+					ex.msg=o.str();
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
 					continue;
 				}
 			}
@@ -916,7 +929,10 @@ void event_table::subscribe_events()
 			}
 			catch (Tango::DevFailed &e)
 			{
-				INFO_STREAM <<"event_table::"<<__func__<<": sig->attr->subscribe_event EXCEPTION:" << endl;
+				ostringstream o;
+				o << "Event exception for'" \
+					<< sig->name << "' error=" << e.errors[0].desc << ends;
+				INFO_STREAM <<"event_table::"<<__func__<<": sig->attr->subscribe_event: " << o.str() << endl;
 				err = true;
 				Tango::Except::print_exception(e);
 				sig->siglock->writerIn();
@@ -926,6 +942,17 @@ void event_table::subscribe_events()
 				sig->event_id = SUB_ERR;
 				delete sig->event_cb;
 				sig->siglock->writerOut();
+				//since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures
+				bei_t ex;
+				ex.ev_name = sig->name;
+				ex.quality = Tango::ATTR_INVALID;
+				ex.ex_reason = e.errors[0].reason;
+				ex.ex_desc = e.errors[0].desc;
+				ex.ex_origin = e.errors[0].origin;
+				ex.type = TYPE_TANGO_ERR;
+				ex.ts = gettime();
+				ex.msg=o.str();
+				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
 			}
 			if(!err)
 			{

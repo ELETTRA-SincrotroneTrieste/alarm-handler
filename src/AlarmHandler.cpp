@@ -3611,6 +3611,11 @@ void AlarmHandler::do_alarm(bei_t& e)
 				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
 				if(it != alarms.v_alarm.end())
 				{
+					//if first error, reset ACK
+					if(it->second.ex_reason.empty() && it->second.ex_desc.empty() || it->second.ex_origin.empty())
+					{
+						it->second.ack = NOT_ACK;
+					}
 					if(e.type == TYPE_TANGO_ERR)
 						it->second.ex_reason = found_ev->ex_reason;
 					else
@@ -3640,6 +3645,41 @@ void AlarmHandler::do_alarm(bei_t& e)
 				}
 				j++;
 			}
+			prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
+			if(ds_num == 0)
+			{
+				//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
+				struct timeval now;
+				gettimeofday(&now,NULL);
+				push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
+			}
+			else
+			{
+				//attr.set_value(ds, ds_num, 0, false);
+				push_change_event("alarm",ds, ds_num, 0, false);
+			}
+			push_change_event("alarmNormal",&attr_alarmNormal_read[0], normalAlarms_sz);
+			push_change_event("alarmUnacknowledged",&attr_alarmUnacknowledged_read[0], unacknowledgedAlarms_sz);
+			push_change_event("alarmAcknowledged",&attr_alarmAcknowledged_read[0], acknowledgedAlarms_sz);
+			push_change_event("alarmUnacknowledgedNormal",&attr_alarmUnacknowledgedNormal_read[0], unacknowledgedNormalAlarms_sz);
+			push_change_event("alarmShelved",&attr_alarmShelved_read[0], shelvedAlarms_sz);
+			push_change_event("alarmOutOfService",&attr_alarmOutOfService_read[0], outOfServiceAlarms_sz);
+			push_change_event("alarmSilenced",&attr_alarmSilenced_read[0], silencedAlarms_sz);
+			push_change_event("alarmList",&attr_alarmList_read[0], listAlarms_sz);
+			push_change_event("alarmFrequency",&attr_alarmFrequency_read[0], listAlarms_sz);
+			push_change_event("alarmAudible",attr_alarmAudible_read);
+			push_change_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
+			push_archive_event("alarmNormal",&attr_alarmNormal_read[0], normalAlarms_sz);
+			push_archive_event("alarmUnacknowledged",&attr_alarmUnacknowledged_read[0], unacknowledgedAlarms_sz);
+			push_archive_event("alarmAcknowledged",&attr_alarmAcknowledged_read[0], acknowledgedAlarms_sz);
+			push_archive_event("alarmUnacknowledgedNormal",&attr_alarmUnacknowledgedNormal_read[0], unacknowledgedNormalAlarms_sz);
+			push_archive_event("alarmShelved",&attr_alarmShelved_read[0], shelvedAlarms_sz);
+			push_archive_event("alarmOutOfService",&attr_alarmOutOfService_read[0], outOfServiceAlarms_sz);
+			push_archive_event("alarmSilenced",&attr_alarmSilenced_read[0], silencedAlarms_sz);
+			push_archive_event("alarmList",&attr_alarmList_read[0], listAlarms_sz);
+			push_archive_event("alarmFrequency",&attr_alarmFrequency_read[0], listAlarms_sz);
+			push_archive_event("alarmAudible",attr_alarmAudible_read);
+			push_archive_event("alarmSummary",attr_alarmSummary_read, alarmSummary_sz);
 		}
 		return;
 	}	
@@ -5103,7 +5143,7 @@ void AlarmHandler::prepare_alarm_attr()
 			DEBUG_STREAM << __func__ << ": " << ai->first << " -> " << tmp_ex.str();
 			if(almstate != "SHLVD" && almstate != "OOSRV")
 			{
-				almstate = "ERROR";
+				almstate = S_ERROR;
 			}
 		}
 
@@ -5196,7 +5236,50 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary += KEY(ATTR_VALUES_KEY) + ai->second.attr_values + SEP;
 #endif
 #endif
-		if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
+		if (almstate == S_ERROR) {
+			/*
+			 * alarm status is S_ERROR
+			 */
+			alarmedlock->readerIn();
+			aid = find(alarmed.begin(), alarmed.end(),ai->second.name);
+			if (aid != alarmed.end()) {
+				/*
+				 * found, change stat only if switching from
+				 * S_NORMAL or S_ALARM status to S_ERROR
+				 */
+				//cout << "read_attr(): S_ERROR: found: " << aid->name << endl;
+				if (aid->stat != S_ERROR) {
+					aid->stat = S_ERROR;
+					aid->ack = NOT_ACK;
+					aid->ts = ai->second.ts;
+					aid->msg = ai->second.msg;
+				}
+				aid->grp = ai->second.grp;
+				aid->lev = ai->second.lev;
+				aid->is_new = ai->second.is_new;			//copy is_new state
+				//ai->second.is_new = 0;						//and set state as not more new //12-06-08: StopNew command set it to 0
+				aid->on_counter = ai->second.on_counter;
+				aid->off_counter = ai->second.off_counter;
+				aid->ack = ai->second.ack;					//if already acknowledged but has arrived new alarm ack is reset
+				aid->silenced = ai->second.silenced;		//update silenced from alarm table (maybe not necessary)
+				aid->silent_time = ai->second.silent_time;	//if already alarmed and not saved correctly in properties needed to update
+			} else {
+				alarm_t at = ai->second;
+				at.stat = S_ERROR;
+				/*
+				 * not found: new "alarmed" item
+				 */
+				DEBUG_STREAM << __func__<<": S_ERROR: pushing new alarm: " \
+						 				 << ai->second.name << "\t" << ai->second.stat << endl;
+				alarmedlock->readerOut();
+				alarmedlock->writerIn();
+				alarmed.push_back(at);
+				//ai->second.is_new = 0;						//set state as not more new		//12-06-08: StopNew command set it to 0
+				alarmedlock->writerOut();
+				alarmedlock->readerIn();
+			}
+			alarmedlock->readerOut();
+		} else if (ai->second.stat == S_ALARM && ai->second.enabled && !ai->second.shelved) {
 			/*
 			 * alarm status is S_ALARM
 			 */
@@ -5262,7 +5345,8 @@ void AlarmHandler::prepare_alarm_attr()
 				aid->silent_time = ai->second.silent_time;	//if already alarmed and not saved correctly in properties needed to update
 				//ai->second.is_new = 0;						//and set state as not more new		//12-06-08: StopNew command set it to 0
 				if (aid->ack == ACK) {
-					if (aid->done) {
+					//if (aid->done)	//TODO: done seems useless
+					{
 						/*
 					 	 * if already ACKnowledged and visualized
 					 	 * remove from "alarmed" list
@@ -5274,9 +5358,11 @@ void AlarmHandler::prepare_alarm_attr()
 						alarmed.erase(aid);
 						alarmedlock->writerOut();
 						alarmedlock->readerIn();
-					} else {
-						aid->done = true;
 					}
+					//else
+					//{
+					//	aid->done = true;
+					//}
 				}	 /* if */
 			}  /* if */
 			alarmedlock->readerOut();
