@@ -339,7 +339,7 @@ void alarm_table::stored(vector<alarm_t>& a)
 bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_t res, string &attr_values, string grp, string msg, string formula)
 {
 	bool ret_changed=false;
-	//Tango::TimeVal now = gettime();
+	Tango::TimeVal now = gettime();
 	TangoSys_MemStream out_stream;
 	vlock->readerIn();
 	alarm_container_t::iterator found = v_alarm.find(alm_name);
@@ -365,7 +365,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		}
 		bool status_err_delay;
 		if(err_delay > 0)
-			status_err_delay = (!res.ex_reason.empty() || !res.ex_desc.empty() || !res.ex_origin.empty()) && (found->second.err_counter >= 1) && ((ts.tv_sec - err_delay) > found->second.ts_err_delay.tv_sec);	//error is present and err delay has passed
+			status_err_delay = (!res.ex_reason.empty() || !res.ex_desc.empty() || !res.ex_origin.empty()) && (found->second.err_counter >= 1) && ((now.tv_sec - err_delay) > found->second.ts_err_delay.tv_sec);	//error is present and err delay has passed
 		else
 			status_err_delay = (!res.ex_reason.empty() || !res.ex_desc.empty() || !res.ex_origin.empty());
 		found->second.quality = res.quality;
@@ -504,7 +504,11 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			ret_changed=true;
 		}
 		if(status_err_delay)
+		{
+			if(!found->second.error)
+				found->second.is_new = 1;
 			found->second.error = true;
+		}
 
 		if((bool)(res.value != 0)) {
 			found->second.on_counter++;
@@ -558,7 +562,7 @@ bool alarm_table::timer_update()
 		bool status_err_delay=false;
 		if(err_delay > 0)		//if enabled off delay
 			status_err_delay = (i->second.err_counter >= 1) && ((ts.tv_sec - err_delay) > i->second.ts_err_delay.tv_sec);	//waiting for err delay has passed
-		
+
 		if(i->second.on_delay == 0 && i->second.off_delay == 0 && err_delay == 0 && !i->second.shelved && i->second.silenced <=0)
 			continue;	//if not enabled on or off delay or not shelved, nothing to do in timer
 		if(i->second.on_delay > 0)		//if enabled on delay
@@ -609,6 +613,8 @@ bool alarm_table::timer_update()
 			ret_changed = true;
 			if(status_err_delay)
 			{
+				if(!i->second.error)
+					i->second.is_new = 1;
 				i->second.error = true;
 			}
 

@@ -367,7 +367,6 @@ void AlarmHandler::init_device()
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
 	alarms.set_dev(this);
-	alarms.set_err_delay(errorDelay);
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::init_device_before
 	
@@ -400,6 +399,7 @@ void AlarmHandler::init_device()
 		alarmSummary_read[i].resize(MAX_ATTR_SUMMARY);
 	}*/
 	//	Initialize device
+	alarms.set_err_delay(errorDelay);
 	thread->period = subscribeRetryPeriod;
 	
 #ifdef _USE_ELETTRA_DB_RW
@@ -3057,6 +3057,8 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	alm.ex_desc=string("One or more events not subscribed");
 	alm.ex_origin.clear();
 	alm.error = false;
+	alm.ts_err_delay = gettime();
+	alm.ts_err_delay.tv_sec -= errorDelay;
 	alm.err_counter = 0;
 	alm.formula.clear();
 	alm.msg.clear();
@@ -3458,6 +3460,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 		}
 		if(found_ev != events->v_event.end())
 		{
+			Tango::TimeVal ts = gettime();
 			found_ev->err_counter++;
 			if(e.type == TYPE_TANGO_ERR)
 				found_ev->ex_reason = string("Event_ERROR");
@@ -3489,11 +3492,17 @@ void AlarmHandler::do_alarm(bei_t& e)
 					it->second.ex_origin = found_ev->ex_origin;
 					if(errorDelay > 0)
 					{
-						if((it->second.ts.tv_sec - errorDelay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
+						if((ts.tv_sec - errorDelay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
+						{
+							if(!it->second.error)
+								it->second.is_new = 1;
 							it->second.error = true;
+						}
 					}
 					else
-					{		
+					{
+						if(!it->second.error)
+							it->second.is_new = 1;
 						it->second.error = true;
 					}
 					alarm_t alm = it->second;
