@@ -367,7 +367,7 @@ void AlarmHandler::init_device()
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
 	alarms.set_dev(this);
-	alarms.set_err_delay(30); //TODO: device property
+	alarms.set_err_delay(errorDelay);
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::init_device_before
 	
@@ -807,6 +807,7 @@ void AlarmHandler::get_device_property()
 	dev_prop.push_back(Tango::DbDatum("GroupNames"));
 	dev_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
 	dev_prop.push_back(Tango::DbDatum("StatisticsTimeWindow"));
+	dev_prop.push_back(Tango::DbDatum("ErrorDelay"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -853,6 +854,17 @@ void AlarmHandler::get_device_property()
 		}
 		//	And try to extract StatisticsTimeWindow value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  statisticsTimeWindow;
+
+		//	Try to initialize ErrorDelay from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  errorDelay;
+		else {
+			//	Try to initialize ErrorDelay from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  errorDelay;
+		}
+		//	And try to extract ErrorDelay value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  errorDelay;
 
 	}
 
@@ -3475,9 +3487,9 @@ void AlarmHandler::do_alarm(bei_t& e)
 						it->second.ex_reason = found_ev->ex_reason;
 					it->second.ex_desc = found_ev->ex_desc;
 					it->second.ex_origin = found_ev->ex_origin;
-					if(alarms.err_delay > 0)
+					if(errorDelay > 0)
 					{
-						if((it->second.ts.tv_sec - alarms.err_delay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
+						if((it->second.ts.tv_sec - errorDelay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
 							it->second.error = true;
 					}
 					else

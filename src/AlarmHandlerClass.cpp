@@ -490,6 +490,7 @@ void AlarmHandlerClass::get_class_property()
 	cl_prop.push_back(Tango::DbDatum("GroupNames"));
 	cl_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
 	cl_prop.push_back(Tango::DbDatum("StatisticsTimeWindow"));
+	cl_prop.push_back(Tango::DbDatum("ErrorDelay"));
 	
 	//	Call database and extract values
 	if (Tango::Util::instance()->_UseDb==true)
@@ -531,6 +532,18 @@ void AlarmHandlerClass::get_class_property()
 		{
 			def_prop    >>  statisticsTimeWindow;
 			cl_prop[i]  <<  statisticsTimeWindow;
+		}
+	}
+	//	Try to extract ErrorDelay value
+	if (cl_prop[++i].is_empty()==false)	cl_prop[i]  >>  errorDelay;
+	else
+	{
+		//	Check default value for ErrorDelay
+		def_prop = get_default_class_property(cl_prop[i].name);
+		if (def_prop.is_empty()==false)
+		{
+			def_prop    >>  errorDelay;
+			cl_prop[i]  <<  errorDelay;
 		}
 	}
 	/*----- PROTECTED REGION ID(AlarmHandlerClass::get_class_property_after) ENABLED START -----*/
@@ -599,6 +612,20 @@ void AlarmHandlerClass::set_default_property()
 	}
 	else
 		add_wiz_class_prop(prop_name, prop_desc);
+	prop_name = "ErrorDelay";
+	prop_desc = "Delay in seconds before changing to ERROR state after an exception is received.";
+	prop_def  = "30";
+	vect_data.clear();
+	vect_data.push_back("30");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		cl_def_prop.push_back(data);
+		add_wiz_class_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_class_prop(prop_name, prop_desc);
 
 	//	Set Default device Properties
 	prop_name = "GroupNames";
@@ -633,6 +660,20 @@ void AlarmHandlerClass::set_default_property()
 	prop_def  = "60";
 	vect_data.clear();
 	vect_data.push_back("60");
+	if (prop_def.length()>0)
+	{
+		Tango::DbDatum	data(prop_name);
+		data << vect_data ;
+		dev_def_prop.push_back(data);
+		add_wiz_dev_prop(prop_name, prop_desc,  prop_def);
+	}
+	else
+		add_wiz_dev_prop(prop_name, prop_desc);
+	prop_name = "ErrorDelay";
+	prop_desc = "Delay in seconds before changing to ERROR state after an exception is received.";
+	prop_def  = "30";
+	vect_data.clear();
+	vect_data.push_back("30");
 	if (prop_def.length()>0)
 	{
 		Tango::DbDatum	data(prop_name);

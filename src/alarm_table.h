@@ -371,13 +371,14 @@ class alarm_table {
 		void stop_cmdthread();
 		Tango::TimeVal startup_complete;			//to disable action execution at startup
 		void set_err_delay(unsigned int delay){err_delay=delay;};
-		unsigned int err_delay; //TODO: private	
+	
 	protected:
 	private:
 
 		Tango::DeviceImpl* mydev;
 		log_thread *logloop;
-		cmd_thread *cmdloop;		
+		cmd_thread *cmdloop;
+		unsigned int err_delay;
 };
 
 

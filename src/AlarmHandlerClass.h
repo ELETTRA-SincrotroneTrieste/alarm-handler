@@ -605,6 +605,8 @@ class AlarmHandlerClass : public Tango::DeviceClass
 		Tango::DevLong	subscribeRetryPeriod;
 		//	StatisticsTimeWindow:	Time window to compute statistics in seconds
 		vector<Tango::DevLong>	statisticsTimeWindow;
+		//	ErrorDelay:	Delay in seconds before changing to ERROR state after an exception is received.
+		Tango::DevULong	errorDelay;
 	public:
 		//	write class properties data members
 		Tango::DbData	cl_prop;

@@ -151,6 +151,8 @@ public:
 	Tango::DevLong	subscribeRetryPeriod;
 	//	StatisticsTimeWindow:	Time window to compute statistics in seconds
 	vector<Tango::DevLong>	statisticsTimeWindow;
+	//	ErrorDelay:	Delay in seconds before changing to ERROR state after an exception is received.
+	Tango::DevULong	errorDelay;
 
 //	Attribute data members
 public:
