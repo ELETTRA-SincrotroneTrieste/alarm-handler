@@ -363,6 +363,11 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 				found->second.ack = ACK;
 			}
 		}
+		bool status_err_delay;
+		if(err_delay > 0)
+			status_err_delay = (!res.ex_reason.empty() || !res.ex_desc.empty() || !res.ex_origin.empty()) && (found->second.err_counter >= 1) && ((ts.tv_sec - err_delay) > found->second.ts_err_delay.tv_sec);	//error is present and err delay has passed
+		else
+			status_err_delay = (!res.ex_reason.empty() || !res.ex_desc.empty() || !res.ex_origin.empty());
 		found->second.quality = res.quality;
 		found->second.ex_reason = res.ex_reason;
 		found->second.ex_desc = res.ex_desc;
@@ -490,6 +495,16 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		else if (status_off_delay) {
 			found->second.stat = S_NORMAL;
 		}
+		//if error changed:
+		// - from false to true considering also err delay
+		//or
+		// - from true to false
+		if((status_err_delay && !found->second.error) || (!status_err_delay))
+		{
+			ret_changed=true;
+		}
+		if(status_err_delay)
+			found->second.error = true;
 
 		if((bool)(res.value != 0)) {
 			found->second.on_counter++;
@@ -498,6 +513,15 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			found->second.on_counter = 0;
 			found->second.off_counter++;
 		}
+		if(!found->second.ex_reason.empty() || !found->second.ex_desc.empty() || !found->second.ex_origin.empty())
+		{
+			found->second.err_counter++;
+		}
+		else
+		{
+			found->second.err_counter = 0;
+			found->second.error = false;
+		}
 
 		found->second.attr_values_delay = attr_values;		//save last attr_values to be used in timer_update if this alarm pass over on or off delay
 
@@ -505,7 +529,8 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 			found->second.ts_on_delay = gettime();		//first occurrance of this alarm, now begin to wait for on delay
 		if(found->second.off_counter == 1)
 			found->second.ts_off_delay = gettime();		//first occurrance of back to normal, now begin to wait for off delay
-
+		if(found->second.err_counter == 1)
+			found->second.ts_err_delay = gettime();		//first occurrance of this error, now begin to wait for err delay
 		//found->second.ts = ts;	/* store event timestamp into alarm timestamp */ //here update ts everytime
 	} else {
 		/*
@@ -530,7 +555,11 @@ bool alarm_table::timer_update()
 	{		
 		bool status_on_delay=false;
 		bool status_off_delay=false;
-		if(i->second.on_delay == 0 && i->second.off_delay == 0 && !i->second.shelved && i->second.silenced <=0)
+		bool status_err_delay=false;
+		if(err_delay > 0)		//if enabled off delay
+			status_err_delay = (i->second.err_counter >= 1) && ((ts.tv_sec - err_delay) > i->second.ts_err_delay.tv_sec);	//waiting for err delay has passed
+		
+		if(i->second.on_delay == 0 && i->second.off_delay == 0 && err_delay == 0 && !i->second.shelved && i->second.silenced <=0)
 			continue;	//if not enabled on or off delay or not shelved, nothing to do in timer
 		if(i->second.on_delay > 0)		//if enabled on delay
 			status_on_delay = (i->second.on_counter >= 1) && ((ts.tv_sec - i->second.on_delay) > i->second.ts_on_delay.tv_sec);	//waiting for on delay has passed
@@ -563,7 +592,6 @@ bool alarm_table::timer_update()
 		if(old_silenced>0 && i->second.silenced == 0)
 		{
 			ret_changed = true;
-
 		}
 		//if status changed:
 		// - from S_NORMAL to S_ALARM considering also on delay
@@ -571,7 +599,7 @@ bool alarm_table::timer_update()
 		// - from S_ALARM to S_NORMAL considering also off delay
 		//or
 		// - from shelved to not shelved
-		if((status_on_delay && (i->second.stat == S_NORMAL)) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved))
+		if((status_on_delay && (i->second.stat == S_NORMAL)) || (status_off_delay && (i->second.stat == S_ALARM)) || (old_shelved && !i->second.shelved) || (status_err_delay && !i->second.error))
 		{
 			if(old_shelved && !i->second.shelved)	//TODO: ok to execute on command and off command after shelving ends?
 			{
@@ -579,6 +607,10 @@ bool alarm_table::timer_update()
 				status_off_delay = i->second.stat == S_NORMAL;
 			}
 			ret_changed = true;
+			if(status_err_delay)
+			{
+				i->second.error = true;
+			}
 
 			if(status_on_delay)
 				i->second.ack = NOT_ACK;	//if changing from NORMAL to ALARM  but not ended shelved time -> NACK
@@ -697,7 +729,7 @@ bool alarm_table::timer_update()
 				*(i->second.attr_value) = _RTNUN;
 			try
 			{
-				if(i->second.ex_reason.length() == 0)
+				if(!i->second.error)
 				{
 					timeval now;
 					gettimeofday(&now, NULL);

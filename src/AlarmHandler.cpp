@@ -367,6 +367,7 @@ void AlarmHandler::init_device()
 	internallock = new(ReadersWritersLock);
 	dslock = new(ReadersWritersLock);
 	alarms.set_dev(this);
+	alarms.set_err_delay(30); //TODO: device property
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::init_device_before
 	
@@ -953,161 +954,6 @@ void AlarmHandler::read_alarm(Tango::Attribute &attr)
 	//DEBUG_STREAM << "AlarmHandler::read_alarm(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_alarm) ENABLED START -----*/
 	// Add your own code here
-#if 0
-	alarm_container_t::iterator ai;
-	vector<alarm_t>::iterator aid;
-	for (ai = alarms.v_alarm.begin(); ai != alarms.v_alarm.end(); ai++) {
-		if (ai->second.stat == S_ALARM) {
-			/*
-			 * alarm status is S_ALARM
-			 */
-			aid = find(alarmed.begin(), alarmed.end(),ai->second.name);
-			if (aid != alarmed.end()) {
-				/*
-				 * found, change stat only if switching from
-				 * S_NORMAL to S_ALARM status
-				 */
-				//cout << "read_attr(): S_ALARM: found: " << aid->name << endl;
-				if (aid->stat == S_NORMAL) {
-					aid->stat = S_ALARM;
-					aid->ack = NOT_ACK;
-					aid->ts = ai->second.ts;
-					aid->msg = ai->second.msg;
-				}
-				aid->grp = ai->second.grp;
-				aid->lev = ai->second.lev;				
-				aid->is_new = ai->second.is_new;			//copy is_new state
-				//ai->second.is_new = 0;						//and set state as not more new //12-06-08: StopNew command set it to 0
-				aid->counter = ai->second.counter;
-				aid->ack = ai->second.ack;					//if already acknowledged but has arrived new alarm ack is reset
-				aid->silenced = ai->second.silenced;		//update silenced from alarm table (maybe not necessary)
-				aid->silent_time = ai->second.silent_time;	//if already alarmed and not saved correctly in properties needed to update
-			} else {
-				/*
-				 * not found: new "alarmed" item
-				 */
-				DEBUG_STREAM << "read_attr(): S_ALARM: pushing new alarm: " \
-						 				 << ai->second.name << "\t" << ai->second.stat << endl;
-				alarmed.push_back(ai->second);
-				//ai->second.is_new = 0;						//set state as not more new		//12-06-08: StopNew command set it to 0
-			}
-		} else if (ai->second.stat == S_NORMAL) {
-			/*
-			 * alarm status is S_NORMAL
-			 */
-			aid = find(alarmed.begin(), alarmed.end(), ai->second.name);
-			if (aid != alarmed.end()) {
-				/*
-				 * found, as it should;
-				 * switching from S_ALARM to S_NORMAL
-				 */
-				aid->stat = S_NORMAL;
-				aid->ts = ai->second.ts;
-				//aid->msg = " ";						/* no message again */
-				aid->msg =ai->second.msg;
-				aid->grp = ai->second.grp;
-				aid->lev = ai->second.lev;
-				aid->counter = ai->second.counter;
-				aid->ack = ai->second.ack;					//if already acknowledged but has arrived new alarm ack is reset				
-				aid->is_new = ai->second.is_new;			//copy is_new state
-				aid->silenced = ai->second.silenced;		//update silenced from alarm table (maybe not necessary)
-				aid->silent_time = ai->second.silent_time;	//if already alarmed and not saved correctly in properties needed to update
-				//ai->second.is_new = 0;						//and set state as not more new		//12-06-08: StopNew command set it to 0
-				if (aid->ack == ACK) {
-					if (aid->done) {
-						/*
-					 	 * if already ACKnowledged and visualized
-					 	 * remove from "alarmed" list
-					 	 */
-						DEBUG_STREAM << "read_attr(): S_NORMAL: " << aid->name \
-								 				 << " ACKnowledged: removing" << endl;
-						alarmed.erase(aid);
-					} else {
-						aid->done = true;
-					}
-				}	 /* if */
-			}  /* if */
-		}  /* if else if */
-	}  /* for */
-	
-	vector<string> tmp_alarm_table;
-	string is_new;
-	ostringstream os1;		
-	/*os1.clear();
-	os1 << header << "\t" << alarmed.size() << ends;*/
-	//tmp_alarm_table.push_back(os1.str());
-	if (alarmed.empty() == false) {
-		for (aid = alarmed.begin(); aid != alarmed.end(); aid++) {
-			if(aid->silenced > 0)
-			{
-				Tango::TimeVal now = gettime();
-				double dnow = now.tv_sec + ((double)now.tv_usec) / 1000000;
-				double dsilent = aid->ts_time_silenced.tv_sec + ((double)aid->ts_time_silenced.tv_usec) / 1000000;
-				double dminutes = (dnow - dsilent)/60;
-				//silenced already calculated in alarm_table::update, but here updated for panel also if state not changed:
-				//to see minutes countdown
-				if(dminutes < aid->silent_time)
-					aid->silenced = aid->silent_time - floor(dminutes);
-				else
-					aid->silenced = 0;
-			}
-			ostringstream os;
-			os.clear();
-			is_new.clear();
-			is_new = (aid->is_new && aid->silenced <= 0) ? "NEW" : " ";
-			os << aid->ts.tv_sec << "\t" << aid->ts.tv_usec << "\t" \
-			 	 << aid->name << "\t" << aid->stat << "\t" << aid->ack \
-				 << "\t" << aid->counter << "\t" << aid->lev << "\t" << aid->silenced << "\t" << aid->grp2str() << "\t" << aid->msg << "\t" << is_new << ends;
-			tmp_alarm_table.push_back(os.str());
-		}
-	}		
-	if (internal.empty() == false) {
-		for (aid = internal.begin(); aid != internal.end(); aid++) {
-			
-/*			size_t index;
-			int count = 1;
-			index = aid->stat.find("*");
-			if((index != std::string::npos) && (index+1 != std::string::npos))
-			{
-				
-				size_t last = aid->stat.size();
-				string str_count= aid->stat.substr(index+1, last - index+1);      
-				count = strtol(str_count.c_str(), 0,10); 
-			}	
-			//do not show internal alarms that have a molteplicity less then errThreshold
-			if((aid->msg.find()) && (count < errThreshold))
-				continue;*/			
-			
-			ostringstream os;
-			os.clear();
-			os << aid->ts.tv_sec << "\t" << aid->ts.tv_usec << "\t" \
-			 	 << aid->name << "\t" << aid->stat << "\t" << aid->ack \
-				 << "\t" << aid->counter << "\t" << aid->lev << "\t"<< -1/*silenced*/ <<"\t" << aid->grp2str() << "\t" << aid->msg << "\t "<< ends; //TODO: silenced for internal errors?
-			tmp_alarm_table.push_back(os.str());
-		}
-	}
-	int i;
-	for (i = ds_num - 1; i >= 0; i--) {
-		CORBA::string_free(ds[i]);
-	}
-	ds_num = tmp_alarm_table.size();
-	if(ds_num > MAX_ALARMS)
-		ds_num = MAX_ALARMS;		
-	for (i = 0; i < ds_num; i++) {
-		ds[i] = CORBA::string_dup(tmp_alarm_table[i].c_str());
-	}
-	if(ds_num == 0)
-	{
-		ostringstream os1;
-		ds_num++;
-		os1.clear();
-		os1 << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << 0 << "\t" << -1 << "\t" << 0 << "\t" << 0 << "\t "<< ends;
-		ds[0] = CORBA::string_dup(os1.str().c_str());
-	}
-#else
-	//bool changed;
-	//prepare_alarm_attr(changed);//moved in do_alarm;
-#endif
 	if(ds_num == 0)
 	{
 		attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -1325,16 +1171,19 @@ void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 			break;
 		}
 	}
+	bool error;
 	if(it != alarms.v_alarm.end())
 	{
 		reason = it->second.ex_reason;
 		desc = it->second.ex_desc;
 		origin = it->second.ex_origin;
 		quality = it->second.quality;
+		error = it->second.error;
 	}
 	DEBUG_STREAM << "AlarmHandler::read_AlarmState: " << attr.get_name() << " desc=" << desc << endl;
 	alarms.vlock->readerOut();
-	if(desc.length() > 0)
+	if(error) //TODO: if needs to be considered err_delay also in single alarm attributes, error must be used
+	//if(desc.length() > 0)
 	{
 		Tango::Except::throw_exception(
 				reason,
@@ -1485,7 +1334,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 					*attr_value = _RTNUN;
 				try
 				{	//DevFailed for push events
-					if(localv_alarm.ex_reason.length() == 0)
+					if(localv_alarm.ex_reason.empty())
 					{
 						timeval now;
 						gettimeofday(&now, NULL);
@@ -2534,7 +2383,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		*attr_value = _SHLVD;
 		try
 		{	//DevFailed for push events
-			if(alm.ex_reason.length() == 0)
+			if(alm.ex_reason.empty())
 			{
 				timeval now;
 				gettimeofday(&now, NULL);
@@ -2649,7 +2498,7 @@ void AlarmHandler::enable(Tango::DevString argin)
 		*attr_value = _RTNUN;
 	try
 	{	//DevFailed for push events
-		if(alm.ex_reason.length() == 0)
+		if(alm.ex_reason.empty())
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
@@ -2756,7 +2605,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 	*attr_value = _OOSRV;
 	try
 	{	//DevFailed for push events
-		if(alm.ex_reason.length() == 0)
+		if(alm.ex_reason.empty())
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
@@ -2995,7 +2844,7 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 
 	ostringstream tmp_ex;
 	tmp_ex.str("");
-	if(it->second.ex_reason.length() > 0 || it->second.ex_desc.length() > 0 || it->second.ex_origin.length() > 0)
+	if(it->second.error)
 	{
 		tmp_ex << "{\"Reason\":\"" << it->second.ex_reason << "\",\"Desc\":\"" << it->second.ex_desc << "\",\"Origin\":\"" << it->second.ex_origin << "\"}";
 		info.insert(make_pair(VALUE_KEY,string("ERROR")));
@@ -3195,6 +3044,8 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	alm.ex_reason=string("NOT_SUBSCRIBED");
 	alm.ex_desc=string("One or more events not subscribed");
 	alm.ex_origin.clear();
+	alm.error = false;
+	alm.err_counter = 0;
 	alm.formula.clear();
 	alm.msg.clear();
 	alm.lev.clear();
@@ -3611,10 +3462,12 @@ void AlarmHandler::do_alarm(bei_t& e)
 				alarm_container_t::iterator it = alarms.v_alarm.find(*j);
 				if(it != alarms.v_alarm.end())
 				{
+					it->second.err_counter++;
 					//if first error, reset ACK
-					if(it->second.ex_reason.empty() && it->second.ex_desc.empty() || it->second.ex_origin.empty())
+					if(it->second.ex_reason.empty() && it->second.ex_desc.empty() && it->second.ex_origin.empty())
 					{
 						it->second.ack = NOT_ACK;
+						it->second.ts_err_delay = gettime();		//first occurrance of this error, now begin to wait for err delay
 					}
 					if(e.type == TYPE_TANGO_ERR)
 						it->second.ex_reason = found_ev->ex_reason;
@@ -3622,6 +3475,15 @@ void AlarmHandler::do_alarm(bei_t& e)
 						it->second.ex_reason = found_ev->ex_reason;
 					it->second.ex_desc = found_ev->ex_desc;
 					it->second.ex_origin = found_ev->ex_origin;
+					if(alarms.err_delay > 0)
+					{
+						if((it->second.ts.tv_sec - alarms.err_delay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
+							it->second.error = true;
+					}
+					else
+					{		
+						it->second.error = true;
+					}
 					alarm_t alm = it->second;
 					alarms.vlock->readerOut();
 					try
@@ -3834,7 +3696,8 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 		string ex_reason = it->second.ex_reason;
 		string ex_desc = it->second.ex_desc;
 		string ex_origin = it->second.ex_origin;
-		if(ex_reason.length() > 0 || ex_desc.length() > 0 || ex_origin.length() > 0)
+		prev_error = it->second.error;
+		if(prev_error)
 		{
 			prev_error = true;
 			DEBUG_STREAM << "AlarmHandler::"<<__func__<<": before evaluating exception {"<<ex_reason<<","<<ex_desc.length()<<","<<ex_origin<<"}"<<endl;
@@ -3869,7 +3732,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
 			try
 			{	//DevFailed for push events
-				if(ex_reason.length() == 0)
+				if(!it->second.error)
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
@@ -5137,7 +5000,7 @@ void AlarmHandler::prepare_alarm_attr()
 
 		ostringstream tmp_ex;
 		//tmp_ex.str("");
-		if(ai->second.ex_reason.length() > 0 || ai->second.ex_desc.length() > 0 || ai->second.ex_origin.length() > 0)
+		if(ai->second.error)
 		{
 			tmp_ex << "{\"Reason\":\"" << ai->second.ex_reason << "\",\"Desc\":\"" << ai->second.ex_desc << "\",\"Origin\":\"" << ai->second.ex_origin << "\"}";
 			DEBUG_STREAM << __func__ << ": " << ai->first << " -> " << tmp_ex.str();
@@ -5291,7 +5154,7 @@ void AlarmHandler::prepare_alarm_attr()
 				 * S_NORMAL to S_ALARM status
 				 */
 				//cout << "read_attr(): S_ALARM: found: " << aid->name << endl;
-				if (aid->stat == S_NORMAL) {
+				if (aid->stat == S_NORMAL || aid->stat == S_ERROR) {
 					aid->stat = S_ALARM;
 					aid->ack = NOT_ACK;
 					aid->ts = ai->second.ts;
@@ -5389,7 +5252,7 @@ void AlarmHandler::prepare_alarm_attr()
 	os1 << header << "\t" << alarmed.size() << ends;*/
 	//tmp_alarm_table.push_back(os1.str());
 	alarmedlock->readerIn();
-	if (alarmed.empty() == false) {
+	if (!alarmed.empty()) {
 		for (aid = alarmed.begin(); aid != alarmed.end(); aid++) {
 			if(aid->silenced > 0)
 			{

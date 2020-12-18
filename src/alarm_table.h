@@ -276,10 +276,12 @@ class alarm_t {
 		Tango::TimeVal ts;
 		string stat,
 					 ack;
+		bool error;
 		bool enabled;
 		bool shelved;
 		unsigned int on_counter;
 		unsigned int off_counter;
+		unsigned int err_counter;
 		unsigned int freq_counter;
 		
 		tree_parse_info_t formula_tree;
@@ -297,6 +299,7 @@ class alarm_t {
 		unsigned int on_delay;		//TODO: seconds, is it enough precision?
 		Tango::TimeVal ts_off_delay;	//says when it returned normal status
 		unsigned int off_delay;		//TODO: seconds, is it enough precision?
+		Tango::TimeVal ts_err_delay;	//says when it has gone in error status for the first time
 
 		Tango::TimeVal ts_time_silenced;	//says when it has been silenced
 		int silent_time;			//minutes max to be silent
@@ -366,10 +369,12 @@ class alarm_table {
 		void get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms);
 		void init_cmdthread();
 		void stop_cmdthread();
-		Tango::TimeVal startup_complete;			//to disable action execution at startup		
-	
+		Tango::TimeVal startup_complete;			//to disable action execution at startup
+		void set_err_delay(unsigned int delay){err_delay=delay;};
+		unsigned int err_delay; //TODO: private	
 	protected:
 	private:
+
 		Tango::DeviceImpl* mydev;
 		log_thread *logloop;
 		cmd_thread *cmdloop;		
