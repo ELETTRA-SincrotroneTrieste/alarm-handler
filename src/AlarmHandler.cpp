@@ -2928,7 +2928,7 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	info.insert(make_pair(ONDELAY_KEY,tmp.str()));
 	complete.push_back(KEY(ONDELAY_KEY)+tmp.str());
 	tmp.str("");
-	tmp << (it->second.on_delay);
+	tmp << (it->second.off_delay);
 	info.insert(make_pair(OFFDELAY_KEY,tmp.str()));
 	complete.push_back(KEY(OFFDELAY_KEY)+tmp.str());
 	info.insert(make_pair(LEVEL_KEY,it->second.lev));
