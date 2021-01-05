@@ -192,6 +192,7 @@ void AlarmHandler::delete_device()
 	DEBUG_STREAM << __func__ << " starting="<<(int)starting << " shutting_down="<<(int)shutting_down<<" restarting="<<(int)restarting;
 
 	abortflag = true;
+	updateloop->signal();
 	DEBUG_STREAM << "AlarmHandler::delete_device(): after abortflag=true..." << endl;
 	try {
 		events->unsubscribe_events();
@@ -210,10 +211,11 @@ void AlarmHandler::delete_device()
 	if(!shutting_down && !restarting)
 		alarms.del_rwlock(); //otherwise moved in alarm_table destructor
 	alarms.stop_cmdthread();
-	sleep(1);		//wait for alarm_thread and log_thread to exit
+	delete events;
+	sleep(1);		//wait for alarm_thread, update_thread and log_thread to exit
 	//delete almloop;
 	DEBUG_STREAM << "AlarmHandler::delete_device(): stopped alarm and log threads!" << endl;
-	
+
 	
 	//delete proxy for actions
 	for(alarm_container_t::iterator i = alarms.v_alarm.begin(); i!=alarms.v_alarm.end(); i++)
@@ -314,7 +316,6 @@ void AlarmHandler::delete_device()
 	delete alarmedlock;
 	delete internallock;
 	delete dslock;
-	delete events;
 	
 	instanceCounter--;
 	//Tango::leavefunc();

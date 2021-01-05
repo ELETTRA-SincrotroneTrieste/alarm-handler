@@ -26,7 +26,7 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.2 $";
 /*
  * alarm_thread::alarm_thread()
  */
-update_thread::update_thread(AlarmHandler_ns::AlarmHandler *p) : p_Alarm(p)
+update_thread::update_thread(AlarmHandler_ns::AlarmHandler *p) : p_Alarm(p),Tango::LogAdapter(p)
 {
 	//cout << __FILE__rev << endl;
 }
@@ -36,6 +36,7 @@ update_thread::update_thread(AlarmHandler_ns::AlarmHandler *p) : p_Alarm(p)
  */
 update_thread::~update_thread()
 {
+	DEBUG_STREAM << __func__ << "update_thread::run(): exiting!" << endl;
 	p_Alarm = NULL;
 }
 
@@ -52,14 +53,23 @@ void update_thread::run(void *)
 	while (!p_Alarm->abortflag) {
 		try
 		{
-			omni_thread::sleep(pausasec,pausanano);
-			p_Alarm->timer_update();
+			//omni_thread::sleep(pausasec,pausanano);
+			abort_sleep(pausasec+(double)pausanano/1000000000);
+			if(!p_Alarm->abortflag)
+				p_Alarm->timer_update();
 			//printf("update_thread::run(): TIMER!!\n");
 		}		
 		catch(...)
 		{
-			printf("update_thread::run(): catched unknown exception!!\n");
+			INFO_STREAM << "update_thread::run(): catched unknown exception!!";
 		}		
 	}
-	//cout << "update_thread::run(): exiting!" << endl;
+	DEBUG_STREAM << "update_thread::run(): exiting!" << endl;
 }  /* update_thread::run() */
+
+void update_thread::abort_sleep(double time)
+{
+	omni_mutex_lock sync(*this);
+	long time_millis = (long)(time*1000);
+	int res = wait(time_millis);
+}

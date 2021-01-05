@@ -24,13 +24,14 @@
 #include <tango.h>
 #include <AlarmHandler.h>
 
-class update_thread : public omni_thread {
+class update_thread : public omni_thread, public Tango::TangoMonitor, public Tango::LogAdapter {
 	public:
 		update_thread(AlarmHandler_ns::AlarmHandler *p);
 		~update_thread();
 	protected:
 		void run(void *);
 	private:
+		void abort_sleep(double time);
 		AlarmHandler_ns::AlarmHandler *p_Alarm;
 };
 
