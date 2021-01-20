@@ -2104,44 +2104,28 @@ void AlarmHandler::modify(Tango::DevString argin)
 			Tango::TimeVal ts = gettime();
 			string cmd_name_full = alm.cmd_name_a + string(";") + alm.cmd_name_n;
 
-			if ((alm.name.empty() == false) && \
-					(alm.formula.empty() == false) && \
-					((alm.lev==LEV_LOG)||(alm.lev==LEV_WARNING)|| \
-					(alm.lev==LEV_FAULT)||(alm.lev==LEV_LOWEST)||(alm.lev==LEV_LOW)|| \
-					(alm.lev==LEV_MEDIUM)||(alm.lev==LEV_HIGH)||(alm.lev==LEV_HIGHEST)||(alm.lev.empty() == true))) {
-				i->second.stat = S_NORMAL;
-				i->second.ack = ACK;
-				i->second.done = false;
+			i->second.stat = S_NORMAL;
+			i->second.ack = ACK;
+			i->second.done = false;
 
-				i->second.msg = alm.msg;
-				i->second.url = alm.url;
-				i->second.lev = alm.lev;
-				i->second.grp = alm.grp;
-				//i->second.to_be_evaluated = alm.to_be_evaluated;
-				i->second.on_delay = alm.on_delay;
-				i->second.off_delay = alm.off_delay;
-				i->second.silent_time = alm.silent_time;
-				i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silencedd;
-				i->second.cmd_name_a = alm.cmd_name_a;
-				i->second.cmd_dp_a = alm.cmd_dp_a;
-				i->second.cmd_action_a = alm.cmd_action_a;
-				//i->second.send_arg_a = alm.send_arg_a;
-				i->second.cmd_name_n = alm.cmd_name_n;
-				i->second.cmd_dp_n = alm.cmd_dp_n;
-				i->second.cmd_action_n = alm.cmd_action_n;
-				//i->second.send_arg_n = alm.send_arg_n;
-				i->second.enabled = alm.enabled;
-
-			} else {
-				ostringstream o;
-				o << __func__<<": syntax error in '" << alarm_string << "'";
-				WARN_STREAM << o.str() << endl;
-				alarms.vlock->writerOut();
-				Tango::Except::throw_exception( \
-						(const char*)o.str().c_str(), \
-						(const char*)"", \
-						(const char*)__func__, Tango::ERR);
-			}
+			i->second.msg = alm.msg;
+			i->second.url = alm.url;
+			i->second.lev = alm.lev;
+			i->second.grp = alm.grp;
+			//i->second.to_be_evaluated = alm.to_be_evaluated;
+			i->second.on_delay = alm.on_delay;
+			i->second.off_delay = alm.off_delay;
+			i->second.silent_time = alm.silent_time;
+			i->second.silenced = (i->second.silent_time > 0) ? 0 : -1;	//0: can be silenced, -1: cannot be silencedd;
+			i->second.cmd_name_a = alm.cmd_name_a;
+			i->second.cmd_dp_a = alm.cmd_dp_a;
+			i->second.cmd_action_a = alm.cmd_action_a;
+			//i->second.send_arg_a = alm.send_arg_a;
+			i->second.cmd_name_n = alm.cmd_name_n;
+			i->second.cmd_dp_n = alm.cmd_dp_n;
+			i->second.cmd_action_n = alm.cmd_action_n;
+			//i->second.send_arg_n = alm.send_arg_n;
+			i->second.enabled = alm.enabled;
 
 			//update attribute properties
 			events->update_property();
@@ -3173,6 +3157,7 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	DEBUG_STREAM << "               enabled        = '" << (alm.enabled ? "1" : "0") << "'" << endl;
 	if ((alm.name.empty() == false) && \
 			(alm.formula.empty() == false) && \
+			(alm.msg.empty() == false) && \
 			((alm.lev==LEV_LOG)||(alm.lev==LEV_WARNING)|| \
 			(alm.lev==LEV_FAULT)||(alm.lev==LEV_LOWEST)||(alm.lev==LEV_LOW)|| \
 			(alm.lev==LEV_MEDIUM)||(alm.lev==LEV_HIGH)||(alm.lev==LEV_HIGHEST)||(alm.lev.empty() == true))) {
@@ -5400,7 +5385,7 @@ void AlarmHandler::put_signal_property()
 		map<string,string>::iterator itmap = saved_alarms.find(it->first);
 		if(itmap == saved_alarms.end())
 		{
-			DEBUG_STREAM << __func__<<": SAVING " << it->first << endl;
+			DEBUG_STREAM << __func__<<": SAVING '" << it->first << "'" << endl;
 			alarms.save_alarm_conf_db(it->second.attr_name, it->second.name, it->second.stat, it->second.ack, it->second.enabled,
 				it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.url, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
 			saved_alarms.insert(make_pair(it->first,conf_str));
@@ -5424,18 +5409,21 @@ void AlarmHandler::put_signal_property()
 	map<string, string>::iterator it2=saved_alarms.begin();
 	while(it2 != saved_alarms.end())
 	{
-		alarms.vlock->readerIn();
-		alarm_container_t::iterator found = alarms.v_alarm.find(it2->first);
-		if (found == alarms.v_alarm.end())
+		if(!it2->first.empty())//TODO: should not be needed, bug if it happens
 		{
-			alarms.vlock->readerOut();
-			DEBUG_STREAM << __func__<<": DELETING " << it2->first << endl;
-			alarms.delete_alarm_conf_db(it2->first);
-			saved_alarms.erase(it2);
-		}
-		else
-		{
-			alarms.vlock->readerOut();
+			alarms.vlock->readerIn();
+			alarm_container_t::iterator found = alarms.v_alarm.find(it2->first);
+			if (found == alarms.v_alarm.end())
+			{
+				alarms.vlock->readerOut();
+				DEBUG_STREAM << __func__<<": DELETING '" << it2->first << "'" << endl;
+				alarms.delete_alarm_conf_db(it2->first);
+				saved_alarms.erase(it2);
+			}
+			else
+			{
+				alarms.vlock->readerOut();
+			}
 		}
 		if(it2 != saved_alarms.end())
 			it2++;
@@ -5540,6 +5528,18 @@ void AlarmHandler::parse_alarm(string &alarm_string, alarm_t &alm)
 	ast_parse<factory_t>(alarm_string.begin(), alarm_string.end(), al_gr, space_p);	//parse string s with grammar al_gr, skipping white spaces
 	if (alm.formula_tree.full)
 	{
+		if (alm.name.empty() || alm.formula.empty() || alm.msg.empty() ||
+					((alm.lev!=LEV_LOG)&&(alm.lev!=LEV_WARNING)&&(alm.lev!=LEV_FAULT)&&(alm.lev!=LEV_LOWEST)&&
+					(alm.lev!=LEV_LOW)&&(alm.lev!=LEV_MEDIUM)&&(alm.lev!=LEV_HIGH)&&(alm.lev!=LEV_HIGHEST)&&(!alm.lev.empty())))
+		{
+			ostringstream o;
+			o << __func__<<": Parsing Failed, at least "<<NAME_KEY<<","<<FORMULA_KEY<<","<<LEVEL_KEY<<","<<MESSAGE_KEY<<" must be specified"; //TODO
+			DEBUG_STREAM << o.str() << endl;
+			Tango::Except::throw_exception( \
+				(const char*)"Parsing Failed!", \
+				(const char*)o.str().c_str(), \
+				(const char*)__func__, Tango::ERR);
+		}
     	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
     	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written upercase
     	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
