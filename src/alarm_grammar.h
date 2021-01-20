@@ -269,10 +269,11 @@ struct alarm_parse : public grammar<alarm_parse>
 						)
 				;
 			//------------------------------MESSAGE--------------------------------------	
+			escChar = (ch_p('\\') | ch_p(';')) >> ch_p(';');	//escaped semicolon: "\;" or ";;"
 			msg
 				=	discard_node_d[str_p(KEY(MESSAGE_KEY))]
 					//>> ch_p('"')
-					>> (+(anychar_p - ';')) 		//one ore more char except ';' TODO: handle escaped "\;"
+					>> (+(escChar | (anychar_p - ';'))) 		//one ore more char except ';'
 							[
 								assign_a(self.m_alarm.msg)
 							]					
@@ -282,7 +283,7 @@ struct alarm_parse : public grammar<alarm_parse>
 			url
 				=	discard_node_d[str_p(KEY(URL_KEY))]
 					//>> ch_p('"')
-					>> (*(anychar_p - ';')) 		//zero ore more char except ';' TODO: handle escaped "\;"
+					>> (*(escChar | (anychar_p - ';'))) 		//zero ore more char except ';'
 							[
 								assign_a(self.m_alarm.url)
 							]					
@@ -358,7 +359,7 @@ struct alarm_parse : public grammar<alarm_parse>
 		rule_t expression, event, option;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
-        rule_t name, name_alm, val, token, oper, msg, url, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled, separator;
+        rule_t name, name_alm, val, token, oper, msg, url, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled, separator,escChar;
 		formula_grammar formula;
 		
 		rule_t const&					

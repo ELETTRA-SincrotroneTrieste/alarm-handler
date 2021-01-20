@@ -18,6 +18,7 @@
 #include "alarm_table.h"
 #include "alarm_grammar.h"
 #include "cmd_thread.h"
+#include <regex>
 
 
 static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
@@ -1022,6 +1023,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 			}
 			i++;
 		}
+		alm_message = std::regex_replace(alm_message, std::regex(";"), "\\;");
+		alm_url = std::regex_replace(alm_url, std::regex(";"), "\\;");
 		stringstream alm;
 		alm << KEY(NAME_KEY)<<alm_name << SEP <<
 				KEY(FORMULA_KEY)<<alm_formula << SEP <<

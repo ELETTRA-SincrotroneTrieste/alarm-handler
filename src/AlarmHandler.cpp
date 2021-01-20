@@ -68,6 +68,7 @@ using namespace boost::spirit::classic;
 #include <cassert>
 #endif 		//_DUMP_TREE_XML
 #include <sstream>
+#include <regex>
 
 std::map<parser_id, std::string> rule_names;  //only for log messages
 
@@ -3098,19 +3099,13 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
     	{
     		alm.attr_name = alm.name;
 #if 0
-			size_t start_pos = 0;
-			string from("/");
-			string to("__");
-			while((start_pos = alm.attr_name.find(from, start_pos)) != std::string::npos)
-			{
-				alm.attr_name.replace(start_pos, from.length(), to);
-				start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
-			}
+			alm.attr_name = std::regex_replace(alm.attr_name, std::regex("/"), "_");
 #endif
     	}
     	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written uppercase
     	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
-    	
+		alm.msg = std::regex_replace(alm.msg, std::regex(R"((\\;)|(;;))"), ";"); //match raw string "\;" or ";;" and replace with ";"
+		alm.url = std::regex_replace(alm.url, std::regex(R"((\\;)|(;;))"), ";"); //match raw string "\;" or ";;" and replace with ";"
     	if(alm.cmd_name_a.length() > 0)
     	{
 			const char *c = alm.cmd_name_a.c_str();
@@ -3151,16 +3146,16 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 		dbg_msg;
 		DEBUG_STREAM << dbg_msg.str() << endl;	
 	}
-    else
-    {
-       	ostringstream o;
+	else
+	{
+		ostringstream o;
 		o << "AlarmHandler::load_alarm(): Parsing Failed, '" << string(alarm_string.begin(), alm.formula_tree.stop) << "' parsed ok, BUT '" << string(alm.formula_tree.stop, alarm_string.end()) << "' not parsed"; //TODO
-       	DEBUG_STREAM << o.str() << endl;
-       	Tango::Except::throw_exception( \
-				(const char*)"Parsing Failed!", \
-				(const char*)o.str().c_str(), \
-				(const char*)"AlarmHandler::load_alarm()", Tango::ERR);
-    }	
+		DEBUG_STREAM << o.str() << endl;
+		Tango::Except::throw_exception( \
+			(const char*)"Parsing Failed!", \
+			(const char*)o.str().c_str(), \
+			(const char*)"AlarmHandler::load_alarm()", Tango::ERR);
+	}
 	alm.ts = gettime();
 	DEBUG_STREAM << "AlarmHandler::load_alarm(): name     = '" << alm.name << "'" << endl;
 	DEBUG_STREAM << "               attr_name      = '" << alm.attr_name << "'" << endl;
@@ -5548,7 +5543,8 @@ void AlarmHandler::parse_alarm(string &alarm_string, alarm_t &alm)
     	std::transform(alm.name.begin(), alm.name.end(), alm.name.begin(), (int(*)(int))tolower);		//transform to lowercase
     	//std::transform(alm.formula.begin(), alm.formula.end(), alm.formula.begin(), (int(*)(int))tolower);		//transform to lowercase: incorrect, state has to be written upercase
     	std::transform(alm.lev.begin(), alm.lev.end(), alm.lev.begin(), (int(*)(int))tolower);		//transform to lowercase
-
+		alm.msg = std::regex_replace(alm.msg, std::regex(R"((\\;)|(;;))"), ";"); //match raw string "\;" or ";;" and replace with ";"
+		alm.url = std::regex_replace(alm.url, std::regex(R"((\\;)|(;;))"), ";"); //match raw string "\;" or ";;" and replace with ";"
     	if(alm.cmd_name_a.length() > 0)
     	{
 			const char *c = alm.cmd_name_a.c_str();
