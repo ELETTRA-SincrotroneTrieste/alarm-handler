@@ -75,6 +75,7 @@
 #define SILENT_TIME_KEY		"shlvd_time"
 #define GROUP_KEY			"group"
 #define MESSAGE_KEY			"message"
+#define URL_KEY			"url"
 #define ON_COMMAND_KEY		"on_command"
 #define OFF_COMMAND_KEY		"off_command"
 #define ENABLED_KEY			"enabled"
@@ -222,6 +223,7 @@ struct alarm_parse : public grammar<alarm_parse>
 					no_node_d[separator] >> no_node_d[silent_time] |
 					no_node_d[separator] >> no_node_d[group] |
 					no_node_d[separator] >> no_node_d[msg] |
+					no_node_d[separator] >> no_node_d[url] |
 					no_node_d[separator] >> no_node_d[on_command] |
 					no_node_d[separator] >> no_node_d[off_command] |
 					no_node_d[separator] >> no_node_d[enabled]
@@ -270,9 +272,19 @@ struct alarm_parse : public grammar<alarm_parse>
 			msg
 				=	discard_node_d[str_p(KEY(MESSAGE_KEY))]
 					//>> ch_p('"')
-					>> (+(anychar_p - ';')) 		//one ore more char except ';'
+					>> (+(anychar_p - ';')) 		//one ore more char except ';' TODO: handle escaped "\;"
 							[
 								assign_a(self.m_alarm.msg)
+							]					
+					//>> '"'
+				;
+			//------------------------------URL--------------------------------------	
+			url
+				=	discard_node_d[str_p(KEY(URL_KEY))]
+					//>> ch_p('"')
+					>> (*(anychar_p - ';')) 		//zero ore more char except ';' TODO: handle escaped "\;"
+							[
+								assign_a(self.m_alarm.url)
 							]					
 					//>> '"'
 				;
@@ -346,7 +358,7 @@ struct alarm_parse : public grammar<alarm_parse>
 		rule_t expression, event, option;
         rule<typename lexeme_scanner<ScannerT>::type> symbol;					//needed to use lexeme_d in rule name
         rule<typename lexeme_scanner<ScannerT>::type> symbol_attr_name;		//needed to use lexeme_d in rule name
-        rule_t name, name_alm, val, token, oper, msg, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled, separator;
+        rule_t name, name_alm, val, token, oper, msg, url, group, level, on_delay, off_delay, silent_time, on_command, off_command, enabled, separator;
 		formula_grammar formula;
 		
 		rule_t const&					

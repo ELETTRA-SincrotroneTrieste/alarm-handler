@@ -291,6 +291,7 @@ class alarm_t {
 		bool done;
 		bool to_be_evaluated;
 		string msg;
+		string url;
 		unsigned int grp;
 		string lev;
 		set<string> s_event;
@@ -363,8 +364,8 @@ class alarm_table {
 		void new_rwlock();
 		void del_rwlock();
 
-		void save_alarm_conf_db(string att_name, string name, string status, string ack, bool enabled,
-				 string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list=vector<string>());
+		void save_alarm_conf_db(const string &att_name, const string &name, const string &status, const string &ack, bool enabled,
+				 const string &formula, unsigned int on_delay, unsigned int off_delay, const string &grp, const string &url, const string &lev, const string &msg, const string &cmd_a, const string &cmd_n, int silent_time);
 		void delete_alarm_conf_db(string att_name);
 		void get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms);
 		void init_cmdthread();

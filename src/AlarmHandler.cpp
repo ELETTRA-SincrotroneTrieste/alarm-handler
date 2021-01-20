@@ -1521,7 +1521,7 @@ void AlarmHandler::load(Tango::DevString argin)
 	}
 #endif
 	alarms.save_alarm_conf_db(alm.attr_name, alm.name, "", "", alm.enabled,		//add new alarm on log before subscribe event
-			alm.formula, alm.on_delay, alm.off_delay, alm.grp2str(), alm.lev, alm.msg, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
+			alm.formula, alm.on_delay, alm.off_delay, alm.grp2str(), alm.lev, alm.msg, alm.url, alm.cmd_name_a, alm.cmd_name_n, alm.silent_time);	//but if it fails remove it from table
 	string conf_str;
 	alm.confstr(conf_str);
 	saved_alarms.insert(make_pair(alm.attr_name,conf_str));
@@ -1842,7 +1842,7 @@ Tango::DevVarStringArray *AlarmHandler::search_alarm(Tango::DevString argin)
 			ostringstream os;
 			os.clear();
 			os << ai->second.ts.tv_sec << SEP << KEY(NAME_KEY) << ai->second.name << SEP << KEY(FORMULA_KEY) << ai->second.formula << SEP << KEY(ONDELAY_KEY) << ai->second.on_delay << SEP << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
-				SEP << KEY(LEVEL_KEY) << ai->second.lev << SEP << KEY(SILENT_TIME_KEY) << ai->second.silent_time << SEP << KEY(GROUP_KEY) << ai->second.grp2str() << SEP << KEY(MESSAGE_KEY) << ai->second.msg <<
+				SEP << KEY(LEVEL_KEY) << ai->second.lev << SEP << KEY(SILENT_TIME_KEY) << ai->second.silent_time << SEP << KEY(GROUP_KEY) << ai->second.grp2str() << SEP << KEY(MESSAGE_KEY) << ai->second.msg << SEP << KEY(URL_KEY) << ai->second.url <<
 				SEP << KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << SEP << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << SEP << KEY(ENABLED_KEY) << (ai->second.enabled ? "1" : "0");
 			alarm_filtered.push_back(os.str());
 		}
@@ -2113,6 +2113,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 				i->second.done = false;
 
 				i->second.msg = alm.msg;
+				i->second.url = alm.url;
 				i->second.lev = alm.lev;
 				i->second.grp = alm.grp;
 				//i->second.to_be_evaluated = alm.to_be_evaluated;
@@ -2948,6 +2949,8 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	tmp << "\"" << it->second.msg << "\"";
 	info.insert(make_pair(MESSAGE_KEY,tmp.str()));
 	complete.push_back(KEY(MESSAGE_KEY)+tmp.str());
+	info.insert(make_pair(URL_KEY,it->second.url));
+	complete.push_back(KEY(URL_KEY)+it->second.url);
 	info.insert(make_pair(ON_COMMAND_KEY,it->second.cmd_name_a));
 	complete.push_back(KEY(ON_COMMAND_KEY)+it->second.cmd_name_a);
 	info.insert(make_pair(OFF_COMMAND_KEY,it->second.cmd_name_n));
@@ -3063,6 +3066,7 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	alm.err_counter = 0;
 	alm.formula.clear();
 	alm.msg.clear();
+	alm.url.clear();
 	alm.lev.clear();
 	alm.grp=0;
 	alm.to_be_evaluated = false;
@@ -3164,6 +3168,7 @@ void AlarmHandler::load_alarm(string alarm_string, alarm_t &alm, vector<string> 
 	DEBUG_STREAM << "               on_delay       = '" << alm.on_delay << "'" << endl;
 	DEBUG_STREAM << "               off_delay      = '" << alm.off_delay << "'" << endl;
 	DEBUG_STREAM << "               msg            = '" << alm.msg << "'" << endl;
+	DEBUG_STREAM << "               url            = '" << alm.url << "'" << endl;
 	DEBUG_STREAM << "               grp            = '" << showbase << hex << alm.grp << "'=" << alm.grp2str() << endl;
 	DEBUG_STREAM << "               silent_time    = '" << alm.silent_time << "'" << endl;
 	DEBUG_STREAM << "               silenced       = '" << alm.silenced << "'" << endl;
@@ -5045,6 +5050,7 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary << KEY(ALARM_TIME_KEY) << time_buf << "." << ai->second.ts.tv_usec << SEP;
 		alm_summary << KEY(FORMULA_KEY) << ai->second.formula << SEP;
 		alm_summary << KEY(MESSAGE_KEY) << ai->second.msg;	//TODO: escape ';'
+		//alm_summary << KEY(URL_KEY) << ai->second.url;	//TODO: escape ';' TODO: add to alarmSummary?
 #else
 		alm_summary += string(KEY(VALUE_KEY)) + almstate + SEP;	//TODO: string or enum value?
 		alm_summary += KEY(LEVEL_KEY) + ai->second.lev + SEP;
@@ -5053,6 +5059,7 @@ void AlarmHandler::prepare_alarm_attr()
 		alm_summary += KEY(ALARM_TIME_KEY) + sval.str() + SEP;
 		alm_summary += KEY(FORMULA_KEY) + ai->second.formula + SEP;
 		alm_summary += KEY(MESSAGE_KEY) + ai->second.msg;	//TODO: escape ';'
+		//alm_summary += KEY(URL_KEY) + ai->second.url;	//TODO: escape ';' TODO: add to alarmSummary?
 #endif
 
 
@@ -5138,6 +5145,7 @@ void AlarmHandler::prepare_alarm_attr()
 					aid->ack = NOT_ACK;
 					aid->ts = ai->second.ts;
 					aid->msg = ai->second.msg;
+					aid->url = ai->second.url;
 				}
 				aid->grp = ai->second.grp;
 				aid->lev = ai->second.lev;
@@ -5181,6 +5189,7 @@ void AlarmHandler::prepare_alarm_attr()
 					aid->ack = NOT_ACK;
 					aid->ts = ai->second.ts;
 					aid->msg = ai->second.msg;
+					aid->url = ai->second.url;
 				}
 				aid->grp = ai->second.grp;
 				aid->lev = ai->second.lev;
@@ -5220,6 +5229,7 @@ void AlarmHandler::prepare_alarm_attr()
 				aid->ts = ai->second.ts;
 				//aid->msg = " ";						/* no message again */
 				aid->msg =ai->second.msg;
+				aid->url = ai->second.url;
 				aid->grp = ai->second.grp;
 				aid->lev = ai->second.lev;
 				aid->on_counter = ai->second.on_counter;
@@ -5397,7 +5407,7 @@ void AlarmHandler::put_signal_property()
 		{
 			DEBUG_STREAM << __func__<<": SAVING " << it->first << endl;
 			alarms.save_alarm_conf_db(it->second.attr_name, it->second.name, it->second.stat, it->second.ack, it->second.enabled,
-				it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
+				it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.url, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
 			saved_alarms.insert(make_pair(it->first,conf_str));
 
 		}
@@ -5410,7 +5420,7 @@ void AlarmHandler::put_signal_property()
 			{
 				DEBUG_STREAM << __func__<<": UPDATING " << it->first << endl;
 				alarms.save_alarm_conf_db(it->second.attr_name, it->second.name, it->second.stat, it->second.ack, it->second.enabled,
-					it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
+					it->second.formula, it->second.on_delay, it->second.off_delay, it->second.grp2str(), it->second.lev, it->second.msg, it->second.url, it->second.cmd_name_a, it->second.cmd_name_n, it->second.silent_time);
 				itmap->second = conf_string;
 			}
 		}
@@ -5509,6 +5519,7 @@ void AlarmHandler::parse_alarm(string &alarm_string, alarm_t &alm)
 	alm.ex_origin.clear();
 	alm.formula.clear();
 	alm.msg.clear();
+	alm.url.clear();
 	alm.lev.clear();
 	alm.grp=0;
 	alm.to_be_evaluated = false;

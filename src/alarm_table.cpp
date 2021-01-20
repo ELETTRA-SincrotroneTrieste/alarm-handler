@@ -188,6 +188,7 @@ void alarm_t::confstr(string &s)
 			KEY(SILENT_TIME_KEY)<<silent_time << SEP <<
 			KEY(GROUP_KEY)<< grp2str() << SEP <<
 			KEY(MESSAGE_KEY)<< msg <<	SEP <<
+			KEY(URL_KEY)<< msg <<	SEP <<
 			KEY(ON_COMMAND_KEY)<< cmd_name_a << SEP <<
 			KEY(OFF_COMMAND_KEY)<< cmd_name_n << SEP <<
 			KEY(ENABLED_KEY)<< (enabled ? "1" : "0");
@@ -838,8 +839,8 @@ void alarm_table::stop_cmdthread()
 	cmdloop->list.push_back(arg);	
 }
 
-void alarm_table::save_alarm_conf_db(string att_name, string name, string status, string ack, bool enabled,
-		string formula, unsigned int on_delay, unsigned int off_delay, string grp, string lev, string msg, string cmd_a, string cmd_n, int silent_time, vector<string> alm_list)
+void alarm_table::save_alarm_conf_db(const string &att_name, const string &name, const string &status, const string &ack, bool enabled,
+		const string &formula, unsigned int on_delay, unsigned int off_delay, const string &grp, const string &lev, const string &msg, const string &url, const string &cmd_a, const string &cmd_n, int silent_time)
 {
 	// We want to put properties for attribute "att_name"
 	Tango::DbDatum dbd_att_name(att_name);
@@ -851,22 +852,24 @@ void alarm_table::save_alarm_conf_db(string att_name, string name, string status
 	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
 	Tango::DbDatum dbd_group(GROUP_KEY);
 	Tango::DbDatum dbd_message(MESSAGE_KEY);
+	Tango::DbDatum dbd_url(URL_KEY);
 	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);
 	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);
 	Tango::DbDatum dbd_enabled(ENABLED_KEY);
 
 	Tango::DbData db_data;
-	dbd_att_name << (short int)11;                               // Eleven properties for attribute "att_name"
-	dbd_name << name;
-	dbd_formula << formula;
+	dbd_att_name << (short int)12;                               // Twelve properties for attribute "att_name"
+	dbd_name << name.c_str();
+	dbd_formula << formula.c_str();
 	dbd_on_delay << (Tango::DevLong)on_delay;
 	dbd_off_delay << (Tango::DevLong)off_delay;
-	dbd_level << lev;
+	dbd_level << lev.c_str();
 	dbd_silence_time << (Tango::DevLong)silent_time;
-	dbd_group << grp;
-	dbd_message << msg;
-	dbd_oncommand << cmd_a;
-	dbd_offcommand << cmd_n;
+	dbd_group << grp.c_str();
+	dbd_message << msg.c_str();
+	dbd_url << url.c_str();
+	dbd_oncommand << cmd_a.c_str();
+	dbd_offcommand << cmd_n.c_str();
 	dbd_enabled << (enabled ? (short int)1 : (short int)0);
 
 	db_data.push_back(dbd_att_name);
@@ -878,6 +881,7 @@ void alarm_table::save_alarm_conf_db(string att_name, string name, string status
 	db_data.push_back(dbd_silence_time);
 	db_data.push_back(dbd_group);
 	db_data.push_back(dbd_message);
+	db_data.push_back(dbd_url);
 	db_data.push_back(dbd_oncommand);
 	db_data.push_back(dbd_offcommand);
 	db_data.push_back(dbd_enabled);
@@ -907,6 +911,7 @@ void alarm_table::delete_alarm_conf_db(string att_name)
 	Tango::DbDatum dbd_silence_time(SILENT_TIME_KEY);	//TODO: silent_time
 	Tango::DbDatum dbd_group(GROUP_KEY);
 	Tango::DbDatum dbd_message(MESSAGE_KEY);
+	Tango::DbDatum dbd_url(URL_KEY);
 	Tango::DbDatum dbd_oncommand(ON_COMMAND_KEY);
 	Tango::DbDatum dbd_offcommand(OFF_COMMAND_KEY);
 	Tango::DbDatum dbd_enabled(ENABLED_KEY);
@@ -922,6 +927,7 @@ void alarm_table::delete_alarm_conf_db(string att_name)
 	db_data.push_back(dbd_silence_time);
 	db_data.push_back(dbd_group);
 	db_data.push_back(dbd_message);
+	db_data.push_back(dbd_url);
 	db_data.push_back(dbd_oncommand);
 	db_data.push_back(dbd_offcommand);
 	db_data.push_back(dbd_enabled);
@@ -976,6 +982,7 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 		string alm_silence_time("-1");
 		string alm_group;
 		string alm_message;
+		string alm_url;
 		string alm_on_command("");
 		string alm_off_command("");
 		string alm_enabled("1");
@@ -999,6 +1006,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 				db_data[i] >> alm_group;
 			else if (prop_name == MESSAGE_KEY)
 				db_data[i] >> alm_message;
+			else if (prop_name == URL_KEY)
+				db_data[i] >> alm_url;
 			else if (prop_name == ON_COMMAND_KEY)
 				db_data[i] >> alm_on_command;
 			else if (prop_name == OFF_COMMAND_KEY)
@@ -1022,6 +1031,7 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 				KEY(SILENT_TIME_KEY)<<alm_silence_time << SEP <<
 				KEY(GROUP_KEY)<< alm_group << SEP <<
 				KEY(MESSAGE_KEY)<< alm_message <<	SEP <<
+				KEY(URL_KEY)<< alm_url <<	SEP <<
 				KEY(ON_COMMAND_KEY)<< alm_on_command << SEP <<
 				KEY(OFF_COMMAND_KEY)<< alm_off_command << SEP <<
 				KEY(ENABLED_KEY)<< alm_enabled;
