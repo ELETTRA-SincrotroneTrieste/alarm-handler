@@ -20,6 +20,7 @@
 
 //for get_event_system_for_event_id, to know if ZMQ
 #include <eventconsumer.h>
+#include <regex>
 
 static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
 
@@ -1222,6 +1223,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 			//e.ev_name = INTERNAL_ERROR;
 			//e.type = -1;
 			e.msg = o.str();
+			e.msg = std::regex_replace(e.msg, std::regex(R"((\n)|(\t))"), " "); //match raw string "\n" or "\t" and replace with " "
 		}
 	} 
 	catch (string &err) {
