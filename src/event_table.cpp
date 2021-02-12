@@ -17,6 +17,7 @@
 #include <tango.h>
 #include "event_table.h"
 #include "AlarmHandler.h"
+#include "alarm_grammar.h"
 
 //for get_event_system_for_event_id, to know if ZMQ
 #include <eventconsumer.h>
@@ -38,14 +39,14 @@ void event_list::push_back(bei_t& e)
 	catch(omni_thread_fatal& ex)
 	{
 		ostringstream err;
-		err << "omni_thread_fatal exception signaling omni_condition, err=" << ex.error << ends;
+		err << "omni_thread_fatal exception signaling omni_condition, err=" << ex.error;
 		//WARN_STREAM << "event_list::push_back(): " << err.str() << endl;	
 		printf("event_list::push_back(): %s", err.str().c_str());
 	}			
 	catch(Tango::DevFailed& ex)
 	{
 		ostringstream err;
-		err << "exception  signaling omni_condition: '" << ex.errors[0].desc << "'" << ends;
+		err << "exception  signaling omni_condition: '" << ex.errors[0].desc << "'";
 		//WARN_STREAM << "event_list::push_back(): " << err.str() << endl;	
 		printf("event_list::push_back: %s", err.str().c_str());
 		Tango::Except::print_exception(ex);	
@@ -69,7 +70,7 @@ const bei_t event_list::pop_front(void)
 	catch(omni_thread_fatal& ex)
 	{
 		ostringstream err;
-		err << "omni_thread_fatal exception waiting on omni_condition, err=" << ex.error << ends;
+		err << "omni_thread_fatal exception waiting on omni_condition, err=" << ex.error;
 		//WARN_STREAM << "event_list::pop_front(): " << err.str() << endl;	
 		printf("event_list::pop_front(): %s", err.str().c_str());
 		bei_t e;
@@ -80,7 +81,7 @@ const bei_t event_list::pop_front(void)
 	catch(Tango::DevFailed& ex)
 	{
 		ostringstream err;
-		err << "exception  waiting on omni_condition: '" << ex.errors[0].desc << "'" << ends;
+		err << "exception  waiting on omni_condition: '" << ex.errors[0].desc << "'";
 		//WARN_STREAM << "event_list::pop_front(): " << err.str() << endl;	
 		printf("event_list::pop_front: %s", err.str().c_str());
 		Tango::Except::print_exception(ex);
@@ -251,13 +252,90 @@ bool event::operator==(const string& s)
 //	v_event.push_back(e);//TODO: replaced with add
 }*/
 
-void event_table::show(void)
+void event_table::show(list<string> &evl)
 {
-	DEBUG_STREAM << "events found:" << endl;
-	if (v_event.empty() == false) {
+	evl.clear();
+	ReaderLock lock(veclock);
+	if (v_event.empty() == false)
+	{
 		vector<event>::iterator i = v_event.begin();
-		while (i != v_event.end()) {
-			DEBUG_STREAM << "\t" << i->name << endl;
+		while (i != v_event.end())
+		{
+			//DEBUG_STREAM << "\t" << i->name << endl;
+			evl.push_back(i->name);
+			i++;
+		}
+	}
+}
+
+void event_table::summary(list<string> &evs)
+{
+	evs.clear();
+	ReaderLock lock(veclock);
+	if (v_event.empty() == false)
+	{
+		vector<event>::iterator i = v_event.begin();
+		while (i != v_event.end())
+		{
+			ostringstream ev_summary;
+			ev_summary << KEY(EVENT_KEY) << i->name << SEP;
+			tm time_tm;
+			time_t time_sec;
+			if(i->valid)
+			{
+				time_sec= i->ts.tv_sec;
+			}
+			else
+			{
+				timeval now;
+				gettimeofday(&now, NULL);
+				time_sec = now.tv_sec;
+			}
+			//gmtime_r(&time_sec,&time_tm); //-> UTC
+			localtime_r(&time_sec,&time_tm);
+			char time_buf[64];
+			strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &time_tm);
+
+			ev_summary << KEY(EVENT_TIME_KEY) << time_buf << SEP;
+			ostringstream tmp_val;
+			//if(i->valid)
+			{
+				tmp_val << "[" ;
+				if(i->type != Tango::DEV_STRING)
+				{
+					if(i->read_size > 0 && i->value.size() > 0)
+					{
+						for(size_t k=0; k<i->read_size && k<i->value.size(); k++)
+						{
+							tmp_val << i->value[k];
+							if(k < i->read_size-1 && k<i->value.size()-1)
+								tmp_val << ",";
+						}
+					}
+				}
+				else
+				{
+					tmp_val << "\""<<i->value_string<<"\"";
+				}
+				tmp_val << "]";
+			}
+			ev_summary << KEY(ATTR_VALUES_KEY) << tmp_val.str() << SEP;
+			ostringstream tmp_ex;
+			//tmp_ex.str("");
+			if(!i->ex_reason.empty() || !i->ex_desc.empty() || !i->ex_origin.empty())
+			{
+				tmp_ex << "{\"Reason\":\"" << i->ex_reason << "\",\"Desc\":\"" << i->ex_desc << "\",\"Origin\":\"" << i->ex_origin << "\"}";
+			}
+			ev_summary << KEY(EXCEPTION_KEY) << tmp_ex.str() << SEP;
+			ev_summary << KEY(QUALITY_KEY);
+			try
+			{
+				ev_summary << quality_labels.at(i->quality) << SEP;
+			} catch(std::out_of_range& ex)
+			{
+				ev_summary << i->quality << SEP;
+			}
+			evs.push_back(ev_summary.str());
 			i++;
 		}
 	}
@@ -272,6 +350,7 @@ event_table::event_table(Tango::DeviceImpl *s):Tango::LogAdapter(s)
 
 unsigned int event_table::size(void)
 {
+	ReaderLock lock(veclock); //TODO: necessary?
 	return(v_event.size());
 }
 #if 0
@@ -288,7 +367,7 @@ void event_table::init_proxy(void)	throw(vector<string> &)
 			{
 				ostringstream o;
 				o << "new DeviceProxy() failed for " \
-					<< i->device << ends;
+					<< i->device;
 				ERROR_STREAM << o.str() << endl;
 				//throw o.str();
 				proxy_error.push_back(o.str());
@@ -328,7 +407,7 @@ void event_table::subscribe(EventCallBack& ecb) throw(vector<string> &)//throw(s
 			} catch (...) {
 				ostringstream o;
 				o << "subscribe_event() failed for " \
-					<< i->name << ends;
+					<< i->name;
 				ERROR_STREAM << o.str() << endl;
 				//throw o.str();
 				subscribe_error.push_back(o.str());
@@ -877,24 +956,27 @@ void event_table::subscribe_events()
 				}
 				catch (Tango::DevFailed &e)
 				{
+					string ex_reason(e.errors[0].reason);
+					ex_reason = std::regex_replace(ex_reason, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+					string ex_desc(e.errors[0].desc);
+					ex_desc = std::regex_replace(ex_desc, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+					string ex_origin(e.errors[0].origin);
+					ex_origin = std::regex_replace(ex_origin, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+					bei_t ex;
 					ostringstream o;
 					o << "Error adding'" \
-					<< sig->name << "' error=" << e.errors[0].desc << ends;
+					<< sig->name << "' error=" << ex_desc;
 					INFO_STREAM << "event_table::subscribe_events: " << o.str() << endl;
-					v_event[i].ex_reason = e.errors[0].reason;
-					v_event[i].ex_desc = e.errors[0].desc;
+					v_event[i].ex_reason = ex.ex_reason = ex_reason;
+					v_event[i].ex_desc = ex.ex_desc = ex_desc;
 //					v_event[i].ex_desc.erase(std::remove(v_event[i].ex_desc.begin(), v_event[i].ex_desc.end(), '\n'), v_event[i].ex_desc.end());
-					v_event[i].ex_origin = e.errors[0].origin;
-					v_event[i].siglock->writerOut();
-					//TODO: since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures ?
-					bei_t ex;
+					v_event[i].ex_origin = ex.ex_origin = ex_origin;
+					v_event[i].ts = ex.ts = gettime();
+					v_event[i].quality = ex.quality = Tango::ATTR_INVALID;
 					ex.ev_name = sig->name;
-					ex.quality = Tango::ATTR_INVALID;
-					ex.ex_reason = e.errors[0].reason;
-					ex.ex_desc = e.errors[0].desc;
-					ex.ex_origin = e.errors[0].origin;
+					v_event[i].siglock->writerOut();
+					//TODO: since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures ?		
 					ex.type = TYPE_TANGO_ERR;
-					ex.ts = gettime();
 					ex.msg=o.str();
 					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
 					continue;
@@ -930,28 +1012,31 @@ void event_table::subscribe_events()
 			}
 			catch (Tango::DevFailed &e)
 			{
+				string ex_reason(e.errors[0].reason);
+				ex_reason = std::regex_replace(ex_reason, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+				string ex_desc(e.errors[0].desc);
+				ex_desc = std::regex_replace(ex_desc, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+				string ex_origin(e.errors[0].origin);
+				ex_origin = std::regex_replace(ex_origin, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
+				bei_t ex;
 				ostringstream o;
 				o << "Event exception for'" \
-					<< sig->name << "' error=" << e.errors[0].desc << ends;
+					<< sig->name << "' error=" << ex_desc;
 				INFO_STREAM <<"event_table::"<<__func__<<": sig->attr->subscribe_event: " << o.str() << endl;
 				err = true;
 				Tango::Except::print_exception(e);
 				sig->siglock->writerIn();
-				sig->ex_reason = e.errors[0].reason;
-				sig->ex_desc = e.errors[0].desc;
-				sig->ex_origin = e.errors[0].origin;
+				sig->ex_reason = ex.ex_reason = ex_reason;
+				sig->ex_desc = ex.ex_desc = ex_desc;
+				sig->ex_origin = ex.ex_origin = ex_origin;
 				sig->event_id = SUB_ERR;
 				delete sig->event_cb;
+				sig->ts = ex.ts = gettime();
+				sig->quality = ex.quality = Tango::ATTR_INVALID;
+				ex.ev_name = sig->name;
 				sig->siglock->writerOut();
 				//since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures
-				bei_t ex;
-				ex.ev_name = sig->name;
-				ex.quality = Tango::ATTR_INVALID;
-				ex.ex_reason = e.errors[0].reason;
-				ex.ex_desc = e.errors[0].desc;
-				ex.ex_origin = e.errors[0].origin;
 				ex.type = TYPE_TANGO_ERR;
-				ex.ts = gettime();
 				ex.msg=o.str();
 				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
 			}
@@ -1199,6 +1284,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 			e.ts = ev->attr_value->time;
 			extract_values(ev->attr_value, e.value, e.value_string, e.type, e.read_size);
 		} else {
+			e.quality = Tango::ATTR_INVALID;
 #if 0//TANGO_VER >= 711
  			string ev_name_str(ev->attr_name);
  			string::size_type pos = ev_name_str.find("tango://");
@@ -1217,13 +1303,13 @@ void EventCallBack::push_event(Tango::EventData* ev)
 				temp_name = temp_name.substr(0,pos_change);
 			}
 			ostringstream o;
-			o << "Tango error for '" << temp_name << "'=" << ev->errors[0].desc.in() << ends;			
+			o << "Tango error for '" << temp_name << "'=" << ev->errors[0].desc.in();			
 			e.ev_name = temp_name;
 			e.type = TYPE_TANGO_ERR;
 			//e.ev_name = INTERNAL_ERROR;
 			//e.type = -1;
 			e.msg = o.str();
-			e.msg = std::regex_replace(e.msg, std::regex(R"((\n)|(\t))"), " "); //match raw string "\n" or "\t" and replace with " "
+			e.msg = std::regex_replace(e.msg, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
 		}
 	} 
 	catch (string &err) {
@@ -1237,18 +1323,18 @@ void EventCallBack::push_event(Tango::EventData* ev)
 	{
 		ostringstream o;
 		o << "Event exception for'" \
-			<< ev->attr_name << "' error=" << Terr.errors[0].desc << ends;
+			<< ev->attr_name << "' error=" << Terr.errors[0].desc;
 		e.ev_name = ev->attr_name;
 		e.type = TYPE_GENERIC_ERR;
 		//e.value.i = 0;
 		e.ts = gettime();
 		e.msg = o.str();
-		//cerr << o.str() << endl;		
+		e.msg = std::regex_replace(e.msg, std::regex(R"((\n)|(\r)|(\t)|(\0))"), " "); //match raw string "\n" or "\t" and replace with " "
 	}	
 	catch (...) {
 		ostringstream o;
 		o << "Generic Event exception for'" \
-			<< ev->attr_name << "'" << ends;
+			<< ev->attr_name << "'";
 		e.ev_name = ev->attr_name;
 		e.type = TYPE_GENERIC_ERR;
 		//e.value.i = 0;
@@ -1362,7 +1448,7 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 	}
 	else {
 		ostringstream o;
-		o << "unknown type" << ends;
+		o << "unknown type";
 		throw o.str();
 	}	
 }

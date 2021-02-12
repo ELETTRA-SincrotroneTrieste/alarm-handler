@@ -254,6 +254,38 @@ bool AlarmHandler::is_alarmSummary_allowed(TANGO_UNUSED(Tango::AttReqType type))
 
 //--------------------------------------------------------
 /**
+ *	Method      : AlarmHandler::is_eventList_allowed()
+ *	Description : Execution allowed for eventList attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_eventList_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for eventList attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::eventListStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::eventListStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
+ *	Method      : AlarmHandler::is_eventSummary_allowed()
+ *	Description : Execution allowed for eventSummary attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_eventSummary_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for eventSummary attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::eventSummaryStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::eventSummaryStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
  *	Method      : AlarmHandler::is_AlarmState_allowed()
  *	Description : Execution allowed for AlarmState attribute
  */

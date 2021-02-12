@@ -66,7 +66,6 @@ class event {
 		value_t value;				/* event value */
 		string value_string;	//added for DevString attributes
 		int quality;
-		//Tango::DevErrorList 	errors;
 		string ex_reason;
 		string ex_desc;
 		string ex_origin;
@@ -75,13 +74,10 @@ class event {
 				read_size,                                      /* attribute size of read part */
 				counter,					/* molteplicita' */
 				err_counter;					/* molteplicita' errore */				
-		//map<string, string> m_alarm;
-		//vector<string> m_alarm;
 		alarm_list m_alarm;
 		bool valid;	//TODO: old
 		bool 	first;//TODO: new
 		bool 	first_err;//TODO: new
-		//Tango::DeviceProxy *dp;
 		Tango::AttributeProxy *attr;
 		Tango::DevState			evstate;
 		unsigned int event_id;
@@ -159,7 +155,8 @@ class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 		event_table(Tango::DeviceImpl *s);//:Tango::LogAdapter(s) {mydev = s;}
 		~event_table(void) {stop_thread();}
 		//void push_back(event e);
-		void show(void);
+		void show(list<string> &evl);
+		void summary(list<string> &evs);
 		unsigned int size(void);
 #if 0
 		void init_proxy(void)  throw(vector<string> &);

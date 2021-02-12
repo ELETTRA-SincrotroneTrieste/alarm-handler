@@ -223,6 +223,32 @@ public:
 		{return (static_cast<AlarmHandler *>(dev))->is_alarmSummary_allowed(ty);}
 };
 
+//	Attribute eventList class definition
+class eventListAttrib: public Tango::SpectrumAttr
+{
+public:
+	eventListAttrib():SpectrumAttr("eventList",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~eventListAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<AlarmHandler *>(dev))->read_eventList(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<AlarmHandler *>(dev))->is_eventList_allowed(ty);}
+};
+
+//	Attribute eventSummary class definition
+class eventSummaryAttrib: public Tango::SpectrumAttr
+{
+public:
+	eventSummaryAttrib():SpectrumAttr("eventSummary",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~eventSummaryAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<AlarmHandler *>(dev))->read_eventSummary(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<AlarmHandler *>(dev))->is_eventSummary_allowed(ty);}
+};
+
 
 //=========================================
 //	Define classes for dynamic attributes

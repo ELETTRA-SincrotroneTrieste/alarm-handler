@@ -1123,6 +1123,58 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	alarmsummary->set_archive_event(true, true);
 	att_list.push_back(alarmsummary);
 
+	//	Attribute : eventList
+	eventListAttrib	*eventlist = new eventListAttrib();
+	Tango::UserDefaultAttrProp	eventlist_prop;
+	eventlist_prop.set_description("List of all subscribed attributes");
+	//	label	not set for eventList
+	//	unit	not set for eventList
+	//	standard_unit	not set for eventList
+	//	display_unit	not set for eventList
+	//	format	not set for eventList
+	//	max_value	not set for eventList
+	//	min_value	not set for eventList
+	//	max_alarm	not set for eventList
+	//	min_alarm	not set for eventList
+	//	max_warning	not set for eventList
+	//	min_warning	not set for eventList
+	//	delta_t	not set for eventList
+	//	delta_val	not set for eventList
+	
+	eventlist->set_default_properties(eventlist_prop);
+	//	Not Polled
+	eventlist->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	//eventlist->set_change_event(true, true);
+	//eventlist->set_archive_event(true, true);
+	att_list.push_back(eventlist);
+
+	//	Attribute : eventSummary
+	eventSummaryAttrib	*eventsummary = new eventSummaryAttrib();
+	Tango::UserDefaultAttrProp	eventsummary_prop;
+	//	description	not set for eventSummary
+	//	label	not set for eventSummary
+	//	unit	not set for eventSummary
+	//	standard_unit	not set for eventSummary
+	//	display_unit	not set for eventSummary
+	//	format	not set for eventSummary
+	//	max_value	not set for eventSummary
+	//	min_value	not set for eventSummary
+	//	max_alarm	not set for eventSummary
+	//	min_alarm	not set for eventSummary
+	//	max_warning	not set for eventSummary
+	//	min_warning	not set for eventSummary
+	//	delta_t	not set for eventSummary
+	//	delta_val	not set for eventSummary
+	
+	eventsummary->set_default_properties(eventsummary_prop);
+	//	Not Polled
+	eventsummary->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	//eventsummary->set_change_event(true, true);
+	//eventsummary->set_archive_event(true, true);
+	att_list.push_back(eventsummary);
+
 
 	//	Create a list of static attributes
 	create_static_attribute_list(get_class_attr()->get_attr_list());

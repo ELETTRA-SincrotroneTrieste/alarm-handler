@@ -84,7 +84,7 @@
 #define SHELVED_KEY			"shelved"
 #define ACKNOWLEDGED_KEY	"ack"
 #define ATTR_VALUES_KEY		"values"
-#define VALUE_KEY			"state"
+#define VALUE_KEY				"state"
 #define ON_COUNTER_KEY		"on_counter"
 #define OFF_COUNTER_KEY		"off_counter"
 #define COUNTER_KEY			"counter"
@@ -93,6 +93,8 @@
 #define AUDIBLE_KEY			"audible"
 #define FREQ_COUNTER_KEY	"freq_counter"
 #define ALARM_TIME_KEY		"time"
+#define EVENT_KEY				"event"
+#define EVENT_TIME_KEY		ALARM_TIME_KEY
 #define KEY(S_VAL)  		S_VAL "="
 
 #define SEP					";"

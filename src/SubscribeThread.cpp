@@ -71,6 +71,8 @@ void *SubscribeThread::run_undetached(void *ptr)
 	{
 		//	Try to subscribe
 		usleep(500000);		//TODO: try to delay a bit subscribe_events
+		if(shared->get_if_stop())
+			break;
 		DEBUG_STREAM << "SubscribeThread::"<<__func__<<": AWAKE"<<endl;
 		updateProperty();
 		alarm_dev->events->subscribe_events();
@@ -98,7 +100,7 @@ void *SubscribeThread::run_undetached(void *ptr)
 			//shared->unlock();
 		}
 	}
-	shared->unsubscribe_events();
+	//shared->unsubscribe_events();
 	INFO_STREAM <<"SubscribeThread::"<< __func__<<": exiting..."<<endl;
 	return NULL;
 }

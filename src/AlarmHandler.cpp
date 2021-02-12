@@ -128,6 +128,8 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.29 $";
 //  alarmList                  |  Tango::DevString	Spectrum  ( max = 10000)
 //  alarmFrequency             |  Tango::DevDouble	Spectrum  ( max = 10000)
 //  alarmSummary               |  Tango::DevString	Spectrum  ( max = 10000)
+//  eventList                  |  Tango::DevString	Spectrum  ( max = 10000)
+//  eventSummary               |  Tango::DevString	Spectrum  ( max = 10000)
 //================================================================
 
 namespace AlarmHandler_ns
@@ -334,6 +336,8 @@ void AlarmHandler::delete_device()
 	delete[] attr_alarmList_read;
 	delete[] attr_alarmFrequency_read;
 	delete[] attr_alarmSummary_read;
+	delete[] attr_eventList_read;
+	delete[] attr_eventSummary_read;
 }
 
 //--------------------------------------------------------
@@ -388,6 +392,8 @@ void AlarmHandler::init_device()
 	attr_alarmList_read = new Tango::DevString[10000];
 	attr_alarmFrequency_read = new Tango::DevDouble[10000];
 	attr_alarmSummary_read = new Tango::DevString[10000];
+	attr_eventList_read = new Tango::DevString[10000];
+	attr_eventSummary_read = new Tango::DevString[10000];
 	/*----- PROTECTED REGION ID(AlarmHandler::init_device) ENABLED START -----*/
 /*	for(size_t i=0; i<MAX_ALARMS; i++)
 	{
@@ -1156,6 +1162,44 @@ void AlarmHandler::read_alarmSummary(Tango::Attribute &attr)
 	attr.set_value(attr_alarmSummary_read, alarmSummary_sz);
 	
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_alarmSummary
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute eventList related method
+ *	Description: List of all subscribed attributes
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void AlarmHandler::read_eventList(Tango::Attribute &attr)
+{
+	//DEBUG_STREAM << "AlarmHandler::read_eventList(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(AlarmHandler::read_eventList) ENABLED START -----*/
+	prepare_event_list();
+	//	Set the attribute value
+	attr.set_value(attr_eventList_read, eventList_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_eventList
+}
+//--------------------------------------------------------
+/**
+ *	Read attribute eventSummary related method
+ *	Description: 
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+//--------------------------------------------------------
+void AlarmHandler::read_eventSummary(Tango::Attribute &attr)
+{
+	//DEBUG_STREAM << "AlarmHandler::read_eventSummary(Tango::Attribute &attr) entering... " << endl;
+	/*----- PROTECTED REGION ID(AlarmHandler::read_eventSummary) ENABLED START -----*/
+	prepare_event_summary();
+	//	Set the attribute value
+	attr.set_value(attr_eventSummary_read, eventSummary_sz);
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_eventSummary
 }
 
 //--------------------------------------------------------
@@ -3401,7 +3445,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 	if(e.type == TYPE_TANGO_ERR || e.type == TYPE_GENERIC_ERR)
 	{
 		ostringstream o;
-		o << e.msg << endl;
+		o << e.msg;
 		WARN_STREAM << "AlarmHandler::"<<__func__<<": " <<  o.str() << endl;
 		vector<event>::iterator found_ev = \
 			find(events->v_event.begin(), events->v_event.end(), e.ev_name);
@@ -3454,6 +3498,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 				found_ev->ex_reason = string("Alarm_ERROR");
 			found_ev->ex_desc = o.str();
 			found_ev->ex_origin = e.ev_name;
+			found_ev->quality = e.quality;
 			//LOOP ALARMS IN WHICH THIS EVENT IS USED
 			list<string> m_alarm=found_ev->m_alarm.show();
 			list<string>::iterator j = m_alarm.begin();
@@ -5330,6 +5375,32 @@ void AlarmHandler::prepare_alarm_attr()
 		dss[i][len]=0;
 	}
 	dslock->writerOut();
+}
+
+void AlarmHandler::prepare_event_list()
+{
+	eventList_sz=0;
+	list<string> evl;
+	events->show(evl);
+	for(auto &ev : evl)
+	{
+		eventList_read[eventList_sz] = ev;
+		attr_eventList_read[eventList_sz] = const_cast<char*>(eventList_read[eventList_sz].c_str());
+		eventList_sz++;
+	}
+}
+
+void AlarmHandler::prepare_event_summary()
+{
+	eventSummary_sz=0;
+	list<string> evs;
+	events->summary(evs);
+	for(auto &ev : evs)
+	{
+		eventSummary_read[eventSummary_sz] = ev;
+		attr_eventSummary_read[eventSummary_sz] = const_cast<char*>(eventSummary_read[eventSummary_sz].c_str());
+		eventSummary_sz++;
+	}
 }
 
 //=============================================================================

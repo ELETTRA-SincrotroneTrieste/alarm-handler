@@ -115,6 +115,8 @@ public:
 	string silencedAlarms_read[MAX_ALARMS];
 	string listAlarms_read[MAX_ALARMS];
 	string alarmSummary_read[MAX_ALARMS];
+	string eventList_read[MAX_ATTR_SUMMARY];
+	string eventSummary_read[MAX_ATTR_SUMMARY];
 
 /*	char c_normalAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
 	char c_unacknowledgedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
@@ -136,6 +138,8 @@ public:
 	size_t silencedAlarms_sz;
 	size_t listAlarms_sz;
 	size_t alarmSummary_sz;
+	size_t eventList_sz;
+	size_t eventSummary_sz;
 
 	double last_statistics_reset_time;
 
@@ -169,6 +173,8 @@ public:
 	Tango::DevString	*attr_alarmList_read;
 	Tango::DevDouble	*attr_alarmFrequency_read;
 	Tango::DevString	*attr_alarmSummary_read;
+	Tango::DevString	*attr_eventList_read;
+	Tango::DevString	*attr_eventSummary_read;
 
 //	Constructors and destructors
 public:
@@ -347,6 +353,24 @@ public:
  */
 	virtual void read_alarmSummary(Tango::Attribute &attr);
 	virtual bool is_alarmSummary_allowed(Tango::AttReqType type);
+/**
+ *	Attribute eventList related methods
+ *	Description: List of all subscribed attributes
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_eventList(Tango::Attribute &attr);
+	virtual bool is_eventList_allowed(Tango::AttReqType type);
+/**
+ *	Attribute eventSummary related methods
+ *	Description: 
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_eventSummary(Tango::Attribute &attr);
+	virtual bool is_eventSummary_allowed(Tango::AttReqType type);
 
 //	Dynamic attribute methods
 public:
@@ -568,6 +592,9 @@ private:
 	void eval_node_event(iter_t const& i, vector<string> & ev);		//recursive tree node evaluation		
 
 	void prepare_alarm_attr();	//for read attribute alarm and push_change_event
+
+	void prepare_event_list();
+	void prepare_event_summary();
 
 	void remove_AlarmState_dynamic_attribute_no_clean_db(string attname);
 
