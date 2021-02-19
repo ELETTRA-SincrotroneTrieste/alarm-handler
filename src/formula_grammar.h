@@ -198,7 +198,7 @@ struct formula_grammar : public grammar<formula_grammar>
             	=	(alnum_p | '.' | '_' | '-' | '+')				//any alpha numeric char plus '.', '_', '-'
             	;
             symbol_attr
-            	=	(alnum_p | '_' )								//any alpha numeric char plus '_' for attribute names
+            	=	(alnum_p | '_' | '.')								//any alpha numeric char plus '_', '.' for attribute names
             	;
             //------------------------------ALARM NAME--------------------------------------	
             name
