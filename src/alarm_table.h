@@ -45,6 +45,10 @@
 #else
 #include <boost/spirit/include/classic_ast.hpp>			//for ast parse trees (in tree_formula)
 #endif
+//#define _USE_BOOST_LOCK
+#ifdef _USE_BOOST_LOCK
+#include <boost/thread/shared_mutex.hpp>
+#endif
 
 //#include "log_thread.h"
 
@@ -97,6 +101,20 @@ class alarm_t;
 class alarm_table;
 class log_thread;
 class cmd_thread;
+
+#ifdef _USE_BOOST_LOCK
+struct rwlock_t
+{
+	string name;
+	rwlock_t(string n){name=n;};
+	rwlock_t(){name=string("RWLOCK");};
+	boost::shared_mutex mut;
+	void readerIn(){cout<<name<<": " << __func__<<endl;mut.lock_shared();}
+	void readerOut(){cout<<name<<": " << __func__<<endl;mut.unlock_shared();}
+	void writerIn(){cout<<name<<": " << __func__<<endl;mut.lock();}
+	void writerOut(){cout<<name<<": " << __func__<<endl;mut.unlock();}
+};
+#endif
 
 
 struct formula_res_t
@@ -274,15 +292,21 @@ class alarm_t {
 		string ex_desc;
 		string ex_origin;
 		Tango::TimeVal ts;
-		string stat,
-					 ack;
+		string stat{S_NORMAL},
+					 ack{ACK};
 		bool error;
-		bool enabled;
-		bool shelved;
-		unsigned int on_counter;
-		unsigned int off_counter;
-		unsigned int err_counter;
-		unsigned int freq_counter;
+		bool enabled{true};
+		bool shelved{false};
+#ifdef _CNT_ATOMIC
+		atomic_uint on_counter= {0};
+		atomic_uint off_counter= {0};
+		atomic_uint err_counter= {0};
+#else
+		unsigned int on_counter= {0};
+		unsigned int off_counter= {0};
+		unsigned int err_counter= {0};
+#endif
+		unsigned int freq_counter{0};
 		
 		tree_parse_info_t formula_tree;
 					 
@@ -292,27 +316,27 @@ class alarm_t {
 		bool to_be_evaluated;
 		string msg;
 		string url;
-		unsigned int grp;
+		unsigned int grp{0};
 		string lev;
 		set<string> s_event;
 		int is_new;
 		Tango::TimeVal ts_on_delay;	//says when it has gone in alarm status for the first time
-		unsigned int on_delay;		//TODO: seconds, is it enough precision?
+		unsigned int on_delay{0};		//TODO: seconds, is it enough precision?
 		Tango::TimeVal ts_off_delay;	//says when it returned normal status
-		unsigned int off_delay;		//TODO: seconds, is it enough precision?
+		unsigned int off_delay{0};		//TODO: seconds, is it enough precision?
 		Tango::TimeVal ts_err_delay;	//says when it has gone in error status for the first time
 
 		Tango::TimeVal ts_time_silenced;	//says when it has been silenced
-		int silent_time;			//minutes max to be silent
+		int silent_time{-1};			//minutes max to be silent
 		int silenced;				//minutes still to be silent
 		string attr_values;		//attr_values
 		string attr_values_delay;	//attr_values of first occurrence of alarm waiting for on or off delay
-		string cmd_name_a;					//action to execute: when NORMAL -> ALARM, cmd_name = cmd_dp_a/cmd_action_a
+		string cmd_name_a{""};					//action to execute: when NORMAL -> ALARM, cmd_name = cmd_dp_a/cmd_action_a
 		string cmd_dp_a;						//device proxy part of cmd_name_a
 		string cmd_action_a;					//action part of cmd_name_a
 		bool send_arg_a;					//send as string argument alarm name and attr values
 		Tango::DeviceProxy *dp_a;
-		string cmd_name_n;					//action to execute: when ALARM -> NORMAL, cmd_name_n = cmd_dp_n/cmd_action_n
+		string cmd_name_n{""};					//action to execute: when ALARM -> NORMAL, cmd_name_n = cmd_dp_n/cmd_action_n
 		string cmd_dp_n;						//device proxy part of cmd_name_n
 		string cmd_action_n;					//action part of cmd_name_n
 		bool send_arg_n;					//send as string argument alarm name and attr values
@@ -320,7 +344,11 @@ class alarm_t {
 		/*
 		 * methods
 		 */
-		alarm_t();							//constructor
+		alarm_t() noexcept {};							//constructor
+#ifdef _CNT_ATOMIC
+		alarm_t& operator=(const alarm_t& rhs) { on_counter = rhs.on_counter.load(); off_counter = rhs.off_counter.load(); err_counter = rhs.err_counter.load(); return *this; }
+		alarm_t(const alarm_t& rhs) { on_counter = rhs.on_counter.load(); off_counter = rhs.off_counter.load(); err_counter = rhs.err_counter.load();}
+#endif
 		void init_static_map(vector<string> &group_names);
 		bool operator==(const alarm_t& that);
 		bool operator==(const string& n);
@@ -360,14 +388,18 @@ class alarm_table {
 		vector<string> to_be_evaluated_list();
 		//vector<alarm_t> v_alarm;
 		alarm_container_t v_alarm;
+#ifndef _USE_BOOST_LOCK
 		ReadersWritersLock *vlock;
+#else
+		rwlock_t *vlock;
+#endif
 		void new_rwlock();
 		void del_rwlock();
 
 		void save_alarm_conf_db(const string &att_name, const string &name, const string &status, const string &ack, bool enabled,
 				 const string &formula, unsigned int on_delay, unsigned int off_delay, const string &grp, const string &url, const string &lev, const string &msg, const string &cmd_a, const string &cmd_n, int silent_time);
 		void delete_alarm_conf_db(string att_name);
-		void get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms);
+		void get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms, ReadersWritersLock *savedlock);
 		void init_cmdthread();
 		void stop_cmdthread();
 		Tango::TimeVal startup_complete;			//to disable action execution at startup

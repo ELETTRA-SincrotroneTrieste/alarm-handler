@@ -19,7 +19,7 @@
 #include <iostream>
 #include <string>
 #include <map>
-
+#include <atomic>
 #include <tango.h>
 
 
@@ -29,8 +29,8 @@ using namespace std;
 #define TYPE_TANGO_ERR		-2
 #define TYPE_GENERIC_ERR	-3		
 #define		SUB_ERR			-1
-#define		NOTHING		0
-#define		UPDATE_PROP	1
+constexpr int NOTHING = 0;
+constexpr int UPDATE_PROP = 1;
 
 class alarm_list {
 	public:
@@ -185,6 +185,7 @@ class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 		 *	build a list of signal to set HDB device property
 		 */
 		void put_signal_property();
+		void check_signal_property();
 		bool is_initialized();
 		bool get_if_stop();
 		void stop_thread();
@@ -192,7 +193,7 @@ class event_table : public Tango::TangoMonitor, public Tango::LogAdapter {
 		ReadersWritersLock      veclock;
 		bool	stop_it;
 		bool	initialized;
-		int		action;
+		atomic_int		action;
 	private:
 		Tango::DeviceImpl *mydev;
 };  /* class event_table */

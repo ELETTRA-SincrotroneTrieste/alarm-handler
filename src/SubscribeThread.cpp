@@ -77,12 +77,14 @@ void *SubscribeThread::run_undetached(void *ptr)
 		updateProperty();
 		alarm_dev->events->subscribe_events();
 		int	nb_to_subscribe = shared->nb_sig_to_subscribe();
+		shared->check_signal_property(); //check if, while subscribing, new alarms to be saved in properties where added (update action)
 		//	And wait a bit before next time or
 		//	wait a long time if all signals subscribed
 		{
 			omni_mutex_lock sync(*shared);
 			//shared->lock();
-			if (nb_to_subscribe==0 && shared->action == NOTHING)
+			int act=shared->action.load();
+			if (nb_to_subscribe==0 && act == NOTHING)
 			{
 				DEBUG_STREAM << "SubscribeThread::"<<__func__<<": going to wait nb_to_subscribe=0"<<endl;
 				//shared->condition.wait();

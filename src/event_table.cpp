@@ -345,7 +345,7 @@ event_table::event_table(Tango::DeviceImpl *s):Tango::LogAdapter(s)
 {
 	mydev = s;
 	stop_it = false;
-	action = NOTHING;
+	action.store(NOTHING);
 }
 
 unsigned int event_table::size(void)
@@ -734,10 +734,9 @@ void event_table::remove(string &signame, bool stop)
 }
 void event_table::update_property()
 {
-	DEBUG_STREAM <<"event_table::"<< __func__<<": going to increase action... action="<<action<<"++" << endl;
-	if(action <= UPDATE_PROP)
-		action++;
-	//put_signal_property();	//TODO: wakeup thread and let it do it? -> signal()
+	DEBUG_STREAM <<"event_table::"<< __func__<<": going to increase action... action="<<action.load()<<"++" << endl;
+	int expected=NOTHING;
+	action.compare_exchange_strong(expected, UPDATE_PROP); //if it is NOTHING, then change to UPDATE_PROP
 	signal();
 }
 //=============================================================================
@@ -882,7 +881,7 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 			//DEBUG_STREAM << "created proxy to " << signame << endl;
 			//	create Attribute proxy
 			signal->attr = new Tango::AttributeProxy(signal->name);	//TODO: OK out of siglock? accessed only inside the same thread?
-			DEBUG_STREAM << "event_table::"<<__func__<<": signame="<<signame<<" created proxy"<< endl;
+			DEBUG_STREAM << "event_table::"<<__func__<<": signame="<<signame<<" created proxy"<< endl;	
 		}
 		signal->event_id = SUB_ERR;
 		signal->evstate    = Tango::ALARM;
@@ -916,9 +915,10 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 		{
 
 		}
-		DEBUG_STREAM <<"event_table::"<< __func__<<": going to increase action... action="<<action<<" += " << to_do << endl;
-		if(action <= UPDATE_PROP)
-			action += to_do;
+		int act=action.load();
+		DEBUG_STREAM <<"event_table::"<< __func__<<": going to increase action... action="<<act<<" += " << to_do << endl;
+		int expected=NOTHING;
+		action.compare_exchange_strong(expected, UPDATE_PROP); //if it is NOTHING, then change to UPDATE_PROP
 	}
 	DEBUG_STREAM <<"event_table::"<< __func__<<": exiting... " << signame << endl;
 	signal();
@@ -939,12 +939,15 @@ void event_table::subscribe_events()
 		if(ret == 0) pthread_rwlock_unlock(&sig2->siglock);
 	}*/
 	//omni_mutex_lock sync(*this);
-	veclock.readerIn();
+	list<string> l_events;
+	show(l_events);
 	DEBUG_STREAM << "event_table::" << __func__ << ": going to subscribe " << v_event.size() << " attributes" << endl;
-	for (unsigned int i=0 ; i<v_event.size() ; i++)
+	for (auto it : l_events)
 	{
-		event	*sig = &v_event[i];
-		sig->siglock->writerIn();
+		veclock.readerIn();
+		event	*sig = get_signal(it);
+		sig->siglock->readerIn();
+		string sig_name(sig->name);
 		if (sig->event_id==SUB_ERR && !sig->stopped)
 		{
 			if(!sig->attr)
@@ -967,26 +970,33 @@ void event_table::subscribe_events()
 					o << "Error adding'" \
 					<< sig->name << "' error=" << ex_desc;
 					INFO_STREAM << "event_table::subscribe_events: " << o.str() << endl;
-					v_event[i].ex_reason = ex.ex_reason = ex_reason;
-					v_event[i].ex_desc = ex.ex_desc = ex_desc;
-//					v_event[i].ex_desc.erase(std::remove(v_event[i].ex_desc.begin(), v_event[i].ex_desc.end(), '\n'), v_event[i].ex_desc.end());
-					v_event[i].ex_origin = ex.ex_origin = ex_origin;
-					v_event[i].ts = ex.ts = gettime();
-					v_event[i].quality = ex.quality = Tango::ATTR_INVALID;
+					sig->ex_reason = ex.ex_reason = ex_reason;
+					sig->ex_desc = ex.ex_desc = ex_desc;
+//					sig->ex_desc.erase(std::remove(sig->ex_desc.begin(), sig->ex_desc.end(), '\n'), sig->ex_desc.end());
+					sig->ex_origin = ex.ex_origin = ex_origin;
+					sig->ts = ex.ts = gettime();
+					sig->quality = ex.quality = Tango::ATTR_INVALID;
 					ex.ev_name = sig->name;
-					v_event[i].siglock->writerOut();
-					//TODO: since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures ?		
+					sig->siglock->readerOut();
+					veclock.readerOut();
+					//TODO: since event callback not called for this attribute, need to manually trigger do_alarm to update internal structures ?		
 					ex.type = TYPE_TANGO_ERR;
 					ex.msg=o.str();
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
+					try
+					{//DevFailed for push events
+						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
+					} catch(Tango::DevFailed & ee)
+					{
+						WARN_STREAM << "event_table::"<<__func__<<": " << sig_name << " - EXCEPTION PUSHING EVENTS: " << ee.errors[0].desc << endl;
+					}
 					continue;
 				}
 			}
 			sig->event_cb = new EventCallBack(static_cast<AlarmHandler_ns::AlarmHandler *>(mydev));
 			sig->first  = true;
 			sig->first_err  = true;
-			DEBUG_STREAM << "event_table::"<<__func__<<":Subscribing for " << sig->name << " " << (sig->first ? "FIRST" : "NOT FIRST") << endl;
-			sig->siglock->writerOut();
+			DEBUG_STREAM << "event_table::"<<__func__<<":Subscribing for " << sig_name << " " << (sig->first ? "FIRST" : "NOT FIRST") << endl;
+			sig->siglock->readerOut();
 			int		event_id = SUB_ERR;
 			bool	isZMQ = true;
 			bool	err = false;
@@ -1004,11 +1014,11 @@ void event_table::subscribe_events()
 				DEBUG_STREAM << sig->name <<  "  Subscribed" << endl;*/
 
 				//	Check event source  ZMQ/Notifd ?
-				Tango::ZmqEventConsumer	*consumer =
-						Tango::ApiUtil::instance()->get_zmq_event_consumer();
-				isZMQ = (consumer->get_event_system_for_event_id(event_id) == Tango::ZMQ);
+				/*Tango::ZmqEventConsumer	*consumer =
+						Tango::ApiUtil::instance()->get_zmq_event_consumer();*/
+				isZMQ = true;//(consumer->get_event_system_for_event_id(event_id) == Tango::ZMQ);//TODO: remove
 
-				DEBUG_STREAM << sig->name << "(id="<< event_id <<"):	Subscribed " << ((isZMQ)? "ZMQ Event" : "NOTIFD Event") << endl;
+				DEBUG_STREAM << sig_name << "(id="<< event_id <<"):	Subscribed " << ((isZMQ)? "ZMQ Event" : "NOTIFD Event") << endl;
 			}
 			catch (Tango::DevFailed &e)
 			{
@@ -1021,11 +1031,11 @@ void event_table::subscribe_events()
 				bei_t ex;
 				ostringstream o;
 				o << "Event exception for'" \
-					<< sig->name << "' error=" << ex_desc;
+					<< sig_name << "' error=" << ex_desc;
 				INFO_STREAM <<"event_table::"<<__func__<<": sig->attr->subscribe_event: " << o.str() << endl;
 				err = true;
 				Tango::Except::print_exception(e);
-				sig->siglock->writerIn();
+				//sig->siglock->writerIn(); //not yet subscribed, no one can modify
 				sig->ex_reason = ex.ex_reason = ex_reason;
 				sig->ex_desc = ex.ex_desc = ex_desc;
 				sig->ex_origin = ex.ex_origin = ex_origin;
@@ -1034,26 +1044,34 @@ void event_table::subscribe_events()
 				sig->ts = ex.ts = gettime();
 				sig->quality = ex.quality = Tango::ATTR_INVALID;
 				ex.ev_name = sig->name;
-				sig->siglock->writerOut();
+				//sig->siglock->writerOut();//not yet subscribed, no one can modify
+				veclock.readerOut();
 				//since event callback not called for this attribute, need to manually trigger do_alarm to update interlan structures
 				ex.type = TYPE_TANGO_ERR;
 				ex.msg=o.str();
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
+				try
+				{//DevFailed for push events
+					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->do_alarm(ex);
+				} catch(Tango::DevFailed & ee)
+				{
+					WARN_STREAM << "event_table::"<<__func__<<": " << ex.ev_name << " - EXCEPTION PUSHING EVENTS: " << ee.errors[0].desc << endl;
+				}
+				continue;
 			}
 			if(!err)
 			{
-				sig->siglock->writerIn();
+				//sig->siglock->writerIn(); //nobody else write event_id and isZMQ
 				sig->event_id = event_id;
 				sig->isZMQ = isZMQ;
-				sig->siglock->writerOut();
+				//sig->siglock->writerOut();//nobody else write event_id and isZMQ
 			}
 		}
 		else
 		{
-			sig->siglock->writerOut();
+			sig->siglock->readerOut();
 		}
+		veclock.readerOut();
 	}
-	veclock.readerOut();
 	initialized = true;
 }
 
@@ -1230,15 +1248,34 @@ int event_table::nb_sig_to_subscribe()
 //=============================================================================
 void event_table::put_signal_property()
 {
-	DEBUG_STREAM << "event_table::"<<__func__<<": put_signal_property entering action=" << action << endl;
-	//ReaderLock lock(veclock);
-	if (action>NOTHING)
+	int act=action.load();
+	DEBUG_STREAM << "event_table::"<<__func__<<": entering action=" << act << endl;
+
+	if (act>NOTHING)
 	{
 		static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->put_signal_property();
-		if(action >= UPDATE_PROP)
-			action--;
+		int expected=UPDATE_PROP;
+		action.compare_exchange_strong(expected, NOTHING); //if it is UPDATE_PROP, then change to NOTHING
 	}
-	DEBUG_STREAM << "event_table::"<<__func__<<": put_signal_property exiting action=" << action << endl;
+	DEBUG_STREAM << "event_table::"<<__func__<<": exiting action=" << action.load() << endl;
+}
+//=============================================================================
+/**
+ *	build a list of signal to set HDB device property
+ */
+//=============================================================================
+void event_table::check_signal_property()
+{
+	int act=action.load();
+	DEBUG_STREAM << "event_table::"<<__func__<<": entering action=" << act << endl;
+	if (act>NOTHING)
+		return;
+	if (static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->check_signal_property())
+	{
+		int expected=NOTHING;
+		action.compare_exchange_strong(expected, UPDATE_PROP); //if it is NOTHING, then change to UPDATE_PROP
+	}
+	DEBUG_STREAM << "event_table::"<<__func__<<": exiting action=" << action.load() << endl;
 }
 
 

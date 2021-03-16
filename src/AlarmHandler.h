@@ -561,6 +561,7 @@ private:
 	ReadersWritersLock *dslock;
 	int			period;		//subscribe thread period
 	map<string, string> saved_alarms;
+	ReadersWritersLock *savedlock;
 	
 	static int instanceCounter;
 	
@@ -604,6 +605,7 @@ private:
 
 public:
 	void put_signal_property();
+	bool check_signal_property();
 	void do_alarm(bei_t& e);											//public instead of protected for gcc 4 problem??
 	bool do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal ts);
 	void timer_update();												//public instead of protected for gcc 4 problem??

@@ -26,22 +26,6 @@ static const char __FILE__rev[] = __FILE__ " $Revision: 1.5 $";
 /*
  * alarm_t class methods
  */
-alarm_t::alarm_t()
-{
-	grp=0;
-	on_counter=0;
-	off_counter=0;
-	freq_counter=0;
-	stat = S_NORMAL;
-	ack = ACK;
-	on_delay = 0;
-	off_delay = 0;
-	silent_time = -1;
-	cmd_name_a=string("");
-	cmd_name_n=string("");
-	enabled=true;
-	shelved=false;
-} 
  
 bool alarm_t::operator==(const alarm_t &that)
 {
@@ -60,7 +44,13 @@ void alarm_t::str2alm(const string &s)
 	istringstream is(s);
 	ostringstream temp_msg;
 	string temp_grp;
-	is >> ts.tv_sec >> ts.tv_usec >> name >> stat >> ack >> on_counter >> lev >> silent_time >> temp_grp >> msg;		//stop at first white space in msg
+	unsigned int on_cnt;
+	is >> ts.tv_sec >> ts.tv_usec >> name >> stat >> ack >> on_cnt >> lev >> silent_time >> temp_grp >> msg;		//stop at first white space in msg
+#ifdef _CNT_ATOMIC
+	on_counter.store(on_cnt);
+#else
+	on_counter = on_cnt;
+#endif
 	temp_msg << is.rdbuf();		//read all remaining characters as msg
 	msg += temp_msg.str();
 	str2grp(temp_grp);
@@ -70,8 +60,13 @@ string alarm_t::alm2str(void)
 {
 	ostringstream os;
 	os.clear();
+#ifdef _CNT_ATOMIC
+	os << ts.tv_sec << "\t" << ts.tv_usec << "\t" << name << "\t" \
+		 << stat << "\t" << ack << "\t" << on_counter.load() << "\t" << lev << "\t" << silent_time << "\t" << grp2str() << "\t" << msg << ends;
+#else
 	os << ts.tv_sec << "\t" << ts.tv_usec << "\t" << name << "\t" \
 		 << stat << "\t" << ack << "\t" << on_counter << "\t" << lev << "\t" << silent_time << "\t" << grp2str() << "\t" << msg << ends;
+#endif
 	return(os.str());
 }
 
@@ -189,7 +184,7 @@ void alarm_t::confstr(string &s)
 			KEY(SILENT_TIME_KEY)<<silent_time << SEP <<
 			KEY(GROUP_KEY)<< grp2str() << SEP <<
 			KEY(MESSAGE_KEY)<< msg <<	SEP <<
-			KEY(URL_KEY)<< msg <<	SEP <<
+			KEY(URL_KEY)<< url <<	SEP <<
 			KEY(ON_COMMAND_KEY)<< cmd_name_a << SEP <<
 			KEY(OFF_COMMAND_KEY)<< cmd_name_n << SEP <<
 			KEY(ENABLED_KEY)<< (enabled ? "1" : "0");
@@ -819,7 +814,11 @@ vector<string> alarm_table::to_be_evaluated_list()
 
 void alarm_table::new_rwlock()
 {
+#ifndef _USE_BOOST_LOCK
 	vlock = new(ReadersWritersLock);
+#else
+	vlock = new rwlock_t("VLOCK");
+#endif
 }
 void alarm_table::del_rwlock()
 {
@@ -893,6 +892,7 @@ void alarm_table::save_alarm_conf_db(const string &att_name, const string &name,
 	{
 		Tango::DbDevice *db_dev = mydev->get_db_device();
 		db_dev->get_dbase()->put_device_attribute_property(dev_name,db_data);
+		//Tango::Util::instance()->get_database()->put_device_attribute_property(dev_name,db_data);
 	}
 	catch(Tango::DevFailed &e)
 	{
@@ -946,9 +946,8 @@ void alarm_table::delete_alarm_conf_db(string att_name)
 	}
 }
 
-void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms)
+void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string> &saved_alarms, ReadersWritersLock *savedlock)
 {
-	saved_alarms.clear();
 	string dev_name(mydev->get_name());
 	vector<string> att_list;
 
@@ -969,6 +968,8 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 	{
 		cout << __func__ << ": Exception reading configuration = " << e.errors[0].desc<<endl;
 	}
+	savedlock->writerIn();
+	saved_alarms.clear();
 	for (size_t i=0;i < db_data.size();/*i++*/)
 	{
 		Tango::DevLong64 nb_prop;
@@ -1046,6 +1047,7 @@ void alarm_table::get_alarm_list_db(vector<string> &al_list, map<string, string>
 		al_list.push_back(alm.str());
 		saved_alarms.insert(make_pair(alm_name,alm.str()));
 	}
+	savedlock->writerOut();
 
 #if 0
 

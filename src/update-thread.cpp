@@ -36,7 +36,7 @@ update_thread::update_thread(AlarmHandler_ns::AlarmHandler *p) : p_Alarm(p),Tang
  */
 update_thread::~update_thread()
 {
-	DEBUG_STREAM << __func__ << "update_thread::run(): exiting!" << endl;
+	DEBUG_STREAM << __func__ << "update_thread::~update_thread(): entering!" << endl;
 	p_Alarm = NULL;
 }
 
@@ -45,6 +45,7 @@ update_thread::~update_thread()
  */
 void update_thread::run(void *)
 {
+	DEBUG_STREAM << __func__ << "update_thread::run(): entering!" << endl;
 	//printf("update_thread::run(): running...\n");
 	unsigned int pausasec, pausanano;
 	pausasec=1;
