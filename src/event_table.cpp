@@ -1396,6 +1396,7 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 	vector<Tango::DevBoolean> v_bo;
 	vector<Tango::DevLong64> v_lo64;
 	vector<Tango::DevULong64> v_ulo64;
+	vector<Tango::DevEnum> v_enum;
 	vector<string> v_string;
 	val_string = string("");
 
@@ -1478,6 +1479,11 @@ void EventCallBack::extract_values(Tango::DeviceAttribute *attr_value, vector<do
 		for(vector<Tango::DevULong64>::iterator  it = v_ulo64.begin(); it != v_ulo64.end(); it++)
 			val.push_back((double)(*it));		//convert all to double
 		type = Tango::DEV_ULONG64;
+	} else if (attr_value->get_type() == Tango::DEV_ENUM) {
+		*(attr_value) >> v_enum;
+		for(vector<Tango::DevEnum>::iterator  it = v_enum.begin(); it != v_enum.end(); it++)
+			val.push_back((double)(*it));		//convert all to double
+		type = Tango::DEV_ENUM;
 	} else if (attr_value->get_type() == Tango::DEV_STRING) {
 		*(attr_value) >> v_string;
 		val_string = *(v_string.begin());	//TODO: support string spectrum attrbutes
