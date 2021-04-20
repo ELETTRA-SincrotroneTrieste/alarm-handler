@@ -5256,7 +5256,7 @@ void AlarmHandler::prepare_alarm_attr()
 					aid->stat = S_ERROR;
 					aid->ack = NOT_ACK;
 					aid->ts = ai->second.ts;
-					aid->msg = ai->second.msg;
+					aid->msg = it->second.ex_desc;//tmp_ex.str();//ai->second.msg;
 					aid->url = ai->second.url;
 				}
 				aid->grp = ai->second.grp;
@@ -5276,6 +5276,7 @@ void AlarmHandler::prepare_alarm_attr()
 			} else {
 				alarm_t at = ai->second;
 				at.stat = S_ERROR;
+				at.msg = it->second.ex_desc;//tmp_ex.str();//ai->second.msg;
 				/*
 				 * not found: new "alarmed" item
 				 */
