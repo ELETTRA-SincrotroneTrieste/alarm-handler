@@ -654,7 +654,7 @@ bool alarm_table::timer_update()
 					replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
 					string tmp_msg = i->second.msg;
 					replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
-					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula;
+					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula<<";url="<<i->second.url;
 					cmd_t arg;
 					arg.cmd_id = CMD_COMMAND;
 					arg.dp_add = (long)i->second.dp_a;
@@ -700,7 +700,7 @@ bool alarm_table::timer_update()
 					replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
 					string tmp_msg = i->second.msg;
 					replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
-					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula;
+					tmp << "name=" << i->second.name << ";groups=" << i->second.grp2str() << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<i->second.formula<<";url="<<i->second.url;
 					cmd_t arg;
 					arg.cmd_id = CMD_COMMAND;
 					arg.dp_add = (long)i->second.dp_n;
