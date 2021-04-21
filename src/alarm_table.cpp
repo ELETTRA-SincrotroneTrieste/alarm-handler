@@ -427,7 +427,7 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 					replace(tmp_attr_val.begin(), tmp_attr_val.end(), ';' , ',');
 					string tmp_msg = msg;
 					replace(tmp_msg.begin(), tmp_msg.end(), ';' , ',');
-					tmp << "name=" << alm_name << ";groups=" << grp << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<formula;
+					tmp << "name=" << alm_name << ";groups=" << grp << ";msg="<<tmp_msg<<";values="<<tmp_attr_val<<";formula="<<formula<<";url="<<found->second.url;
 					cmd_t arg;
 					arg.cmd_id = CMD_COMMAND;
 					arg.dp_add = (long)found->second.dp_a;
