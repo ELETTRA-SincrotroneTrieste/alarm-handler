@@ -2917,11 +2917,18 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 
 	ostringstream tmp_ex;
 	tmp_ex.str("");
+	ostringstream tmp;
+	tmp.str("");
+	tmp << "\"" << it->second.msg << "\"";
 	if(it->second.error)
 	{
 		tmp_ex << "{\"Reason\":\"" << it->second.ex_reason << "\",\"Desc\":\"" << it->second.ex_desc << "\",\"Origin\":\"" << it->second.ex_origin << "\"}";
 		info.insert(make_pair(VALUE_KEY,string("ERROR")));
 		complete.push_back(KEY(VALUE_KEY)+string("ERROR"));
+		info.insert(make_pair(MESSAGE_KEY,tmp.str()));
+		complete.push_back(KEY(MESSAGE_KEY)+tmp.str());
+		info.insert(make_pair(URL_KEY,it->second.url));
+		complete.push_back(KEY(URL_KEY)+it->second.url);
 		info.insert(make_pair(FORMULA_KEY,it->second.formula));
 		complete.push_back(KEY(FORMULA_KEY)+it->second.formula);
 		info.insert(make_pair(ATTR_VALUES_KEY,tmp_ex.str()));
@@ -2931,13 +2938,15 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	{
 		info.insert(make_pair(VALUE_KEY,tmp_val.str()));
 		complete.push_back(KEY(VALUE_KEY)+tmp_val.str());
+		info.insert(make_pair(MESSAGE_KEY,tmp.str()));
+		complete.push_back(KEY(MESSAGE_KEY)+tmp.str());
+		info.insert(make_pair(URL_KEY,it->second.url));
+		complete.push_back(KEY(URL_KEY)+it->second.url);
 		info.insert(make_pair(FORMULA_KEY,it->second.formula));
 		complete.push_back(KEY(FORMULA_KEY)+it->second.formula);
 		info.insert(make_pair(ATTR_VALUES_KEY,it->second.attr_values));
 		complete.push_back(KEY(ATTR_VALUES_KEY)+it->second.attr_values);
 	}
-
-
 
 	ostringstream tmp_qual;
 	try
@@ -2949,7 +2958,7 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	}
 	info.insert(make_pair(QUALITY_KEY,tmp_qual.str()));
 	complete.push_back(KEY(QUALITY_KEY)+tmp_qual.str());
-	ostringstream tmp;
+
 //#if 0
 	tmp.str("");
 	tmp << (it->second.enabled ? "1" : "0");
@@ -2964,6 +2973,7 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	info.insert(make_pair(ACKNOWLEDGED_KEY,tmp.str()));	//TODO: redundant, information already in attr_value
 	complete.push_back(KEY(ACKNOWLEDGED_KEY)+tmp.str());	//TODO: redundant, information already in attr_value
 //#endif
+
 	tmp.str("");
 	tmp << (it->second.is_new ? "1" : "0");
 	info.insert(make_pair(AUDIBLE_KEY,tmp.str()));
@@ -3004,12 +3014,6 @@ Tango::DevVarStringArray *AlarmHandler::get_alarm_info(const Tango::DevVarString
 	complete.push_back(KEY(SILENT_TIME_REMAINING_KEY)+tmp.str());
 	info.insert(make_pair(GROUP_KEY,it->second.grp2str()));
 	complete.push_back(KEY(GROUP_KEY)+it->second.grp2str());
-	tmp.str("");
-	tmp << "\"" << it->second.msg << "\"";
-	info.insert(make_pair(MESSAGE_KEY,tmp.str()));
-	complete.push_back(KEY(MESSAGE_KEY)+tmp.str());
-	info.insert(make_pair(URL_KEY,it->second.url));
-	complete.push_back(KEY(URL_KEY)+it->second.url);
 	info.insert(make_pair(ON_COMMAND_KEY,it->second.cmd_name_a));
 	complete.push_back(KEY(ON_COMMAND_KEY)+it->second.cmd_name_a);
 	info.insert(make_pair(OFF_COMMAND_KEY,it->second.cmd_name_n));
