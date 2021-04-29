@@ -979,11 +979,13 @@ void AlarmHandler::read_alarm(Tango::Attribute &attr)
 	//DEBUG_STREAM << "AlarmHandler::read_alarm(Tango::Attribute &attr) entering... " << endl;
 	/*----- PROTECTED REGION ID(AlarmHandler::read_alarm) ENABLED START -----*/
 	// Add your own code here
+#ifdef _ZEROS_ALARM_EMPTY
 	if(ds_num == 0)
 	{
 		attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
 	}
 	else
+#endif
 		attr.set_value(ds, ds_num, 0, false);
 
 	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::read_alarm
@@ -1454,6 +1456,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -1462,6 +1465,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -1778,6 +1782,7 @@ void AlarmHandler::remove(Tango::DevString argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -1786,6 +1791,7 @@ void AlarmHandler::remove(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -1939,6 +1945,7 @@ void AlarmHandler::stop_audible()
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -1947,6 +1954,7 @@ void AlarmHandler::stop_audible()
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2077,6 +2085,7 @@ void AlarmHandler::silence(const Tango::DevVarStringArray *argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2085,6 +2094,7 @@ void AlarmHandler::silence(const Tango::DevVarStringArray *argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2280,6 +2290,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2288,6 +2299,7 @@ void AlarmHandler::modify(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2465,6 +2477,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2473,6 +2486,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2578,6 +2592,7 @@ void AlarmHandler::enable(Tango::DevString argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2586,6 +2601,7 @@ void AlarmHandler::enable(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2703,6 +2719,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2711,6 +2728,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -2797,6 +2815,7 @@ void AlarmHandler::stop_new()
 	prepare_alarm_attr();
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -2805,6 +2824,7 @@ void AlarmHandler::stop_new()
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -3575,6 +3595,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 				j++;
 			}
 			prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
+#ifdef _ZEROS_ALARM_EMPTY
 			if(ds_num == 0)
 			{
 				//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -3583,6 +3604,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 				push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 			}
 			else
+#endif
 			{
 				//attr.set_value(ds, ds_num, 0, false);
 				push_change_event("alarm",ds, ds_num, 0, false);
@@ -3701,6 +3723,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 			return;
 		}
 		prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -3709,6 +3732,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -3945,6 +3969,7 @@ void AlarmHandler::timer_update()
 	prepare_alarm_attr();//TODO: frequencyAlarm should be updated anyway
 	try
 	{
+#ifdef _ZEROS_ALARM_EMPTY
 		if(ds_num == 0)
 		{
 			//attr.set_value_date_quality(ds,0/*gettime()*/,Tango::ATTR_WARNING, ds_num, 0, false);
@@ -3953,6 +3978,7 @@ void AlarmHandler::timer_update()
 			push_change_event("alarm",(char**)ds,now,Tango::ATTR_WARNING, ds_num, 0, false);
 		}
 		else
+#endif
 		{
 			//attr.set_value(ds, ds_num, 0, false);
 			push_change_event("alarm",ds, ds_num, 0, false);
@@ -5465,6 +5491,7 @@ void AlarmHandler::prepare_alarm_attr()
 		strncpy(dss[i],tmp_alarm_table[i].c_str(), len);
 		dss[i][len]=0;
 	}
+#ifdef _ZEROS_ALARM_EMPTY
 	if(ds_num == 0)
 	{
 		ostringstream os1;
@@ -5477,6 +5504,7 @@ void AlarmHandler::prepare_alarm_attr()
 		strncpy(dss[i],os1.str().c_str(), len);
 		dss[i][len]=0;
 	}
+#endif
 	dslock->writerOut();
 }
 
