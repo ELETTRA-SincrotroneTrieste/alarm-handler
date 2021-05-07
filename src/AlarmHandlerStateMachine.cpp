@@ -286,6 +286,22 @@ bool AlarmHandler::is_eventSummary_allowed(TANGO_UNUSED(Tango::AttReqType type))
 
 //--------------------------------------------------------
 /**
+ *	Method      : AlarmHandler::is_alarmDisabled_allowed()
+ *	Description : Execution allowed for alarmDisabled attribute
+ */
+//--------------------------------------------------------
+bool AlarmHandler::is_alarmDisabled_allowed(TANGO_UNUSED(Tango::AttReqType type))
+{
+
+	//	Not any excluded states for alarmDisabled attribute in read access.
+	/*----- PROTECTED REGION ID(AlarmHandler::alarmDisabledStateAllowed_READ) ENABLED START -----*/
+	
+	/*----- PROTECTED REGION END -----*/	//	AlarmHandler::alarmDisabledStateAllowed_READ
+	return true;
+}
+
+//--------------------------------------------------------
+/**
  *	Method      : AlarmHandler::is_AlarmState_allowed()
  *	Description : Execution allowed for AlarmState attribute
  */

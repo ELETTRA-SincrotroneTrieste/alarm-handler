@@ -249,6 +249,19 @@ public:
 		{return (static_cast<AlarmHandler *>(dev))->is_eventSummary_allowed(ty);}
 };
 
+//	Attribute alarmDisabled class definition
+class alarmDisabledAttrib: public Tango::SpectrumAttr
+{
+public:
+	alarmDisabledAttrib():SpectrumAttr("alarmDisabled",
+			Tango::DEV_STRING, Tango::READ, 10000) {};
+	~alarmDisabledAttrib() {};
+	virtual void read(Tango::DeviceImpl *dev,Tango::Attribute &att)
+		{(static_cast<AlarmHandler *>(dev))->read_alarmDisabled(att);}
+	virtual bool is_allowed(Tango::DeviceImpl *dev,Tango::AttReqType ty)
+		{return (static_cast<AlarmHandler *>(dev))->is_alarmDisabled_allowed(ty);}
+};
+
 
 //=========================================
 //	Define classes for dynamic attributes

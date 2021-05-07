@@ -117,6 +117,7 @@ public:
 	string alarmSummary_read[MAX_ALARMS];
 	string eventList_read[MAX_ATTR_SUMMARY];
 	string eventSummary_read[MAX_ATTR_SUMMARY];
+	string alarmDisabled_read[MAX_ALARMS];
 
 /*	char c_normalAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
 	char c_unacknowledgedAlarms_read[MAX_ALARMS][MAX_ATTR_NAME];
@@ -140,6 +141,7 @@ public:
 	size_t alarmSummary_sz;
 	size_t eventList_sz;
 	size_t eventSummary_sz;
+	size_t alarmDisabled_sz;
 
 	double last_statistics_reset_time;
 
@@ -175,6 +177,7 @@ public:
 	Tango::DevString	*attr_alarmSummary_read;
 	Tango::DevString	*attr_eventList_read;
 	Tango::DevString	*attr_eventSummary_read;
+	Tango::DevString	*attr_alarmDisabled_read;
 
 //	Constructors and destructors
 public:
@@ -371,6 +374,15 @@ public:
  */
 	virtual void read_eventSummary(Tango::Attribute &attr);
 	virtual bool is_eventSummary_allowed(Tango::AttReqType type);
+/**
+ *	Attribute alarmDisabled related methods
+ *	Description: List of alarms in out of service or shelved state
+ *
+ *	Data type:	Tango::DevString
+ *	Attr type:	Spectrum max = 10000
+ */
+	virtual void read_alarmDisabled(Tango::Attribute &attr);
+	virtual bool is_alarmDisabled_allowed(Tango::AttReqType type);
 
 //	Dynamic attribute methods
 public:

@@ -1145,8 +1145,6 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Not Polled
 	eventlist->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	//eventlist->set_change_event(true, true);
-	//eventlist->set_archive_event(true, true);
 	att_list.push_back(eventlist);
 
 	//	Attribute : eventSummary
@@ -1171,9 +1169,33 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Not Polled
 	eventsummary->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	//eventsummary->set_change_event(true, true);
-	//eventsummary->set_archive_event(true, true);
 	att_list.push_back(eventsummary);
+
+	//	Attribute : alarmDisabled
+	alarmDisabledAttrib	*alarmdisabled = new alarmDisabledAttrib();
+	Tango::UserDefaultAttrProp	alarmdisabled_prop;
+	alarmdisabled_prop.set_description("List of alarms in out of service or shelved state");
+	//	label	not set for alarmDisabled
+	//	unit	not set for alarmDisabled
+	//	standard_unit	not set for alarmDisabled
+	//	display_unit	not set for alarmDisabled
+	//	format	not set for alarmDisabled
+	//	max_value	not set for alarmDisabled
+	//	min_value	not set for alarmDisabled
+	//	max_alarm	not set for alarmDisabled
+	//	min_alarm	not set for alarmDisabled
+	//	max_warning	not set for alarmDisabled
+	//	min_warning	not set for alarmDisabled
+	//	delta_t	not set for alarmDisabled
+	//	delta_val	not set for alarmDisabled
+	
+	alarmdisabled->set_default_properties(alarmdisabled_prop);
+	//	Not Polled
+	alarmdisabled->set_disp_level(Tango::OPERATOR);
+	//	Not Memorized
+	alarmdisabled->set_change_event(true, true);
+	alarmdisabled->set_archive_event(true, true);
+	att_list.push_back(alarmdisabled);
 
 
 	//	Create a list of static attributes
