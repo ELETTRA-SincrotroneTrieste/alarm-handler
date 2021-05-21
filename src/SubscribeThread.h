@@ -82,6 +82,7 @@ public:
 	int			period;
 	SubscribeThread(AlarmHandler *dev);
 	void updateProperty();
+	void signal();
 	/**
 	 *	Execute the thread loop.
 	 *	This thread is awaken when a command has been received 

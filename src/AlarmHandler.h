@@ -100,10 +100,6 @@ class AlarmHandler : public TANGO_BASE_CLASS
 public:
 	bool compare_without_domain(string str1, string str2);
 	string remove_domain(string str);
-	//TODO: real attributes
-	Tango::DevLong attr_AttributeStartedNumber_read;
-	Tango::DevLong attr_AttributePausedNumber_read;
-	Tango::DevLong attr_AttributeStoppedNumber_read;
 	Tango::DevLong attr_AttributeNumber_read;
 
 	string normalAlarms_read[MAX_ALARMS];

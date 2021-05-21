@@ -1719,7 +1719,7 @@ void AlarmHandler::load(Tango::DevString argin)
 	alarms.vlock->readerOut();
 
 
-#if 0//TODO
+#if 1//TODO
 	prepare_alarm_attr();
 	try
 	{
@@ -1929,7 +1929,7 @@ Tango::DevVarStringArray *AlarmHandler::search_alarm(Tango::DevString argin)
 		{
 			ostringstream os;
 			os.clear();
-			os << ai->second.ts.tv_sec << SEP << KEY(NAME_KEY) << ai->second.name << SEP << KEY(FORMULA_KEY) << ai->second.formula << SEP << KEY(ONDELAY_KEY) << ai->second.on_delay << SEP << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
+			os << KEY(NAME_KEY) << ai->second.name << SEP << KEY(FORMULA_KEY) << ai->second.formula << SEP << KEY(ONDELAY_KEY) << ai->second.on_delay << SEP << KEY(OFFDELAY_KEY) << ai->second.off_delay <<
 				SEP << KEY(LEVEL_KEY) << ai->second.lev << SEP << KEY(SILENT_TIME_KEY) << ai->second.silent_time << SEP << KEY(GROUP_KEY) << ai->second.grp2str() << SEP << KEY(MESSAGE_KEY) << ai->second.msg << SEP << KEY(URL_KEY) << ai->second.url <<
 				SEP << KEY(ON_COMMAND_KEY) << ai->second.cmd_name_a << SEP << KEY(OFF_COMMAND_KEY) << ai->second.cmd_name_n << SEP << KEY(ENABLED_KEY) << (ai->second.enabled ? "1" : "0");
 			alarm_filtered.push_back(os.str());
@@ -3369,7 +3369,7 @@ void AlarmHandler::add_alarm(alarm_t& a, bool starting)
 {
 	alarms.push_back(a);	//take and release writer vlock
 	DEBUG_STREAM << "AlarmHandler::add_alarm(): added alarm '" \
-							 << a.name << "'" << endl;
+							 << a.name << "' starting=" << (int)starting << endl;
 	if(!starting)
 	{
 		alarms.vlock->readerIn();
@@ -3505,6 +3505,7 @@ void AlarmHandler::add_event(alarm_t& a, vector<string> &evn) throw(string&)
 			}
 		}
 	} //for (vector<string>::iterator j = evn.begin(); ...
+	thread->signal(); //wake up subscibe thread if not waked by events->add
 
 	for(vector<string>::iterator j = evn.begin(); j != evn.end(); j++)
 	{

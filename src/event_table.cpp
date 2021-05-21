@@ -466,7 +466,6 @@ event *event_table::get_signal(string signame)
 	return NULL;
 }
 
-
 //=============================================================================
 /**
  * Stop saving on DB a signal.
@@ -484,10 +483,8 @@ void event_table::stop(string &signame)
 			if(!v_event[i].stopped)
 			{
 				v_event[i].stopped=true;
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 				if(v_event[i].running)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -500,7 +497,6 @@ void event_table::stop(string &signame)
 				}
 				if(v_event[i].paused)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -530,10 +526,8 @@ void event_table::stop(string &signame)
 			if(!v_event[i].stopped)
 			{
 				v_event[i].stopped=true;
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 				if(v_event[i].running)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -546,7 +540,6 @@ void event_table::stop(string &signame)
 				}
 				if(v_event[i].paused)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
 					try
 					{
 						remove(signame, true);
@@ -571,7 +564,6 @@ void event_table::stop(string &signame)
 				"Signal " + signame + " NOT subscribed",
 				(const char *)"event_table::stop()");
 }
-
 
 //=============================================================================
 /**
@@ -648,12 +640,6 @@ void event_table::remove(string &signame, bool stop)
 				}
 				if(!stop)
 				{
-					if(sig->running)
-						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
-					if(sig->paused)
-						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
-					if(sig->stopped)
-						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read--;
 					delete sig->siglock;
 					v_event.erase(pos);
@@ -699,12 +685,7 @@ void event_table::remove(string &signame, bool stop)
 					}
 					if(!stop)
 					{
-						if(sig->running)
-							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read--;
-						if(sig->paused)
-							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
-						if(sig->stopped)
-							static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
+
 						static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read--;
 						delete sig->siglock;
 						v_event.erase(pos);
@@ -907,7 +888,7 @@ void event_table::add(string &signame, vector<string> contexts, int to_do, bool 
 			v_event.push_back(*signal);
 			delete signal;
 			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeNumber_read++;
-			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
+			//static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read++;
 			veclock.writerOut();
 			//DEBUG_STREAM << "event_table::"<<__func__<<": signame="<<signame<<" push_back signal"<< endl;
 		}
@@ -1089,7 +1070,6 @@ void event_table::start(string &signame)
 			{
 				if(v_event[i].stopped)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 					try
 					{
 						add(signame, contexts, NOTHING, true);
@@ -1106,9 +1086,6 @@ void event_table::start(string &signame)
 					}
 				}
 				v_event[i].running=true;
-				if(v_event[i].paused)
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 				v_event[i].paused=false;
 				v_event[i].stopped=false;
 			}
@@ -1129,7 +1106,6 @@ void event_table::start(string &signame)
 			{
 				if(v_event[i].stopped)
 				{
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 					try
 					{
 						add(signame, contexts, NOTHING, true);
@@ -1146,9 +1122,6 @@ void event_table::start(string &signame)
 					}
 				}
 				v_event[i].running=true;
-				if(v_event[i].paused)
-					static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 				v_event[i].paused=false;
 				v_event[i].stopped=false;
 			}
@@ -1176,7 +1149,6 @@ void event_table::start_all()
 			if(v_event[i].stopped)
 			{
 				string signame = v_event[i].name;
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStoppedNumber_read--;
 				try
 				{
 					add(signame, contexts, NOTHING, true);
@@ -1193,16 +1165,12 @@ void event_table::start_all()
 				}
 			}
 			v_event[i].running=true;
-			if(v_event[i].paused)
-				static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributePausedNumber_read--;
-			static_cast<AlarmHandler_ns::AlarmHandler *>(mydev)->attr_AttributeStartedNumber_read++;
 			v_event[i].paused=false;
 			v_event[i].stopped=false;
 		}
 		v_event[i].siglock->writerOut();
 	}
 }
-
 
 //=============================================================================
 //=============================================================================
