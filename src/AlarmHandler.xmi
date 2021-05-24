@@ -24,6 +24,11 @@
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
       <DefaultPropValue>30</DefaultPropValue>
     </classProperties>
+    <classProperties name="SetAlarmQuality" description="Set alarm attribute quality as computed using quality of attributes in the formula">
+      <type xsi:type="pogoDsl:BooleanType"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <DefaultPropValue>false</DefaultPropValue>
+    </classProperties>
     <deviceProperties name="GroupNames" description="Labels for Group mask, first is for mask 0x00">
       <type xsi:type="pogoDsl:StringVectorType"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
@@ -42,6 +47,11 @@
       <type xsi:type="pogoDsl:UIntType"/>
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
       <DefaultPropValue>30</DefaultPropValue>
+    </deviceProperties>
+    <deviceProperties name="SetAlarmQuality" description="Set alarm attribute quality as computed using quality of attributes in the formula">
+      <type xsi:type="pogoDsl:BooleanType"/>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+      <DefaultPropValue>false</DefaultPropValue>
     </deviceProperties>
     <commands name="State" description="This command gets the device state (stored in its &lt;i>device_state&lt;/i> data member) and returns it to the caller." execMethod="dev_state" displayLevel="OPERATOR" polledPeriod="0">
       <argin description="none.">

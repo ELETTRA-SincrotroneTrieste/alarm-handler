@@ -646,6 +646,8 @@ class AlarmHandlerClass : public Tango::DeviceClass
 		vector<Tango::DevLong>	statisticsTimeWindow;
 		//	ErrorDelay:	Delay in seconds before changing to ERROR state after an exception is received.
 		Tango::DevULong	errorDelay;
+		//	SetAlarmQuality:	Set alarm attribute quality as computed using quality of attributes in the formula
+		Tango::DevBoolean	setAlarmQuality;
 	public:
 		//	write class properties data members
 		Tango::DbData	cl_prop;

@@ -826,6 +826,7 @@ void AlarmHandler::get_device_property()
 	dev_prop.push_back(Tango::DbDatum("SubscribeRetryPeriod"));
 	dev_prop.push_back(Tango::DbDatum("StatisticsTimeWindow"));
 	dev_prop.push_back(Tango::DbDatum("ErrorDelay"));
+	dev_prop.push_back(Tango::DbDatum("SetAlarmQuality"));
 
 	//	is there at least one property to be read ?
 	if (dev_prop.size()>0)
@@ -883,6 +884,17 @@ void AlarmHandler::get_device_property()
 		}
 		//	And try to extract ErrorDelay value from database
 		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  errorDelay;
+
+		//	Try to initialize SetAlarmQuality from class property
+		cl_prop = ds_class->get_class_property(dev_prop[++i].name);
+		if (cl_prop.is_empty()==false)	cl_prop  >>  setAlarmQuality;
+		else {
+			//	Try to initialize SetAlarmQuality from default device value
+			def_prop = ds_class->get_default_device_property(dev_prop[i].name);
+			if (def_prop.is_empty()==false)	def_prop  >>  setAlarmQuality;
+		}
+		//	And try to extract SetAlarmQuality value from database
+		if (dev_prop[i].is_empty()==false)	dev_prop[i]  >>  setAlarmQuality;
 
 	}
 
@@ -1279,7 +1291,7 @@ void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 				origin, Tango::ERR);
 	}
 	//	Set the attribute value
-	if(quality != Tango::ATTR_VALID)
+	if(quality != Tango::ATTR_VALID && setAlarmQuality)
 	{
 		timeval now;
 		gettimeofday(&now, NULL);
@@ -1422,12 +1434,20 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 					*attr_value = _RTNUN;
 				try
 				{	//DevFailed for push events
-					if(localv_alarm.ex_reason.empty())
+					if(!localv_alarm.error)
 					{
 						timeval now;
 						gettimeofday(&now, NULL);
-						push_change_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
-						push_archive_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
+						if(setAlarmQuality)
+						{
+							push_change_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
+							push_archive_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)localv_alarm.quality, 1/*size*/, 0, false);
+						}
+						else
+						{
+							push_change_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value);
+							push_archive_event(localv_alarm.attr_name,(Tango::DevEnum *)attr_value);
+						}
 					}
 					else
 					{
@@ -2490,12 +2510,20 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		*attr_value = _SHLVD;
 		try
 		{	//DevFailed for push events
-			if(alm.ex_reason.empty())
+			if(!alm.error)
 			{
 				timeval now;
 				gettimeofday(&now, NULL);
-				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
-				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+				if(setAlarmQuality)
+				{
+					push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+					push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+				}
+				else
+				{
+					push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+					push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+				}
 			}
 			else
 			{
@@ -2609,12 +2637,20 @@ void AlarmHandler::enable(Tango::DevString argin)
 		*attr_value = _RTNUN;
 	try
 	{	//DevFailed for push events
-		if(alm.ex_reason.empty())
+		if(!alm.error)
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
-			push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
-			push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			if(setAlarmQuality)
+			{
+				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			}
+			else
+			{
+				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+			}
 		}
 		else
 		{
@@ -2721,12 +2757,20 @@ void AlarmHandler::disable(Tango::DevString argin)
 	*attr_value = _OOSRV;
 	try
 	{	//DevFailed for push events
-		if(alm.ex_reason.empty())
+		if(!alm.error)
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
-			push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
-			push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			if(setAlarmQuality)
+			{
+				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,(Tango::AttrQuality)alm.quality, 1/*size*/, 0, false);
+			}
+			else
+			{
+				push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+			}
 		}
 		else
 		{
@@ -3629,20 +3673,23 @@ void AlarmHandler::do_alarm(bei_t& e)
 					}
 					alarm_t alm = it->second;
 					alarms.vlock->readerOut();
-					try
+					if(alm.error)
 					{
-						Tango::DevErrorList errors(1);
-						errors.length(1);
-						errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
-						errors[0].severity = Tango::ERR;
-						errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
-						errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
-						Tango::DevFailed except(errors);
-						DEBUG_STREAM << "AlarmHandler::"<<__func__<<": PUSHING EXCEPTION FOR " << alm.attr_name << " " << alm.ex_desc << "-" << alm.ex_reason << "-" << alm.ex_origin << endl;
-						push_change_event(alm.attr_name, &except);
-						push_archive_event(alm.attr_name, &except);
-					}catch(Tango::DevFailed &ex)
-					{}
+						try
+						{
+							Tango::DevErrorList errors(1);
+							errors.length(1);
+							errors[0].desc = CORBA::string_dup(alm.ex_desc.c_str());
+							errors[0].severity = Tango::ERR;
+							errors[0].reason = CORBA::string_dup(alm.ex_reason.c_str());
+							errors[0].origin = CORBA::string_dup(alm.ex_origin.c_str());
+							Tango::DevFailed except(errors);
+							DEBUG_STREAM << "AlarmHandler::"<<__func__<<": PUSHING EXCEPTION FOR " << alm.attr_name << " " << alm.ex_desc << "-" << alm.ex_reason << "-" << alm.ex_origin << endl;
+							push_change_event(alm.attr_name, &except);
+							push_archive_event(alm.attr_name, &except);
+						}catch(Tango::DevFailed &ex)
+						{}
+					}
 				}
 				else
 				{
@@ -3889,8 +3936,16 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
-					push_change_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
-					push_archive_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
+					if(setAlarmQuality)
+					{
+						push_change_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
+						push_archive_event(attr_name,(Tango::DevEnum *)attr_value,now,quality, 1/*size*/, 0, false);
+					}
+					else
+					{
+						push_change_event(attr_name,(Tango::DevEnum *)attr_value);
+						push_archive_event(attr_name,(Tango::DevEnum *)attr_value);
+					}
 				}
 				else
 				{
