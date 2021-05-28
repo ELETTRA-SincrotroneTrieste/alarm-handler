@@ -503,7 +503,10 @@ bool alarm_table::update(const string& alm_name, Tango::TimeVal ts, formula_res_
 		if(status_err_delay)
 		{
 			if(!found->second.error)
+			{
 				found->second.is_new = 1;
+				found->second.ack = NOT_ACK;
+			}
 			found->second.error = true;
 		}
 
@@ -611,7 +614,10 @@ bool alarm_table::timer_update()
 			if(status_err_delay)
 			{
 				if(!i->second.error)
+				{
 					i->second.is_new = 1;
+					i->second.ack = NOT_ACK;
+				}
 				i->second.error = true;
 			}
 

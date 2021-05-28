@@ -1412,7 +1412,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 
 			localalarmed = *found; //NOTE: copy before updating ack
 			localv_alarm = i->second;
-
+			//update alarm ack in alarmed table
 			found->ack = ACK;
 			alarmedlock->readerOut();
 			alarms.vlock->readerOut();
@@ -3576,7 +3576,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 	{
 		ostringstream o;
 		o << e.msg;
-		WARN_STREAM << "AlarmHandler::"<<__func__<<": " <<  o.str() << endl;
+		WARN_STREAM << "AlarmHandler::"<<__func__<<": " << e.ev_name << ": " <<  o.str() << endl;
 		events->veclock.readerIn();
 		vector<event>::iterator found_ev = \
 			find(events->v_event.begin(), events->v_event.end(), e.ev_name);
@@ -3647,7 +3647,6 @@ void AlarmHandler::do_alarm(bei_t& e)
 					//if first error, reset ACK
 					if(it->second.ex_reason.empty() && it->second.ex_desc.empty() && it->second.ex_origin.empty())
 					{
-						it->second.ack = NOT_ACK;
 						it->second.ts_err_delay = gettime();		//first occurrance of this error, now begin to wait for err delay
 					}
 					if(e.type == TYPE_TANGO_ERR)
@@ -3661,14 +3660,20 @@ void AlarmHandler::do_alarm(bei_t& e)
 						if((ts.tv_sec - errorDelay) > it->second.ts_err_delay.tv_sec)	//error is present and err delay has passed
 						{
 							if(!it->second.error)
+							{
 								it->second.is_new = 1;
+								it->second.ack = NOT_ACK;//if first error, reset ACK
+							}
 							it->second.error = true;
 						}
 					}
 					else
 					{
 						if(!it->second.error)
+						{
 							it->second.is_new = 1;
+							it->second.ack = NOT_ACK;//if first error, reset ACK
+						}
 						it->second.error = true;
 					}
 					alarm_t alm = it->second;
