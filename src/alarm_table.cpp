@@ -738,12 +738,20 @@ bool alarm_table::timer_update()
 				*(i->second.attr_value) = _RTNUN;
 			try
 			{
-				if(!i->second.error)
+				if(!i->second.error || !i->second.enabled || (i->second.shelved && i->second.silenced > 0))
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
-					mydev->push_change_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
-					mydev->push_archive_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					if(setAlarmQuality)
+					{
+						mydev->push_change_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+						mydev->push_archive_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value,now,(Tango::AttrQuality)i->second.quality, 1/*size*/, 0, false);
+					}
+					else
+					{
+						mydev->push_change_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value);
+						mydev->push_archive_event(i->second.attr_name,(Tango::DevEnum *)i->second.attr_value);
+					}
 				}
 				else
 				{

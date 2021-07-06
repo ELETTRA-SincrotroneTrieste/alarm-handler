@@ -371,7 +371,9 @@ class alarm_table {
 	public:
 		alarm_table() {}
 		~alarm_table() {del_rwlock();}
+		bool setAlarmQuality {false};
 		void set_dev(Tango::DeviceImpl* devImpl) {mydev=devImpl;}
+		void set_al_qual(bool set_al_qual) {setAlarmQuality=set_al_qual;}
 
 		//void init(vector<string>& avs);
 		//void init(vector<string>& avs, vector<string> &evn, map< string,vector<string> > &alarm_event);		

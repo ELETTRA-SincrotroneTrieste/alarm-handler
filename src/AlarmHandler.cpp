@@ -415,6 +415,7 @@ void AlarmHandler::init_device()
 		alarmSummary_read[i].resize(MAX_ATTR_SUMMARY);
 	}*/
 	//	Initialize device
+	alarms.set_al_qual(setAlarmQuality);
 	alarms.set_err_delay(errorDelay);
 	thread->period = subscribeRetryPeriod;
 	
@@ -1271,7 +1272,10 @@ void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 			break;
 		}
 	}
-	bool error;
+	bool error=false;
+	bool enabled=true;
+	bool shelved=false;
+	int silenced=0;
 	if(it != alarms.v_alarm.end())
 	{
 		reason = it->second.ex_reason;
@@ -1279,10 +1283,13 @@ void AlarmHandler::read_AlarmState(Tango::Attribute &attr)
 		origin = it->second.ex_origin;
 		quality = it->second.quality;
 		error = it->second.error;
+		enabled = it->second.enabled;
+		shelved = it->second.shelved;
+		silenced = it->second.silenced;
 	}
 	DEBUG_STREAM << "AlarmHandler::read_AlarmState: " << attr.get_name() << " desc=" << desc << endl;
 	alarms.vlock->readerOut();
-	if(error) //TODO: if needs to be considered err_delay also in single alarm attributes, error must be used
+	if(error && enabled && !(shelved && silenced >0)) //TODO: if needs to be considered err_delay also in single alarm attributes, error must be used
 	//if(desc.length() > 0)
 	{
 		Tango::Except::throw_exception(
@@ -1434,7 +1441,7 @@ void AlarmHandler::ack(const Tango::DevVarStringArray *argin)
 					*attr_value = _RTNUN;
 				try
 				{	//DevFailed for push events
-					if(!localv_alarm.error)
+					if(!localv_alarm.error || !localv_alarm.enabled || (localv_alarm.shelved && localv_alarm.silenced > 0))
 					{
 						timeval now;
 						gettimeofday(&now, NULL);
@@ -2510,7 +2517,9 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 		*attr_value = _SHLVD;
 		try
 		{	//DevFailed for push events
+#if 0//do not store errors for disabled alarms
 			if(!alm.error)
+#endif
 			{
 				timeval now;
 				gettimeofday(&now, NULL);
@@ -2525,6 +2534,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 					push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
 				}
 			}
+#if 0//do not store errors for disabled alarms
 			else
 			{
 				Tango::DevErrorList errors(1);
@@ -2537,6 +2547,7 @@ void AlarmHandler::shelve(const Tango::DevVarStringArray *argin)
 				push_change_event(alm.attr_name, &except);
 				push_archive_event(alm.attr_name, &except);
 			}
+#endif
 		} catch(Tango::DevFailed & ex)
 		{
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
@@ -2757,7 +2768,9 @@ void AlarmHandler::disable(Tango::DevString argin)
 	*attr_value = _OOSRV;
 	try
 	{	//DevFailed for push events
+#if 0	//do not store errors for disabled alarms
 		if(!alm.error)
+#endif
 		{
 			timeval now;
 			gettimeofday(&now, NULL);
@@ -2772,6 +2785,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 				push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
 			}
 		}
+#if 0	//do not store errors for disabled alarms
 		else
 		{
 			Tango::DevErrorList errors(1);
@@ -2784,6 +2798,7 @@ void AlarmHandler::disable(Tango::DevString argin)
 			push_change_event(alm.attr_name, &except);
 			push_archive_event(alm.attr_name, &except);
 		}
+#endif
 	} catch(Tango::DevFailed & ex)
 	{
 		WARN_STREAM << "AlarmHandler::"<<__func__<<": EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
@@ -3678,7 +3693,7 @@ void AlarmHandler::do_alarm(bei_t& e)
 					}
 					alarm_t alm = it->second;
 					alarms.vlock->readerOut();
-					if(alm.error)
+					if(alm.error && alm.enabled && !(alm.shelved && alm.silenced > 0))
 					{
 						try
 						{
@@ -3694,6 +3709,30 @@ void AlarmHandler::do_alarm(bei_t& e)
 							push_archive_event(alm.attr_name, &except);
 						}catch(Tango::DevFailed &ex)
 						{}
+					}
+					else
+					{
+						Tango::DevEnum *attr_value = get_AlarmState_data_ptr(alm.attr_name);
+						if(!alm.enabled)
+						{
+							*attr_value = _OOSRV;
+						}
+						else if(alm.shelved && alm.silenced > 0)
+						{
+							*attr_value = _SHLVD;
+						}
+						if(setAlarmQuality)
+						{
+							timeval now;
+							gettimeofday(&now, NULL);
+							push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,static_cast<Tango::AttrQuality>(alm.quality), 1/*size*/, 0, false);
+							push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value,now,static_cast<Tango::AttrQuality>(alm.quality), 1/*size*/, 0, false);
+						}
+						else
+						{
+							push_change_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+							push_archive_event(alm.attr_name,(Tango::DevEnum *)attr_value);
+						}
 					}
 				}
 				else
@@ -3937,7 +3976,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
 			try
 			{	//DevFailed for push events
-				if(!it->second.error)
+				if(!it->second.error || !it->second.enabled || (it->second.shelved && it->second.silenced > 0))
 				{
 					timeval now;
 					gettimeofday(&now, NULL);
@@ -3988,9 +4027,15 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
 				errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
 				Tango::DevFailed except(errors);
+				bool enabled=it->second.enabled;
+				bool shelved=it->second.shelved;
+				int silenced=it->second.silenced;
 				alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
-				push_change_event(attr_name, &except);
-				push_archive_event(attr_name, &except);
+				if(enabled && !(shelved && silenced >0))
+				{
+					push_change_event(attr_name, &except);
+					push_archive_event(attr_name, &except);
+				}
 			} catch(Tango::DevFailed & ex)
 			{
 				WARN_STREAM << "AlarmHandler::"<<__func__<<": " << attr_name << " - EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
@@ -4000,7 +4045,7 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 			changed = !prev_error;
 			it->second.to_be_evaluated = true;
 			ostringstream o;
-			o << tmpname << ": in formula err=" << ex;
+			o << ex;
 			WARN_STREAM << "AlarmHandler::"<<__func__<<": " << o.str() << endl;
 			set_internal_alarm(INTERNAL_ERROR, gettime(), o.str());
 			try
@@ -4008,16 +4053,22 @@ bool AlarmHandler::do_alarm_eval(string alm_name, string ev_name, Tango::TimeVal
 				Tango::DevErrorList errors(1);
 				errors.length(1);
 				it->second.ex_reason = string("FORMULA_ERROR");
-				it->second.ex_desc = ev_name + ": " + o.str();
+				it->second.ex_desc = o.str();
 				it->second.ex_origin = ev_name;
 				errors[0].desc = CORBA::string_dup(it->second.ex_desc.c_str());
 				errors[0].severity = Tango::ERR;
 				errors[0].reason = CORBA::string_dup(it->second.ex_reason.c_str());
 				errors[0].origin = CORBA::string_dup(it->second.ex_origin.c_str());
 				Tango::DevFailed except(errors);
+				bool enabled=it->second.enabled;
+				bool shelved=it->second.shelved;
+				int silenced=it->second.silenced;
 				alarms.vlock->readerOut();	//Don't hold alarms lock while pushing events to prevent deadlocks
-				push_change_event(attr_name, &except);
-				push_archive_event(attr_name, &except);
+				if(enabled && !(shelved && silenced >0))
+				{
+					push_change_event(attr_name, &except);
+					push_archive_event(attr_name, &except);
+				}
 			} catch(Tango::DevFailed & ex)
 			{
 				WARN_STREAM << "AlarmHandler::"<<__func__<<": " << attr_name << " - EXCEPTION PUSHING EVENTS: " << ex.errors[0].desc << endl;
@@ -4377,7 +4428,7 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 {
 
     ostringstream err;
-    err << "Evaluating formula: ";    
+    err << "";    
     //iter_t it = i->children.begin();
 
     if (i->value.id() == formula_grammar::val_rID)
@@ -4610,18 +4661,18 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 			if(!it->valid)
 			{
 				if(it->ex_desc.length() > 0)
-					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+					err << it->ex_desc << "";
 				else
-					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not valid!";
+					err <<  "attribute " << string(i->value.begin(), i->value.end()) << " value not valid while evaluating formula";
 				events->veclock.readerOut();
         		throw err.str();
         	}	
 			else if(it->type != Tango::DEV_STRING && it->value.empty())
 			{
 				if(it->ex_desc.length() > 0)
-					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+					err << it->ex_desc << "";
 				else
-					err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not initialized!!";
+					err <<  "attribute " << string(i->value.begin(), i->value.end()) << " value not initialized while evaluating formula";
 				events->veclock.readerOut();
         		throw err.str();
         	}        	
@@ -4991,18 +5042,18 @@ formula_res_t AlarmHandler::eval_expression(iter_t const& i, string &attr_values
 				{
 					err <<  "in node funcID(" << string(i->value.begin(), i->value.end()) << "), (" << s << ") value not valid!" << ends;
 					if(it->ex_desc.length() > 0)
-						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+						err << it->ex_desc << "";
 					else
-						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not valid!";
+						err <<  "attribute " << string(i->value.begin(), i->value.end()) << " value not valid while evaluating formula";
 					events->veclock.readerOut();
 					throw err.str();
 				}
 				else if(it->type != Tango::DEV_STRING && it->value.empty())
 				{
 					if(it->ex_desc.length() > 0)
-						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' exception: '" << it->ex_desc << "'";
+						err << it->ex_desc << "";
 					else
-						err <<  "attribute '" << string(i->value.begin(), i->value.end()) << "' value not initialized!!";
+						err <<  "attribute " << string(i->value.begin(), i->value.end()) << " value not initialized while evaluating formula";
 					events->veclock.readerOut();
 					throw err.str();
 				}     

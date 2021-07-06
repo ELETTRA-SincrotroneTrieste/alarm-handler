@@ -1308,7 +1308,7 @@ void EventCallBack::push_event(Tango::EventData* ev)
 				temp_name = temp_name.substr(0,pos_change);
 			}
 			ostringstream o;
-			o << "Tango error for '" << temp_name << "'=" << ev->errors[0].desc.in();			
+			o << "Tango error for " << temp_name << ": " << ev->errors[0].desc.in();			
 			e.ev_name = temp_name;
 			e.type = TYPE_TANGO_ERR;
 			//e.ev_name = INTERNAL_ERROR;
