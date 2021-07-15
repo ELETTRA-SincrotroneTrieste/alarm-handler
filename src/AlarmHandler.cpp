@@ -754,7 +754,7 @@ void AlarmHandler::init_device()
 		}
 	}
 
-	set_change_event("alarm",true,false);
+	set_change_event("alarm",true,true);
 	/*
 	 * create alarm processing thread
 	 */

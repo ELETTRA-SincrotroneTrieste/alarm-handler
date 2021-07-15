@@ -852,8 +852,8 @@ void AlarmHandlerClass::attribute_factory(vector<Tango::Attr *> &att_list)
 	//	Not Polled
 	alarmaudible->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	alarmaudible->set_change_event(true, false);
-	alarmaudible->set_archive_event(true, false);
+	alarmaudible->set_change_event(true, true);
+	alarmaudible->set_archive_event(true, true);
 	att_list.push_back(alarmaudible);
 
 	//	Attribute : StatisticsResetTime

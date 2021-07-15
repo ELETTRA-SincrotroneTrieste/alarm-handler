@@ -173,8 +173,8 @@ void AlarmHandler::add_AlarmFormula_dynamic_attribute(string attname)
 	//	Not Polled
 	alarmformula->set_disp_level(Tango::OPERATOR);
 	//	Not Memorized
-	alarmformula->set_change_event(true, false);
-	alarmformula->set_archive_event(true, false);
+	alarmformula->set_change_event(true, true);
+	alarmformula->set_archive_event(true, true);
 	char array[1];
 	array[0] = '\0';
 	AlarmFormula_data.insert(make_pair(attname, array));
