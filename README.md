@@ -1,3 +1,7 @@
+# MOVED TO GITLAB
+
+https://gitlab.elettra.eu/cs/ds/alarm-handler
+
 # alarm
 Elettra alarm-handler Tango device
 
